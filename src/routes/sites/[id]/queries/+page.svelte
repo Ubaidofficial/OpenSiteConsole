@@ -23,8 +23,8 @@
 		loading = false;
 	}
 	const cols = [
-		{ key: 'query', label: 'Query', type: 'text' as const },
-		{ key: 'clicks', label: 'Clicks', type: 'int' as const },
+		{ key: 'query', label: 'Query', type: 'text' as const, pii: (r: { branded: boolean }) => r.branded },
+		{ key: 'clicks', label: 'Clicks', type: 'int' as const, bar: true },
 		{ key: 'clicksDelta', label: 'Δ clicks', type: 'delta' as const },
 		{ key: 'impressions', label: 'Impressions', type: 'int' as const },
 		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
@@ -44,13 +44,13 @@
 	</select>
 	<a class="btn ml-auto" href="/sites/{page.params.id}/export?dim=query&days={page.url.searchParams.get('days') ?? 28}">Export CSV</a>
 </div>
-<p class="mb-2 text-xs text-muted-foreground">Branded = contains {data.brandTerms.length ? data.brandTerms.join(', ') : '(no brand terms — set them in Settings)'}. Click a row for its full-history chart.</p>
+<p class="mb-2 text-xs text-muted-foreground">Branded = contains <span class="pii">{data.brandTerms.length ? data.brandTerms.join(', ') : '(no brand terms — set them in Settings)'}</span>. Click a row for its full-history chart.</p>
 
 <DataTable rows={data.rows} {cols} sortKey="clicks" onRowClick={toggle} />
 
 {#if open}
 	<div class="card mt-3 p-4">
-		<div class="mb-2 font-medium">“{open}” — all stored history</div>
+		<div class="mb-2 font-medium">“<span class="pii">{open}</span>” — all stored history</div>
 		{#if loading}<p class="text-muted-foreground">Loading…</p>{:else}<Chart data={history} defaultMetrics={['clicks', 'position']} height={220} />{/if}
 	</div>
 {/if}

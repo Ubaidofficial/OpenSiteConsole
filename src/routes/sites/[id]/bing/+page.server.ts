@@ -1,9 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { getSite } from '$lib/server/clients';
-import { periodFor, summary } from '$lib/server/queries';
+import { brandTerms, periodFor, summary } from '$lib/server/queries';
 import { linksFor } from '$lib/server/links';
-import { pctChange } from '$lib/analytics';
+import { isBranded, pctChange } from '$lib/analytics';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { days } = await parent();
@@ -16,8 +16,9 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	const now = tot(p.start, p.end);
 	const prev = tot(p.prevStart, p.prevEnd);
 	const g = summary(site.id, p.start, p.end);
+	const brand = brandTerms(site);
 	const terms = (kind: string) =>
-		(d.prepare('SELECT term, SUM(clicks) clicks, SUM(impressions) impressions, AVG(click_pos) clickPos FROM bing_terms WHERE site_id = ? AND kind = ? AND date BETWEEN ? AND ? GROUP BY term ORDER BY clicks DESC, impressions DESC LIMIT 500').all(site.id, kind, p.start, p.end) as { term: string; clicks: number; impressions: number; clickPos: number | null }[]).map((r) => ({ ...r, ctr: r.impressions ? r.clicks / r.impressions : 0 }));
+		(d.prepare('SELECT term, SUM(clicks) clicks, SUM(impressions) impressions, AVG(click_pos) clickPos FROM bing_terms WHERE site_id = ? AND kind = ? AND date BETWEEN ? AND ? GROUP BY term ORDER BY clicks DESC, impressions DESC LIMIT 500').all(site.id, kind, p.start, p.end) as { term: string; clicks: number; impressions: number; clickPos: number | null }[]).map((r) => ({ ...r, ctr: r.impressions ? r.clicks / r.impressions : 0, branded: kind === 'query' && isBranded(r.term, brand) }));
 	const range = d.prepare('SELECT MIN(date) a, MAX(date) b FROM bing_daily WHERE site_id = ?').get(site.id) as { a: string | null; b: string | null };
 	return {
 		linked: true as const,

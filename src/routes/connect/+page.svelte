@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { privacy } from '$lib/privacy.svelte';
 	import { enhance } from '$app/forms';
 	import { ago } from '$lib/format';
 
@@ -124,7 +125,7 @@
 	<h2 class="mb-1 font-medium">5 · OpenSEO <span class="chip ml-1">optional</span></h2>
 	<p class="mb-3 text-xs text-muted-foreground">Links each site to its OpenSEO project (matched by domain) so an AI agent can combine OpenSEO's keyword/rank/audit data with this first-party data. Use an API key from OpenSEO → Settings.</p>
 	{#if data.openseo}
-		<div class="mb-2 flex items-center gap-2 text-sm"><span>{data.openseo.baseUrl}</span><span class="text-xs text-muted-foreground">{data.openseo.linked} site(s) linked</span>
+		<div class="mb-2 flex items-center gap-2 text-sm"><span class="pii">{data.openseo.baseUrl}</span><span class="text-xs text-muted-foreground">{data.openseo.linked} site(s) linked</span>
 			<form method="POST" action="?/openseoRemove" use:enhance class="ml-auto"><button class="btn btn-danger">Disconnect</button></form></div>
 	{/if}
 	<form method="POST" action="?/openseo" use:enhance={submit('openseo')} class="flex flex-wrap gap-2">
@@ -153,7 +154,7 @@
 								{#if l}
 									<div class="flex items-center gap-1">
 										<span class={l.status === 'error' ? 'text-bad' : 'text-good'}>{l.status === 'error' ? '⚠' : '✓'}</span>
-										<span class="max-w-[11rem] truncate" title={l.label ?? l.id}>{l.label ?? l.id}</span>
+										<span class="pii max-w-[11rem] truncate" title={privacy.on ? undefined : (l.label ?? l.id)}>{l.label ?? l.id}</span>
 										<form method="POST" action="?/unlink" use:enhance><input type="hidden" name="siteId" value={r.id} /><input type="hidden" name="kind" value={k} /><button class="text-muted-foreground hover:text-[color:var(--bad)]" title="Unlink" aria-label="Unlink {k}">✕</button></form>
 									</div>
 									<div class="text-[11px] text-muted-foreground">{k === 'openseo' ? 'linked by domain' : l.status === 'running' || l.status === 'queued' ? '⟳ ' + l.status : l.status === 'error' ? l.message : 'synced ' + ago(l.lastSync)}

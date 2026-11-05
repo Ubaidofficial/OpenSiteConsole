@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { privacy } from '$lib/privacy.svelte';
 	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
@@ -43,7 +44,7 @@
 	</div>
 	<div class="ml-auto flex flex-wrap items-center gap-3">
 		<PeriodPicker days={data.days} />
-		{#if data.openseo?.url}<a class="btn" href={data.openseo.url} target="_blank" rel="noreferrer noopener" title="OpenSEO project: {data.openseo.name}">OpenSEO ↗</a>{/if}
+		{#if data.openseo?.url}<a class="btn" href={data.openseo.url} target="_blank" rel="noreferrer noopener" title={privacy.on ? undefined : `OpenSEO project: ${data.openseo.name}`}>OpenSEO ↗</a>{/if}
 		<form method="POST" action="{base}/sync" use:enhance><button class="btn">⟳ Sync</button></form>
 	</div>
 </div>

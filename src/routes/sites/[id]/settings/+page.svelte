@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { LoaderCircle } from '@lucide/svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { enhance } from '$app/forms';
 	import { fmtInt, ago } from '$lib/format';
 	let { data: page, form } = $props();
+	let saving = $state(false);
 </script>
 
 {#if form?.ok}<p class="mb-3 text-sm text-good">{form.ok}</p>{/if}
@@ -11,12 +13,12 @@
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<section class="card p-4">
 		<h2 class="mb-3 font-medium">Site preferences</h2>
-		<form method="POST" action="?/save" use:enhance class="space-y-3 text-sm">
+		<form method="POST" action="?/save" use:enhance={() => { saving = true; return async ({ update }) => { await update({ reset: false }); saving = false; }; }} class="space-y-4 text-sm">
 			<label class="block"><span class="text-xs text-muted-foreground">Display name</span><input class="input w-full" name="label" value={page.site?.label ?? ''} /></label>
 			<label class="block"><span class="text-xs text-muted-foreground">Tags (comma separated)</span><input class="input w-full" name="tags" value={page.site?.tags ?? ''} /></label>
 			<label class="block"><span class="text-xs text-muted-foreground">Brand terms (comma separated; used to split branded vs non-branded)</span><input class="input w-full" name="brand" value={page.site?.brandTerms ?? ''} /></label>
 			<label class="flex items-center gap-2"><input type="checkbox" name="hidden" checked={page.site?.hidden} /> Hide from dashboard and stop scheduled syncs</label>
-			<button class="btn btn-primary">Save</button>
+			<button class="btn btn-primary" disabled={saving}>{#if saving}<LoaderCircle class="size-4 animate-spin" />Saving…{:else}Save changes{/if}</button>
 		</form>
 	</section>
 

@@ -13,7 +13,7 @@
 	{#each groups as g (g.query)}
 		<div class="card p-3">
 			<div class="mb-2 flex flex-wrap items-center gap-3">
-				<span class="font-medium">{g.query}</span>
+				<span class="font-medium" class:pii={g.branded}>{g.query}</span>
 				<span class="chip {g.severity === 'high' ? 'text-bad' : 'text-warn'}">{g.severity === 'high' ? 'pages close in position' : 'one page dominates'}</span>
 				<span class="tnum ml-auto text-xs text-muted-foreground">{fmtInt(g.totalClicks)} clicks · {fmtInt(g.totalImpressions)} impr. · up to ~{fmtInt(g.potentialClicks)} clicks at stake</span>
 			</div>
@@ -22,7 +22,7 @@
 					{#each g.pages as p, i}
 						<tr>
 							<td class="py-1 pr-3">{#if i === 0}<span class="chip text-good">winner</span>{/if}</td>
-							<td class="max-w-[38rem] truncate py-1 pr-3"><a class="hover:underline" href={p.page} target="_blank" rel="noreferrer noopener">{shortUrl(p.page)}</a></td>
+							<td class="max-w-[38rem] truncate py-1 pr-3"><a class="pii hover:underline" href={p.page} target="_blank" rel="noreferrer noopener">{shortUrl(p.page)}</a></td>
 							<td class="tnum py-1 pr-3 text-right">{fmtInt(p.clicks)} clk</td>
 							<td class="tnum py-1 pr-3 text-right">{fmtInt(p.impressions)} impr</td>
 							<td class="tnum py-1 pr-3 text-right">{fmtPct(p.share, 0)} share</td>

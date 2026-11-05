@@ -122,7 +122,7 @@
 							<a href={c.href} target="_blank" rel="noreferrer noopener" class="relative z-10 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100" aria-label="Open the site in a new tab" title="Open site"><ExternalLink class="size-3.5" /></a>
 						</div>
 						<div class="pii truncate text-sm text-muted-foreground">{c.label ? c.name + ' · ' : ''}{c.account}</div>
-						{#if c.coveredBy}<div class="pii truncate text-xs text-warn" title="This property's data is already included in {c.coveredBy}">↳ included in {c.coveredBy.replace('sc-domain:', '')}</div>{/if}
+						{#if c.coveredBy}<div class="pii truncate text-xs text-warn" title={privacy.on ? undefined : `This property's data is already included in ${c.coveredBy}`}>↳ included in {c.coveredBy.replace('sc-domain:', '')}</div>{/if}
 					</div>
 					{#if c.hasData}
 						<div class="flex shrink-0 flex-col items-end gap-1">

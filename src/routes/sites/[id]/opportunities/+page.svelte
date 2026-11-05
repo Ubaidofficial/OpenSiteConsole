@@ -5,7 +5,7 @@
 	const gain = $derived(data.striking.reduce((a, r) => a + r.expectedGain, 0));
 	const sCols = [
 		{ key: 'query', label: 'Query', type: 'text' as const },
-		{ key: 'expectedGain', label: 'Est. +clicks', type: 'int' as const, title: 'Extra clicks per period if this query reached position 3, using your own CTR curve' },
+		{ key: 'expectedGain', label: 'Est. +clicks', type: 'int' as const, bar: true, title: 'Extra clicks per period if this query reached position 3, using your own CTR curve' },
 		{ key: 'impressions', label: 'Impressions', type: 'int' as const },
 		{ key: 'clicks', label: 'Clicks', type: 'int' as const },
 		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
@@ -14,7 +14,7 @@
 	const gCols = [
 		{ key: 'query', label: 'Query', type: 'text' as const },
 		{ key: 'page', label: 'Page', type: 'link' as const },
-		{ key: 'missedClicks', label: 'Missed clicks', type: 'int' as const },
+		{ key: 'missedClicks', label: 'Missed clicks', type: 'int' as const, bar: true },
 		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
 		{ key: 'expectedCtr', label: 'Expected', type: 'pct' as const },
 		{ key: 'position', label: 'Position', type: 'pos' as const },

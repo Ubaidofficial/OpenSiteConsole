@@ -30,7 +30,7 @@
 			<fieldset>
 				<legend class="mb-1 text-xs text-muted-foreground">Limit to sites (none ticked = all sites). Out-of-scope sites are invisible to the key.</legend>
 				<div class="grid max-h-40 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
-					{#each data.sites as s}<label class="flex items-center gap-2"><input type="checkbox" name="site" value={s.id} /> {s.name}</label>{/each}
+					{#each data.sites as s}<label class="flex items-center gap-2"><input type="checkbox" name="site" value={s.id} /> <span class="pii">{s.name}</span></label>{/each}
 				</div>
 			</fieldset>
 			<button class="btn btn-primary">Create key</button>
@@ -52,7 +52,7 @@
 			{#each data.keys as k (k.id)}
 				<tr>
 					<td class="td">{k.name}</td><td class="td"><code>{k.prefix}…</code></td>
-					<td class="td text-xs">{k.scope ? k.scope.map(nameOf).join(', ') : 'all sites'}</td>
+					<td class="td text-xs"><span class="pii">{k.scope ? k.scope.map(nameOf).join(', ') : 'all sites'}</span></td>
 					<td class="td text-xs text-muted-foreground">{k.lastUsedAt ? ago(k.lastUsedAt) : 'never'}</td>
 					<td class="td text-right"><form method="POST" action="?/remove" use:enhance><input type="hidden" name="id" value={k.id} /><ConfirmButton title="Revoke this API key?" description="Anything using this key (an agent, a script) loses access immediately." confirmLabel="Revoke key">Revoke</ConfirmButton></form></td>
 				</tr>

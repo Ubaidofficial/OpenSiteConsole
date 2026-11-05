@@ -12,7 +12,7 @@
 	}
 	const cols = [
 		{ key: 'page', label: 'Page', type: 'link' as const },
-		{ key: 'clicks', label: 'Clicks', type: 'int' as const },
+		{ key: 'clicks', label: 'Clicks', type: 'int' as const, bar: true },
 		{ key: 'clicksDelta', label: 'Δ clicks', type: 'delta' as const },
 		{ key: 'impressions', label: 'Impressions', type: 'int' as const },
 		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
@@ -24,7 +24,7 @@
 <DataTable rows={data.rows} {cols} sortKey="clicks" onRowClick={toggle} />
 {#if open}
 	<div class="card mt-3 p-4">
-		<div class="mb-2 truncate font-medium">{open}</div>
+		<div class="pii mb-2 truncate font-medium">{open}</div>
 		<Chart data={history} defaultMetrics={['clicks', 'position']} height={220} />
 	</div>
 {/if}
