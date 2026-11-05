@@ -16,3 +16,14 @@ export function hideCoveredDuplicates(): number {
 	db().transaction(() => ids.forEach((id) => hide.run(id)))();
 	return ids.length;
 }
+
+/**
+ * Delete the stored data of a property Search Console no longer lists (permission 'none'). Refuses anything else, so a
+ * live property can never be deleted from here. Returns whether a property was deleted.
+ */
+export function purgeRemovedSite(id: number): boolean {
+	const row = db().prepare('SELECT permission FROM sites WHERE id = ?').get(id) as { permission: string } | undefined;
+	if (!row || row.permission !== 'none') return false;
+	db().prepare('DELETE FROM sites WHERE id = ?').run(id); // child tables cascade
+	return true;
+}

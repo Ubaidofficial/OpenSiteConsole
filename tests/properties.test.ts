@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { bareName, coverageMap, isRootPrefix, propertyLabel } from '../src/lib/property';
 import { db, openDb } from '../src/lib/server/db';
 import { portfolioTotals, siteCards } from '../src/lib/server/queries';
-import { hideCoveredDuplicates, hideableDuplicates } from '../src/lib/server/duplicates';
+import { hideCoveredDuplicates, hideableDuplicates, purgeRemovedSite } from '../src/lib/server/duplicates';
 import { portfolioStriking } from '../src/lib/server/portfolio';
 
 describe('property labels', () => {
@@ -76,6 +76,23 @@ describe('totals count each site once', () => {
 		expect(portfolioTotals(cards).duplicates).toBe(0);
 		expect(siteCards(7, { includeHidden: true }).map((c) => c.site.id).sort()).toEqual([1, 2, 3]);
 		expect((db().prepare('SELECT COUNT(*) n FROM site_daily WHERE site_id = 2').get() as { n: number }).n).toBe(1);
+	});
+
+	it('a removed Domain property does not "cover" (and so hide the totals of) a live URL-prefix property', () => {
+		db().prepare("UPDATE sites SET permission = 'none' WHERE id = 1").run(); // the Domain property was removed
+		const cards = siteCards(7, { includeHidden: true });
+		expect(cards.find((c) => c.site.id === 2)!.coveredBy).toBeNull();
+	});
+
+	it('purges only properties Search Console no longer lists, with their data', () => {
+		expect(purgeRemovedSite(2)).toBe(false); // live: refused
+		expect((db().prepare('SELECT COUNT(*) n FROM sites').get() as { n: number }).n).toBe(3);
+		db().prepare("UPDATE sites SET permission = 'none' WHERE id = 2").run();
+		expect(purgeRemovedSite(2)).toBe(true);
+		expect((db().prepare('SELECT COUNT(*) n FROM sites WHERE id = 2').get() as { n: number }).n).toBe(0);
+		expect((db().prepare('SELECT COUNT(*) n FROM site_daily WHERE site_id = 2').get() as { n: number }).n).toBe(0); // cascaded
+		expect((db().prepare('SELECT COUNT(*) n FROM site_daily WHERE site_id = 1').get() as { n: number }).n).toBe(1); // others untouched
+		expect(purgeRemovedSite(999)).toBe(false);
 	});
 
 	it('portfolio analytics skip the covered property too', () => {

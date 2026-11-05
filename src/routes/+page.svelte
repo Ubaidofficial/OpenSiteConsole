@@ -2,7 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { Eye, EyeOff, ExternalLink, RefreshCw, Search } from '@lucide/svelte';
+	import { Eye, EyeOff, ExternalLink, RefreshCw, Search, Trash2 } from '@lucide/svelte';
+	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import AreaSpark from '$lib/components/AreaSpark.svelte';
 	import { trendOf } from '$lib/trend';
@@ -150,12 +151,24 @@
 								<Delta value={c.clicksDelta} why={c.comparable ? 'Too little data in the previous period' : 'Previous period still loading'} />
 							</div>
 						{/if}
+						{#if c.removed}
+							<form method="POST" action="?/purgeRemoved" use:enhance class="relative z-10">
+								<input type="hidden" name="id" value={c.id} />
+								<ConfirmButton
+									title="Delete this removed property?"
+									description="Search Console no longer lists it. This deletes its stored history from OpenSiteConsole (your Search Console data is not touched). It cannot be undone, and you can re-add the property later to download it again."
+									confirmLabel="Delete stored data"
+									class="grid size-8 place-items-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-destructive/10 hover:text-destructive"
+								><Trash2 class="size-4" /></ConfirmButton>
+							</form>
+						{:else}
 						<form method="POST" action="?/toggleHidden" use:enhance={hideEnhance(c)} class="relative z-10">
-							<input type="hidden" name="id" value={c.id} />
-							<button class="grid size-8 place-items-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground" aria-label={c.hidden ? 'Show on dashboard' : 'Hide from dashboard'} title={c.hidden ? 'Show on dashboard again' : 'Hide from dashboard (leaves the totals and stops syncing)'}>
-								{#if c.hidden}<Eye class="size-4" />{:else}<EyeOff class="size-4" />{/if}
-							</button>
-						</form>
+								<input type="hidden" name="id" value={c.id} />
+								<button class="grid size-8 place-items-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground" aria-label={c.hidden ? 'Show on dashboard' : 'Hide from dashboard'} title={c.hidden ? 'Show on dashboard again' : 'Hide from dashboard (leaves the totals and stops syncing)'}>
+									{#if c.hidden}<Eye class="size-4" />{:else}<EyeOff class="size-4" />{/if}
+								</button>
+							</form>
+						{/if}
 					</div>
 				</div>
 
@@ -180,7 +193,7 @@
 					{/each}
 					{#each c.tags as t}<span class="chip !py-0 text-[10px]">{t}</span>{/each}
 					<span class="ml-auto truncate">
-						{#if c.syncStatus === 'running' || c.syncStatus === 'queued'}<RefreshCw class="mr-1 inline size-3 animate-spin" />{c.syncStatus}{:else if c.syncStatus === 'error'}<span class="text-bad" title={privacy.on ? undefined : (c.syncMessage ?? 'Sync failed')}>⚠ sync error</span>{:else}synced {ago(c.lastSync)}{/if}{#if !c.backfillDone && c.hasData} · loading history{/if}
+						{#if c.removed}removed · no longer synced{:else if c.syncStatus === 'running' || c.syncStatus === 'queued'}<RefreshCw class="mr-1 inline size-3 animate-spin" />{c.syncStatus}{:else if c.syncStatus === 'error'}<span class="text-bad" title={privacy.on ? undefined : (c.syncMessage ?? 'Sync failed')}>⚠ sync error</span>{:else}synced {ago(c.lastSync)}{/if}{#if !c.backfillDone && c.hasData} · loading history{/if}
 					</span>
 				</div>
 			</article>
