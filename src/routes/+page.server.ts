@@ -48,7 +48,7 @@ export const load: PageServerLoad = ({ url }) => {
 			hidden: !!c.site.hidden,
 			removed: c.site.permission === 'none',
 			coveredBy: c.coveredBy ? (cards.find((x) => x.site.id === c.coveredBy)?.site.site_url ?? null) : null,
-			connected: { bing: has(c.site.id, 'bing'), ga4: has(c.site.id, 'ga4'), clarity: has(c.site.id, 'clarity'), openseo: has(c.site.id, 'openseo') },
+			connected: { bing: has(c.site.id, 'bing'), ga4: has(c.site.id, 'ga4'), gtm: has(c.site.id, 'gtm'), clarity: has(c.site.id, 'clarity'), openseo: has(c.site.id, 'openseo') },
 			syncStatus: c.site.sync_status,
 			syncMessage: c.site.sync_message,
 			lastSync: c.site.last_sync_at,

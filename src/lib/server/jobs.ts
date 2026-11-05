@@ -3,7 +3,7 @@ import { config } from './config';
 import { pacificToday } from './dates';
 import { syncSite } from './sync';
 import { syncAccountSites } from './accounts';
-import { syncBing, syncClarity, syncGa4 } from './channels';
+import { syncBing, syncClarity, syncGa4, syncGtm } from './channels';
 import type { LinkKind } from './links';
 import { cruxIntegration, syncCrux } from './crux';
 
@@ -50,7 +50,7 @@ export function enqueueSiteSync(siteId: number, mode: 'incremental' | 'auto' = '
 }
 
 export function enqueueLinkSync(siteId: number, kind: Exclude<LinkKind, 'openseo'>): boolean {
-	const run = kind === 'bing' ? syncBing : kind === 'ga4' ? syncGa4 : syncClarity;
+	const run = kind === 'bing' ? syncBing : kind === 'ga4' ? syncGa4 : kind === 'gtm' ? syncGtm : syncClarity;
 	const queued = enqueue(`${kind}:${siteId}`, () => (run as (id: number) => Promise<unknown>)(siteId));
 	if (queued) db().prepare("UPDATE site_links SET sync_status = 'queued' WHERE site_id = ? AND kind = ? AND sync_status != 'running'").run(siteId, kind);
 	return queued;
@@ -62,7 +62,7 @@ export function enqueueCruxSync(siteId: number): boolean {
 }
 
 const SIX_HOURS = 6 * 3600_000;
-const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, clarity: 22 * 3600_000 };
+const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, gtm: 12 * 3600_000, clarity: 22 * 3600_000 };
 
 export function schedulerTick() {
 	const d = db();
@@ -81,8 +81,8 @@ export function schedulerTick() {
 		for (const s of sites) if ((d.prepare('SELECT crux_pulled_on p FROM sites WHERE id = ?').get(s.id) as { p: string | null }).p !== today) enqueueCruxSync(s.id);
 	}
 	const links = d
-		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','clarity')")
-		.all() as { site_id: number; kind: 'bing' | 'ga4' | 'clarity'; last_sync_at: number | null }[];
+		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','gtm','clarity')")
+		.all() as { site_id: number; kind: 'bing' | 'ga4' | 'gtm' | 'clarity'; last_sync_at: number | null }[];
 	for (const l of links) if (!l.last_sync_at || Date.now() - l.last_sync_at > REFRESH_MS[l.kind]) enqueueLinkSync(l.site_id, l.kind);
 }
 

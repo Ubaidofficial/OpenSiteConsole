@@ -1,6 +1,7 @@
 import type { BingClient, BingDay, BingSite, BingTermRow } from './bing';
 import type { Ga4Day, Ga4Property } from './ga4';
 import type { ClarityMetric } from './clarity';
+import type { GtmContainer, GtmLive } from './gtm';
 import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01 } from './demo';
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
@@ -56,6 +57,67 @@ export const DEMO_GA4_PROPERTIES = (accountSub: string): { prop: Ga4Property; ur
 		prop: { property: `properties/${accountSub === 'demo-a' ? 1000 : 2000}${i}`, displayName: `${s.brand} (GA4)`, account: 'Demo account' },
 		url: s.siteUrl.startsWith('sc-domain:') ? `https://www.${s.siteUrl.slice(10)}` : s.siteUrl
 	}));
+
+/** A GA4 measurement ID for a demo property. Real ones are "G-" plus ten letters and digits. */
+export const demoGa4MeasurementId = (property: string) => `G-DEMO${property.replace(/\D/g, '')}`;
+
+const gtmId = (brand: string) => 'GTM-' + brand.slice(0, 7).toUpperCase().padEnd(7, 'X');
+const hostOfDemo = (siteUrl: string) => (siteUrl.startsWith('sc-domain:') ? siteUrl.slice(10) : new URL(siteUrl).hostname.replace(/^www\./, ''));
+
+/**
+ * Demo Tag Manager containers, one per demo site except northwind (no container, so the "unmatched" path is visible).
+ * Planted problems, like the other demo data: pixelforge sends to the wrong GA4 ID and has a paused tag, trailmaps was
+ * never published, ledgerly still has a Universal Analytics tag and no GA4 tag, coffeelab has a tag with no trigger.
+ */
+export function demoGtmContainers(): GtmContainer[] {
+	return sites
+		.filter((s) => s.brand !== 'northwind')
+		.map((s, i) => ({
+			path: `accounts/60000/containers/${7000 + i}`,
+			publicId: gtmId(s.brand),
+			name: hostOfDemo(s.siteUrl),
+			// Domain names are optional in real containers; leave them empty for one so name-based matching is exercised too.
+			domains: s.brand === 'coffeelab' ? [] : [hostOfDemo(s.siteUrl)],
+			usage: ['web'],
+			accountName: 'Demo Tag Manager account'
+		}));
+}
+
+export function demoGtmLive(containerPath: string): GtmLive | null {
+	const c = demoGtmContainers().find((x) => x.path === containerPath);
+	if (!c) return null;
+	const brand = sites.find((s) => hostOfDemo(s.siteUrl) === c.name)?.brand ?? '';
+	if (brand === 'trailmaps') return null;
+	const props = DEMO_ACCOUNTS.flatMap((a) => DEMO_GA4_PROPERTIES(a.sub));
+	const prop = props.find((p) => p.prop.displayName.toLowerCase().startsWith(brand));
+	const mid = brand === 'pixelforge' ? 'G-OLDSITE01' : prop ? demoGa4MeasurementId(prop.prop.property) : null;
+	const trig = [
+		{ id: '1', name: 'All Pages', type: 'pageview' },
+		{ id: '2', name: 'Click: outbound link', type: 'linkClick' },
+		{ id: '3', name: 'Form submit', type: 'formSubmission' }
+	];
+	const tag = (id: string, name: string, type: string, o: Partial<GtmLive['tags'][number]> = {}) => ({ id, name, type, paused: false, firing: ['All Pages'], blocking: [], measurementId: null, eventName: null, ...o });
+	const tags: GtmLive['tags'] =
+		brand === 'ledgerly'
+			? [tag('1', 'UA - pageview', 'ua'), tag('2', 'Cookie banner', 'html')]
+			: [
+					tag('1', 'Google tag', 'googtag', { measurementId: mid }),
+					tag('2', 'GA4 - outbound click', 'gaawe', { firing: ['Click: outbound link'], measurementId: mid, eventName: 'outbound_click' }),
+					tag('3', 'GA4 - lead form', 'gaawe', { firing: ['Form submit'], measurementId: mid, eventName: 'generate_lead' }),
+					...(brand === 'pixelforge' ? [tag('4', 'Old remarketing', 'sp', { paused: true })] : []),
+					...(brand === 'coffeelab' ? [tag('4', 'Heatmap script', 'html', { firing: [] })] : [])
+				];
+	return {
+		versionId: '12',
+		versionName: 'Demo live version',
+		tags,
+		triggers: trig,
+		variables: [
+			{ id: '1', name: 'GA4 measurement ID', type: 'c' },
+			{ id: '2', name: 'Page path', type: 'u' }
+		]
+	};
+}
 
 export function demoGa4Daily(property: string, startDate: string, endDate: string): Ga4Day[] {
 	const all = DEMO_ACCOUNTS.flatMap((a) => DEMO_GA4_PROPERTIES(a.sub).map((p, i) => ({ p, s: a.sites[i] })));

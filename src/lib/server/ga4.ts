@@ -35,6 +35,16 @@ export async function webStreamUrls(accountId: number, property: string, http: H
 	return (r.dataStreams ?? []).map((s) => s.webStreamData?.defaultUri).filter((u): u is string => !!u);
 }
 
+/**
+ * Measurement IDs (G-XXXXXXX) of a property's web data streams, used to check that the Tag Manager container sends data to
+ * the property that is linked here. `webStreamData.measurementId` comes from my reading of the Admin API's DataStream
+ * resource and is not confirmed against a live response; if absent this returns [] and the cross-check is skipped.
+ */
+export async function webStreamMeasurementIds(accountId: number, property: string, http: HttpOptions = {}): Promise<string[]> {
+	const r = await googleJson<{ dataStreams?: { webStreamData?: { measurementId?: string } }[] }>(tok(accountId), `${ADMIN}/${property}/dataStreams`, {}, http);
+	return (r.dataStreams ?? []).map((s) => s.webStreamData?.measurementId).filter((m): m is string => !!m);
+}
+
 const ymd = (s: string) => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
 
 /** Daily sessions etc. by default channel group. `date` values come back as YYYYMMDD. */

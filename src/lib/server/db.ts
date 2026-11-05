@@ -104,10 +104,10 @@ CREATE TABLE IF NOT EXISTS integrations (
 );
 CREATE TABLE IF NOT EXISTS site_links (
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
-	kind TEXT NOT NULL,                 -- bing | ga4 | clarity | openseo
+	kind TEXT NOT NULL,                 -- bing | ga4 | gtm | clarity | openseo
 	integration_id INTEGER REFERENCES integrations(id) ON DELETE CASCADE,
 	account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE,   -- ga4: which Google account
-	external_id TEXT NOT NULL,          -- bing site url | properties/123 | clarity label | openseo project id
+	external_id TEXT NOT NULL,          -- bing site url | properties/123 | accounts/1/containers/2 | clarity label | openseo project id
 	label TEXT,
 	last_sync_at INTEGER,
 	sync_status TEXT NOT NULL DEFAULT 'idle',
@@ -191,6 +191,17 @@ CREATE TABLE IF NOT EXISTS site_appearance (
 	impressions INTEGER NOT NULL,
 	position REAL NOT NULL,
 	PRIMARY KEY (site_id, days, appearance)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS gtm_snapshots (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	container_path TEXT NOT NULL,       -- accounts/123/containers/456
+	public_id TEXT, name TEXT,          -- GTM-XXXXXXX and the container's name
+	domains TEXT NOT NULL DEFAULT '[]', -- JSON array: the container's domainName values
+	live_version_id TEXT,               -- NULL when the container has never been published
+	live_version_name TEXT,
+	ga4_measurement_ids TEXT NOT NULL DEFAULT '[]',  -- JSON array: the linked GA4 property's web-stream IDs, for the cross-check
+	payload TEXT NOT NULL,              -- JSON {tags, triggers, variables}: compact summaries of the live version
+	fetched_at INTEGER NOT NULL
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS api_keys (
 	id INTEGER PRIMARY KEY,

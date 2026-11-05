@@ -175,7 +175,7 @@
 				{/if}
 
 				<div class="mt-4 flex items-center gap-1.5 border-t pt-3 text-xs text-muted-foreground">
-					{#each [['bing', 'Bing'], ['ga4', 'GA4'], ['clarity', 'Clarity'], ['openseo', 'OpenSEO']] as [k, l]}
+					{#each [['bing', 'Bing'], ['ga4', 'GA4'], ['gtm', 'GTM'], ['clarity', 'Clarity'], ['openseo', 'OpenSEO']] as [k, l]}
 						{#if c.connected[k as 'bing']}<span class="chip !py-0 text-[10px]" title="{l} connected">{l}</span>{/if}
 					{/each}
 					{#each c.tags as t}<span class="chip !py-0 text-[10px]">{t}</span>{/each}

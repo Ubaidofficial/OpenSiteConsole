@@ -11,6 +11,9 @@ import { openSeoProjectUrl } from './connect';
 import { authenticate } from './apikeys';
 import { hostKey } from './hosts';
 import { coverageMap } from '../property';
+import { gtmSnapshot, trackingHealth } from './tracking';
+import { tagTypeLabel } from './gtm';
+import { allLinks } from './links';
 
 /** Read-only MCP server (Streamable HTTP, JSON responses). Nothing here writes or spends money. */
 
@@ -43,13 +46,13 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const TOOLS: Tool[] = [
 	{
 		name: 'list_sites',
-		description: 'Every Search Console property this key can see, with which data sources are connected (bing, ga4, clarity, openseo) and the newest synced date. Start here.',
+		description: 'Every Search Console property this key can see, with which data sources are connected (bing, ga4, gtm, clarity, openseo) and the newest synced date. Start here.',
 		schema: {},
 		run: (_a, sites) => {
 			const cover = coverageMap(sites);
 			return sites.map((s) => {
 				const l = linksFor(s.id);
-				return { duplicateOfSiteId: cover.get(s.id) ?? null, id: s.id, name: displayName(s.site_url), property: s.site_url, account: s.account_label ?? s.account_email, syncedThrough: s.synced_through, connected: { google: true, bing: !!l.bing, ga4: !!l.ga4, clarity: !!l.clarity, openseo: l.openseo ? { projectId: l.openseo.external_id, name: l.openseo.label } : false } };
+				return { duplicateOfSiteId: cover.get(s.id) ?? null, id: s.id, name: displayName(s.site_url), property: s.site_url, account: s.account_label ?? s.account_email, syncedThrough: s.synced_through, connected: { google: true, bing: !!l.bing, ga4: !!l.ga4, gtm: l.gtm ? { container: l.gtm.label } : false, clarity: !!l.clarity, openseo: l.openseo ? { projectId: l.openseo.external_id, name: l.openseo.label } : false } };
 			});
 		}
 	},
@@ -204,6 +207,69 @@ const TOOLS: Tool[] = [
 		}
 	},
 	{
+		name: 'get_gtm_container',
+		description: 'The Google Tag Manager container linked to a site, as of its live (published) version: container id, version, and every tag (type, paused, firing triggers, GA4 measurement ID and event name where it has one), plus trigger and variable names. Read-only; nothing is edited or published.',
+		schema: { ...siteArg, limit: { type: 'integer', description: 'Max items per list (default 100)' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			if (!linksFor(site.id).gtm) return { connected: false, hint: 'Link a Tag Manager container on the Connect page (reconnect the Google account if Tag Manager access was never granted).' };
+			const s = gtmSnapshot(site.id);
+			if (!s) return { connected: true, note: 'Linked, but not synced yet.' };
+			const n = limit(a, 100);
+			return {
+				container: { id: s.publicId, name: s.name, path: s.containerPath, domains: s.domains },
+				liveVersion: s.published ? { id: s.versionId, name: s.versionName } : null,
+				note: s.published ? undefined : 'This container has never been published, so none of its tags run on the site.',
+				syncedAt: new Date(s.fetchedAt).toISOString(),
+				counts: { tags: s.tags.length, paused: s.tags.filter((t) => t.paused).length, triggers: s.triggers.length, variables: s.variables.length },
+				ga4MeasurementIdsInContainer: [...new Set(s.tags.map((t) => t.measurementId).filter(Boolean))],
+				ga4MeasurementIdsOnLinkedProperty: s.ga4MeasurementIds,
+				tags: s.tags.slice(0, n).map((t) => ({ name: t.name, type: tagTypeLabel(t.type), paused: t.paused, firesOn: t.firing, blockedBy: t.blocking, measurementId: t.measurementId, eventName: t.eventName })),
+				triggers: s.triggers.slice(0, n).map((t) => ({ name: t.name, type: t.type })),
+				variables: s.variables.slice(0, n).map((v) => ({ name: v.name, type: v.type }))
+			};
+		}
+	},
+	{
+		name: 'get_tracking_health',
+		description: 'Cross-checks Search Console, GA4 and Tag Manager for one site and returns findings ranked critical / warning / info: unpublished container, no GA4 tag, the container sending to a different GA4 property than the one linked, paused or trigger-less tags, leftover Universal Analytics tags, and GA4 organic sessions far below Search Console clicks. Findings are prompts to investigate, not proof.',
+		schema: { ...siteArg, ...daysArg },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const h = trackingHealth(site, days(a));
+			return {
+				site: displayName(site.site_url),
+				sources: h.sources,
+				...(h.sources.gtm ? {} : { hint: 'No Tag Manager container is synced for this site, so only the GA4 versus Search Console comparison can run.' }),
+				window: { days: days(a), searchConsoleClicks: h.input.traffic.gscClicks, ga4OrganicSessions: h.input.traffic.ga4OrganicSessions },
+				findings: h.findings,
+				status: h.findings.some((f) => f.severity === 'critical') ? 'critical' : h.findings.some((f) => f.severity === 'warning') ? 'warning' : 'ok'
+			};
+		}
+	},
+	{
+		name: 'get_connections',
+		description: 'Which tools are connected for the sites this key can see: how many sites have GA4, Tag Manager, Bing, Clarity and OpenSEO linked, whether Core Web Vitals is on, and what to do to connect the rest. Use it to learn which other tools to call.',
+		schema: {},
+		run: (_a, sites) => {
+			const ids = new Set(sites.map((s) => s.id));
+			const links = allLinks().filter((l) => ids.has(l.site_id));
+			const n = (k: string) => links.filter((l) => l.kind === k).length;
+			const total = sites.length;
+			return {
+				sites: total,
+				searchConsole: { connected: total, tools: ['get_overview', 'get_top_queries', 'get_top_pages', 'get_opportunities', 'get_search_types'] },
+				ga4: { linkedSites: n('ga4'), tools: ['get_ga4_summary', 'get_tracking_health'] },
+				tagManager: { linkedSites: n('gtm'), tools: ['get_gtm_container', 'get_tracking_health'] },
+				bing: { linkedSites: n('bing'), tools: ['get_bing_performance'] },
+				clarity: { linkedSites: n('clarity'), tools: ['get_clarity_snapshot'] },
+				openseo: { linkedSites: n('openseo'), tools: ['get_openseo_project'] },
+				coreWebVitals: { connected: cruxIntegration() != null, tools: ['get_web_vitals'] },
+				hint: 'A source with linkedSites below `sites` can be completed on the Connect page. Every tool here is read-only.'
+			};
+		}
+	},
+	{
 		name: 'get_clarity_snapshot',
 		description: 'Latest stored Microsoft Clarity snapshot (last ~24h when it was taken; Clarity only exposes 1-3 days and 10 API calls/day/project, so OpenSiteConsole stores one snapshot per day). dimension: "" (totals), URL or Device.',
 		schema: { ...siteArg, dimension: { type: 'string', enum: ['', 'URL', 'Device'] } },
@@ -244,7 +310,7 @@ export async function handleMcp(request: Request): Promise<Response> {
 	const reply = (body: object) => new Response(JSON.stringify(body), { headers });
 	switch (msg.method) {
 		case 'initialize':
-			return reply(rpc(msg.id, { protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'opensiteconsole', version: '0.2.0' }, instructions: 'Read-only first-party search data (Google Search Console, Bing, GA4, Clarity). Call list_sites first. Use get_openseo_project to hand a site to OpenSEO tools.' }));
+			return reply(rpc(msg.id, { protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'opensiteconsole', version: '0.3.0' }, instructions: 'Read-only first-party search and tracking data (Google Search Console, GA4, Google Tag Manager, Bing, Clarity, Core Web Vitals). Call list_sites first, or get_connections to see which tools are connected. get_tracking_health cross-checks Search Console, GA4 and Tag Manager. Use get_openseo_project to hand a site to OpenSEO tools.' }));
 		case 'ping':
 			return reply(rpc(msg.id, {}));
 		case 'tools/list':

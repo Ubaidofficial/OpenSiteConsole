@@ -21,7 +21,7 @@ export const load: LayoutServerLoad = ({ params, url }) => {
 	const solid = comparable && prev.impressions >= 100 && now.impressions >= 100;
 	const links = linksFor(site.id);
 	return {
-		linked: { bing: !!links.bing, ga4: !!links.ga4, clarity: !!links.clarity },
+		linked: { bing: !!links.bing, ga4: !!links.ga4, gtm: !!links.gtm, clarity: !!links.clarity },
 		openseo: links.openseo ? { name: links.openseo.label, url: openSeoProjectUrl(links.openseo.integration_id, links.openseo.external_id) } : null,
 		site: {
 			id: site.id,

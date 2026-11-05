@@ -1,7 +1,7 @@
 import { db } from './db';
 import { decrypt, encrypt } from './crypto';
 
-export type LinkKind = 'bing' | 'ga4' | 'clarity' | 'openseo';
+export type LinkKind = 'bing' | 'ga4' | 'gtm' | 'clarity' | 'openseo';
 
 export interface IntegrationRow { id: number; kind: string; label: string; secret_enc: string | null; meta: string; status: string; is_demo: number; created_at: number }
 export interface LinkRow {

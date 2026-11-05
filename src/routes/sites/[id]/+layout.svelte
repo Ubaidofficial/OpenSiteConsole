@@ -39,6 +39,7 @@
 		['/inspect', 'Inspect'],
 		['/bing', 'Bing'],
 		['/analytics', 'GA4'],
+		['/tags', 'Tag Manager'],
 		['/clarity', 'Clarity'],
 		['/settings', 'Settings']
 	];
@@ -83,7 +84,7 @@
 
 <nav class="mb-4 flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
 	{#each tabs as [t, label]}
-		<a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] {isActive(t) ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a>
+		<a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] {isActive(t) ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/tags' && data.linked.gtm) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a>
 	{/each}
 </nav>
 

@@ -37,11 +37,12 @@ without it the app refuses non-loopback requests. Put it behind HTTPS.
 
 ## Getting credentials
 
-**Google (Search Console + GA4)** — one OAuth client serves both, and OpenSEO can share it.
-1. [Google Cloud Console](https://console.cloud.google.com/) → create/select a project → enable **Google Search Console API**, **Google Analytics Admin API** and **Google Analytics Data API**.
+**Google (Search Console + GA4 + Tag Manager)** — one OAuth client serves all three, and OpenSEO can share it.
+1. [Google Cloud Console](https://console.cloud.google.com/) → create/select a project → enable **Google Search Console API**, **Google Analytics Admin API**, **Google Analytics Data API** and **Tag Manager API**.
 2. OAuth consent screen → *External* → add your Google accounts as test users, then **Publish app** (in *Testing*, Google expires refresh tokens after about 7 days — verify against Google's current docs).
 3. Credentials → *Create OAuth client ID* → *Web application* → add redirect URI `<ORIGIN>/auth/callback`.
 4. Put the client ID/secret in `.env`. To reuse OpenSEO's client, add this redirect URI to that same client instead.
+5. Tag Manager access is requested read-only (`tagmanager.readonly`) in the same consent; set `GOOGLE_INCLUDE_GTM=0` to leave it out. Accounts connected before this was added must use *Connect Google account* again to grant it. Whether Google requires app verification for this scope on a published app: I have not checked, so verify in the consent-screen settings.
 
 **Bing Webmaster Tools** (per Microsoft's docs) — two options:
 - *API key (simplest, no registration):* sign in at bing.com/webmasters, verify your sites, **Settings → API Access → API Key → Generate API Key**. One key per Bing user, covering all their verified sites. Paste it on the **Connect** page.
@@ -51,13 +52,13 @@ without it the app refuses non-loopback requests. Put it behind HTTPS.
 
 ## Connecting sources (the "Connect" page)
 
-One page, six independent steps, status per site. Google sign-in grants Search Console and GA4 together; Bing needs a key (or OAuth);
-GA4 properties are auto-matched to sites by their web-stream URL; Clarity needs a token per site; OpenSEO needs its URL + an `oseo_` API key; Core Web Vitals needs one free Google API key (enable the *Chrome UX Report API* in Google Cloud, then Credentials → API key).
+One page, seven independent steps, status per site. Google sign-in grants Search Console, GA4 and Tag Manager together; Bing needs a key (or OAuth);
+GA4 properties are auto-matched to sites by their web-stream URL; Tag Manager containers by their domain (or a container name that is the site's address), across every connected account that has Tag Manager access; Clarity needs a token per site; OpenSEO needs its URL + an `oseo_` API key; Core Web Vitals needs one free Google API key (enable the *Chrome UX Report API* in Google Cloud, then Credentials → API key).
 Sites are matched by domain; anything unmatched is listed and can be linked by hand. In demo mode, type `demo` as any key/token.
 
 ## OpenSEO and AI agents
 
-- **Agents page** → create an API key (optionally limited to some sites) → add OpenSiteConsole as an MCP server next to OpenSEO's. Eleven read-only tools; nothing can write or spend money.
+- **Agents page** → create an API key (optionally limited to some sites) → add OpenSiteConsole as an MCP server next to OpenSEO's. Fourteen read-only tools covering every connected source (Search Console, GA4, Tag Manager, Bing, Clarity, Core Web Vitals, OpenSEO link); nothing can write or spend money. `get_connections` tells an agent which sources are connected, and `get_tracking_health` cross-checks Search Console, GA4 and Tag Manager.
 - Connect OpenSEO on the Connect page and each site is linked to its OpenSEO project by domain. An agent calls `get_openseo_project` to obtain the project id, then uses OpenSEO's own tools (keyword research, rank tracking, audits) on it — first-party history from here, third-party data from there.
 
 ## Using the dashboard
@@ -76,6 +77,7 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 | **Site analysis** | Change chart with anomaly bands; queries & pages (branded split, country/device filters, full-history chart per row, CSV export); segments. |
 | **Search types** | Web, Image, Video, News, Discover and Google News reported separately (Overview and the dashboard are Web only, as in Search Console), plus the *search appearance* report (rich results and similar), which Google only provides on its own. |
 | **GA4 join** | Pages tab shows GA4 sessions, engagement and key events for **Google-organic** landing pages next to each page's Search Console clicks (matched by URL path). Users are unique users over the window, as GA4 reports them, not a sum of daily users. |
+| **Tag Manager** | Read-only. Stores each linked container's *published* version (tags, triggers, variables) and a per-site **Tag Manager** tab with a tracking audit that combines all three sources: unpublished container, container sending to a different GA4 property than the one linked (compares `G-` measurement IDs), no GA4 tag, paused / trigger-less / leftover Universal Analytics tags, and GA4 organic sessions far below Search Console clicks (a heuristic: sessions and clicks are different measurements, so it is a prompt to look, not proof). Nothing is ever edited or published. |
 | **Core Web Vitals** | LCP, INP, CLS (plus FCP, TTFB) from the Chrome UX Report for phone and desktop, rated good / needs improvement / poor; one snapshot a day, so history builds from when you connect. Site-wide field data, not per page. |
 | **Opportunities** | Striking distance ranked by *estimated extra clicks* using a **CTR curve fitted to your own data**; pages whose CTR is far below your curve. |
 | **Cannibalization** | Merges URL variants first (www / slash / tracking params), then flags queries split across real competing pages, with clicks at stake. |
@@ -90,16 +92,17 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 
 - **Anonymised queries**: Google hides some queries, so query tables never sum to the totals. The share is shown per site.
 - **Per-day row cap** (`MAX_ROWS_PER_DAY`, default 100k): very large sites lose long-tail detail beyond it. Totals stay exact. Large sites may want Google's bulk BigQuery export instead.
-- **Not yet built**: Yandex, email/Slack alerts & digests, multi-user roles, i18n, PDF/client reports, SERP/rank tracking, the Indexing API.
+- **Not yet built**: Yandex, email/Slack alerts & digests, multi-user roles, i18n, PDF/client reports, SERP/rank tracking, the Indexing API, **writing** to Tag Manager / GA4 through MCP (creating tags, key events or custom dimensions, publishing containers): everything is read-only by design for now.
 - **Verified**: unit/integration tests (`pnpm test`), type-check, production build, and a headless-browser crawl of every page against **demo data**.
-  **Not verified**: a live Google OAuth round-trip and real Search Console / GA4 / Clarity / Chrome UX Report responses (search types, search appearance, GA4 landing pages and Core Web Vitals are tested against documented response shapes and demo data only), the Bing OAuth flow, and the OpenSEO connection against a real instance — no credentials were available. Bing's API-key endpoint and its error format *were* confirmed against the live service (a deliberately invalid key returned Bing's documented `InvalidApiKey`). The MCP server was checked with the official MCP SDK client. Expect to debug first contact with the real APIs.
-- Unconfirmed details coded defensively: GA4 `rows[].dimensionValues/metricValues` field names and the web-stream `defaultUri` used for auto-matching (if absent, link GA4 by hand); Clarity metric field names beyond `Traffic` (shown generically).
+  **Not verified**: a live Google OAuth round-trip and real Search Console / GA4 / Tag Manager / Clarity / Chrome UX Report responses (search types, search appearance, GA4 landing pages and Core Web Vitals are tested against documented response shapes and demo data only), the Bing OAuth flow, and the OpenSEO connection against a real instance — no credentials were available. Bing's API-key endpoint and its error format *were* confirmed against the live service (a deliberately invalid key returned Bing's documented `InvalidApiKey`). The MCP server was checked with the official MCP SDK client. Expect to debug first contact with the real APIs.
+- Unconfirmed details coded defensively: Tag Manager API v2 field names (`domainName`, `usageContext`, tag `type` codes `googtag` / `gaawc` / `gaawe` / `ua`, `paused`, `firingTriggerId`, and the 404 for a never-published container), GA4 `webStreamData.measurementId`, and Tag Manager API quotas (check Google's current documentation); a container with no `domainName` and a name that is not an address cannot be auto-matched, so link it by hand. GA4 `rows[].dimensionValues/metricValues` field names and the web-stream `defaultUri` used for auto-matching (if absent, link GA4 by hand); Clarity metric field names beyond `Traffic` (shown generically).
 - Search Console API quotas (including URL Inspection) change; check Google's current documentation.
 
 ## Layout
 
 ```
 src/lib/analytics.ts     pure analysis functions (unit-tested)
+src/lib/tracking.ts      pure Search Console + GA4 + Tag Manager audit rules (unit-tested)
 src/lib/server/          db, crypto, google client, sync engine, job queue, SQL queries, demo data source
 src/routes/              dashboard, portfolio, sitemaps, accounts, sites/[id]/* tabs, auth
 tests/                   vitest

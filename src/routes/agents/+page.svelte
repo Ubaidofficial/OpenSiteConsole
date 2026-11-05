@@ -8,7 +8,7 @@
 
 <h1 class="mb-1 text-lg font-semibold">Agents &amp; MCP</h1>
 <p class="mb-4 max-w-3xl text-sm text-muted-foreground">
-	OpenSiteConsole exposes a <b>read-only</b> MCP server, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, Bing, GA4 and Clarity data.
+	OpenSiteConsole exposes a <b>read-only</b> MCP server, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Google Tag Manager, Bing, Clarity and Core Web Vitals data in one place. <code>get_tracking_health</code> cross-checks Search Console, GA4 and Tag Manager for a site, and <code>get_connections</code> shows which tools are connected.
 	Connect it alongside OpenSEO's MCP: ask the agent for a site's <code>get_openseo_project</code> and it can hand that project id to OpenSEO's keyword, rank-tracking and audit tools.
 	Nothing here can change a site or spend money.
 </p>
@@ -40,7 +40,7 @@
 	<section class="card p-4 text-sm">
 		<h2 class="mb-2 font-medium">Endpoint</h2>
 		<code class="block break-all rounded bg-black/5 p-2 dark:bg-white/10">{data.mcpUrl}</code>
-		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address. Tools: list_sites, get_overview, get_search_types, get_web_vitals, get_top_queries, get_top_pages, get_opportunities, get_bing_performance, get_ga4_summary, get_clarity_snapshot, get_openseo_project.</p>
+		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address. Tools: list_sites, get_connections, get_overview, get_search_types, get_web_vitals, get_top_queries, get_top_pages, get_opportunities, get_bing_performance, get_ga4_summary, get_gtm_container, get_tracking_health, get_clarity_snapshot, get_openseo_project.</p>
 	</section>
 </div>
 

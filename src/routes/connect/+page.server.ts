@@ -6,13 +6,13 @@ import { allSites } from '$lib/server/queries';
 import { displayName } from '$lib/server/clients';
 import { listAccounts } from '$lib/server/accounts';
 import { allLinks, integrationMeta, linksFor, listIntegrations, removeIntegration, removeLink, setLink, type LinkKind } from '$lib/server/links';
-import { autoMatchGa4, connectBingKey, connectClarity, connectCrux, connectOpenSeo, hasGa4Scope } from '$lib/server/connect';
+import { autoMatchGa4, autoMatchGtm, connectBingKey, connectClarity, connectCrux, connectOpenSeo, hasGa4Scope, hasGtmScope, linkGtmManually } from '$lib/server/connect';
 import { callsLeft } from '$lib/server/clarity';
 import { enqueueLinkSync } from '$lib/server/jobs';
 import { intParam } from '$lib/server/params';
 import { env } from '$lib/server/config';
 
-const KINDS: LinkKind[] = ['bing', 'ga4', 'clarity', 'openseo'];
+const KINDS: LinkKind[] = ['bing', 'ga4', 'gtm', 'clarity', 'openseo'];
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong');
 
 export const load: PageServerLoad = ({ url }) => {
@@ -28,7 +28,7 @@ export const load: PageServerLoad = ({ url }) => {
 		bingOAuth: !!env('BING_CLIENT_ID') && !!env('BING_CLIENT_SECRET'),
 		bingRedirect: `${config.origin}/auth/bing/callback`,
 		flash: url.searchParams.get('flash'),
-		accounts: accounts.map((a) => ({ id: a.id, email: a.label ?? a.email, status: a.status, ga4: hasGa4Scope(a), demo: !!a.is_demo })),
+		accounts: accounts.map((a) => ({ id: a.id, email: a.label ?? a.email, status: a.status, ga4: hasGa4Scope(a), gtm: hasGtmScope(a), demo: !!a.is_demo })),
 		bing,
 		openseo: openseo ? { baseUrl: integrationMeta(openseo).baseUrl, demo: !!openseo.is_demo, linked: links.filter((l) => l.kind === 'openseo').length } : null,
 		progress: Object.fromEntries(KINDS.map((k) => [k, links.filter((l) => l.kind === k).length])) as Record<LinkKind, number>,
@@ -74,6 +74,18 @@ export const actions: Actions = {
 			return fail(502, { error: msg(e), section: 'ga4' });
 		}
 	},
+	gtmAuto: async () => {
+		try {
+			const r = await autoMatchGtm();
+			const parts = [`Linked ${r.matched} site(s) to Tag Manager containers.`];
+			if (r.ambiguous.length) parts.push(`Several containers matched: ${r.ambiguous.join(', ')} — link those by hand.`);
+			if (r.unmatchedSites.length) parts.push(`No container found for: ${r.unmatchedSites.join(', ')}. (Containers are matched by their domain or by a name that is the site's address.)`);
+			if (r.noScope.length) parts.push(`Reconnect ${r.noScope.join(', ')} to grant Tag Manager access.`);
+			return { ok: parts.join(' '), section: 'gtm' };
+		} catch (e) {
+			return fail(502, { error: msg(e), section: 'gtm' });
+		}
+	},
 	clarity: async ({ request }) => {
 		const f = await request.formData();
 		const siteId = intParam(f.get('siteId'));
@@ -91,6 +103,14 @@ export const actions: Actions = {
 		const kind = String(f.get('kind'));
 		const ext = String(f.get('externalId') ?? '').trim();
 		if (!ext) return fail(400, { error: 'Enter a value to link.', section: kind });
+		if (kind === 'gtm') {
+			try {
+				const c = await linkGtmManually(siteId, ext);
+				return { ok: `Linked to ${c.publicId} (${c.name}). Syncing in the background.`, section: 'gtm' };
+			} catch (e) {
+				return fail(400, { error: msg(e), section: 'gtm' });
+			}
+		}
 		if (kind === 'ga4') {
 			if (!/^properties\/\d+$/.test(ext)) return fail(400, { error: 'GA4 property must look like properties/123456789.', section: 'ga4' });
 			const site = allSites().find((s) => s.id === siteId);
@@ -112,7 +132,7 @@ export const actions: Actions = {
 	},
 	resync: async ({ request }) => {
 		const f = await request.formData();
-		const kind = String(f.get('kind')) as 'bing' | 'ga4' | 'clarity';
+		const kind = String(f.get('kind')) as 'bing' | 'ga4' | 'gtm' | 'clarity';
 		enqueueLinkSync(intParam(f.get('siteId')), kind);
 		return { ok: 'Sync queued.' };
 	},
