@@ -60,7 +60,7 @@ describe('MCP server', () => {
 		expect((await call(key, { jsonrpc: '2.0', method: 'notifications/initialized' })).status).toBe(202);
 		const list = await call(key, { jsonrpc: '2.0', id: 2, method: 'tools/list' });
 		const names = list.json.result.tools.map((t: { name: string }) => t.name);
-		expect(names).toEqual(expect.arrayContaining(['list_sites', 'get_overview', 'get_opportunities', 'get_bing_performance', 'get_ga4_summary', 'get_clarity_snapshot', 'get_openseo_project']));
+		expect(names).toEqual(expect.arrayContaining(['list_sites', 'get_overview', 'get_search_types', 'get_opportunities', 'get_bing_performance', 'get_ga4_summary', 'get_clarity_snapshot', 'get_openseo_project']));
 		expect(list.json.result.tools.every((t: { annotations: { readOnlyHint: boolean } }) => t.annotations.readOnlyHint)).toBe(true);
 		expect((await call(key, { jsonrpc: '2.0', id: 3, method: 'nope' })).json.error.code).toBe(-32601);
 	});
@@ -102,7 +102,9 @@ describe('MCP server', () => {
 
 	it('channel tools return data when connected and a hint when not', async () => {
 		expect((await tool(key, 'get_bing_performance', { site: '1' })).data.topQueries.length).toBeGreaterThan(0);
-		expect((await tool(key, 'get_ga4_summary', { site: '1' })).data.some((r: { channel: string }) => r.channel === 'Organic Search')).toBe(true);
+		const ga4 = (await tool(key, 'get_ga4_summary', { site: '1' })).data;
+		expect(ga4.channels.some((r: { channel: string }) => r.channel === 'Organic Search')).toBe(true);
+		expect(Array.isArray(ga4.topGoogleOrganicLandingPages)).toBe(true);
 		const clarity = (await tool(key, 'get_clarity_snapshot', { site: '1' })).data;
 		expect(clarity.metrics[0].metricName).toBe('Traffic');
 		expect((await tool(key, 'get_clarity_snapshot', { site: '2' })).data.connected).toBe(false);

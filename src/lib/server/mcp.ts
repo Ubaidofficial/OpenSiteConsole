@@ -167,13 +167,18 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_ga4_summary',
-		description: 'GA4 sessions, engaged sessions, users and key events by channel group for a window (compare Organic Search with Google clicks).',
+		description: 'GA4 sessions, engaged sessions, unique users and key events by channel group for a window (compare Organic Search with Google clicks), plus the top landing pages for Google organic sessions.',
 		schema: { ...siteArg, ...daysArg },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			if (!linksFor(site.id).ga4) return { connected: false, hint: 'Link a GA4 property on the Connect page.' };
 			const p = periodFor(site, days(a));
-			return db().prepare('SELECT channel, SUM(sessions) sessions, SUM(engaged_sessions) engagedSessions, SUM(users) users, ROUND(SUM(key_events),1) keyEvents, SUM(pageviews) pageviews FROM ga4_daily WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY channel ORDER BY sessions DESC').all(site.id, p.start, p.end);
+			const d = db();
+			const n = days(a);
+			const unique = new Map((d.prepare('SELECT channel, users FROM ga4_period_users WHERE site_id = ? AND days = ?').all(site.id, n) as { channel: string; users: number }[]).map((r) => [r.channel, r.users]));
+			const channels = (d.prepare('SELECT channel, SUM(sessions) sessions, SUM(engaged_sessions) engagedSessions, ROUND(SUM(key_events),1) keyEvents, SUM(pageviews) pageviews FROM ga4_daily WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY channel ORDER BY sessions DESC').all(site.id, p.start, p.end) as { channel: string }[]).map((r) => ({ ...r, uniqueUsers: unique.get(r.channel) ?? null }));
+			const landing = d.prepare('SELECT page, sessions, engaged_sessions engagedSessions, ROUND(key_events,1) keyEvents FROM ga4_landing WHERE site_id = ? AND days = ? ORDER BY sessions DESC LIMIT ?').all(site.id, n, limit(a, 25));
+			return { period: { start: p.start, end: p.end }, note: 'uniqueUsers is over the whole window (GA4 Total users) and is null until the next GA4 sync; landing pages are Google organic only, by URL path.', channels, topGoogleOrganicLandingPages: landing };
 		}
 	},
 	{

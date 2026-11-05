@@ -58,3 +58,68 @@ export async function dailyByChannel(accountId: number, property: string, startD
 		return { date: ymd(row.dimensionValues[0].value), channel: row.dimensionValues[1].value, sessions: m[0], engagedSessions: m[1], users: m[2], keyEvents: m[3], pageviews: m[4] };
 	});
 }
+
+export interface Ga4ChannelUsers { channel: string; users: number }
+export interface Ga4Landing { page: string; sessions: number; engagedSessions: number; keyEvents: number }
+
+/**
+ * Unique users per channel over a whole window. Daily totalUsers cannot be added across days (a visitor on five days
+ * would count five times), so this is a separate report with no date dimension, like GA4's own "Total users".
+ */
+export async function usersByChannel(accountId: number, property: string, startDate: string, endDate: string, http: HttpOptions = {}): Promise<Ga4ChannelUsers[]> {
+	const r = await googleJson<{ rows?: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[] }>(
+		tok(accountId),
+		`${DATA}/${property}:runReport`,
+		{
+			method: 'POST',
+			body: JSON.stringify({
+				dateRanges: [{ startDate, endDate }],
+				dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+				metrics: [{ name: 'totalUsers' }],
+				limit: 1000
+			})
+		},
+		http
+	);
+	return (r.rows ?? []).map((row) => ({ channel: row.dimensionValues[0].value, users: Number(row.metricValues[0].value) }));
+}
+
+/** Path of a GA4 landing page: no query string or fragment. "/" stays "/". */
+export function landingPath(landing: string): string {
+	const path = landing.split(/[?#]/)[0] || '/';
+	return path.length > 1 ? path.replace(/\/+$/, '') || '/' : path;
+}
+
+/**
+ * Sessions, engaged sessions and key events for landing pages reached from Google organic search, the traffic that
+ * Search Console clicks lead to. Rows that differ only by query string are merged.
+ */
+export async function organicGoogleLanding(accountId: number, property: string, startDate: string, endDate: string, http: HttpOptions = {}): Promise<Ga4Landing[]> {
+	const r = await googleJson<{ rows?: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[] }>(
+		tok(accountId),
+		`${DATA}/${property}:runReport`,
+		{
+			method: 'POST',
+			body: JSON.stringify({
+				dateRanges: [{ startDate, endDate }],
+				dimensions: [{ name: 'landingPagePlusQueryString' }],
+				metrics: ['sessions', 'engagedSessions', 'keyEvents'].map((name) => ({ name })),
+				dimensionFilter: { filter: { fieldName: 'sessionSourceMedium', stringFilter: { matchType: 'EXACT', value: 'google / organic' } } },
+				orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+				limit: 10000
+			})
+		},
+		http
+	);
+	const merged = new Map<string, Ga4Landing>();
+	for (const row of r.rows ?? []) {
+		const page = landingPath(row.dimensionValues[0].value);
+		const m = row.metricValues.map((v) => Number(v.value));
+		const cur = merged.get(page) ?? { page, sessions: 0, engagedSessions: 0, keyEvents: 0 };
+		cur.sessions += m[0];
+		cur.engagedSessions += m[1];
+		cur.keyEvents += m[2];
+		merged.set(page, cur);
+	}
+	return [...merged.values()];
+}

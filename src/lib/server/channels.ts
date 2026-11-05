@@ -1,12 +1,13 @@
 import { db } from './db';
 import { config } from './config';
 import { RealBingClient, type BingClient } from './bing';
-import { DemoBing, DEMO_GA4_PROPERTIES, demoClarityFetch, demoGa4Daily } from './demo-channels';
+import { DemoBing, DEMO_GA4_PROPERTIES, demoClarityFetch, demoGa4Daily, demoGa4Landing, demoGa4UsersByChannel } from './demo-channels';
 import { callsLeft, CLARITY_SYNC_DIMENSIONS, fetchInsights, utcDay } from './clarity';
 import * as ga4 from './ga4';
 import { addDays, pacificToday, retentionHorizon } from './dates';
 import { getIntegration, integrationSecret, linksFor, markLink } from './links';
 import { getSite } from './clients';
+import { PERIODS } from '../periods';
 
 // ── factories (real vs demo) ─────────────────────────────────────────────────
 export function bingClientFor(integrationId: number): BingClient {
@@ -19,6 +20,10 @@ export interface Ga4Source {
 	listProperties(): Promise<ga4.Ga4Property[]>;
 	streamUrls(property: string): Promise<string[]>;
 	daily(property: string, start: string, end: string): Promise<ga4.Ga4Day[]>;
+	/** Unique users per channel over a whole window. */
+	usersByChannel(property: string, start: string, end: string): Promise<ga4.Ga4ChannelUsers[]>;
+	/** Google-organic landing pages over a whole window. */
+	landing(property: string, start: string, end: string): Promise<ga4.Ga4Landing[]>;
 }
 
 export function ga4SourceFor(accountId: number): Ga4Source {
@@ -29,13 +34,17 @@ export function ga4SourceFor(accountId: number): Ga4Source {
 		return {
 			listProperties: async () => props.map((p) => p.prop),
 			streamUrls: async (property) => props.filter((p) => p.prop.property === property).map((p) => p.url),
-			daily: async (property, s, e) => demoGa4Daily(property, s, e)
+			daily: async (property, s, e) => demoGa4Daily(property, s, e),
+			usersByChannel: async (property, s, e) => demoGa4UsersByChannel(property, s, e),
+			landing: (property, s, e) => demoGa4Landing(property, s, e)
 		};
 	}
 	return {
 		listProperties: () => ga4.listProperties(accountId),
 		streamUrls: (p) => ga4.webStreamUrls(accountId, p),
-		daily: (p, s, e) => ga4.dailyByChannel(accountId, p, s, e)
+		daily: (p, s, e) => ga4.dailyByChannel(accountId, p, s, e),
+		usersByChannel: (p, s, e) => ga4.usersByChannel(accountId, p, s, e),
+		landing: (p, s, e) => ga4.organicGoogleLanding(accountId, p, s, e)
 	};
 }
 
@@ -64,6 +73,35 @@ export async function syncBing(siteId: number, client?: BingClient) {
 	}
 }
 
+/**
+ * Whole-window GA4 reports (unique users per channel, Google-organic landing pages), refreshed at most once a day, for
+ * each period length the app offers. Extra data: a failure here is returned, never thrown.
+ */
+export async function pullGa4Periods(siteId: number, property: string, src: Ga4Source, today: string): Promise<{ ok: boolean }> {
+	const d = db();
+	if (d.prepare('SELECT 1 FROM sites WHERE id = ? AND ga4_periods_on = ?').get(siteId, today)) return { ok: true };
+	const horizon = retentionHorizon(today);
+	const insU = d.prepare('INSERT OR REPLACE INTO ga4_period_users VALUES (?,?,?,?,?)');
+	const insL = d.prepare('INSERT OR REPLACE INTO ga4_landing VALUES (?,?,?,?,?,?,?)');
+	try {
+		for (const days of PERIODS) {
+			let start = addDays(today, -(days - 1));
+			if (start < horizon) start = horizon;
+			const [users, landing] = await Promise.all([src.usersByChannel(property, start, today), src.landing(property, start, today)]);
+			d.transaction(() => {
+				d.prepare('DELETE FROM ga4_period_users WHERE site_id = ? AND days = ?').run(siteId, days);
+				d.prepare('DELETE FROM ga4_landing WHERE site_id = ? AND days = ?').run(siteId, days);
+				for (const u of users) insU.run(siteId, days, u.channel, u.users, today);
+				for (const l of landing) insL.run(siteId, days, l.page, l.sessions, l.engagedSessions, l.keyEvents, today);
+			})();
+		}
+		d.prepare('UPDATE sites SET ga4_periods_on = ? WHERE id = ?').run(today, siteId);
+		return { ok: true };
+	} catch {
+		return { ok: false };
+	}
+}
+
 // ── sync: GA4 ────────────────────────────────────────────────────────────────
 export async function syncGa4(siteId: number, source?: Ga4Source, today = pacificToday()) {
 	const link = linksFor(siteId).ga4;
@@ -81,7 +119,8 @@ export async function syncGa4(siteId: number, source?: Ga4Source, today = pacifi
 			const ins = d.prepare('INSERT OR REPLACE INTO ga4_daily VALUES (?,?,?,?,?,?,?,?)');
 			for (const r of rows) ins.run(siteId, r.date, r.channel, r.sessions, r.engagedSessions, r.users, r.keyEvents, r.pageviews);
 		})();
-		markLink(siteId, 'ga4', 'idle', null, true);
+		const periods = await pullGa4Periods(siteId, link.external_id, src, today);
+		markLink(siteId, 'ga4', 'idle', periods.ok ? null : 'Daily data synced; user and landing-page reports could not be fetched (will retry).', true);
 		return { rows: rows.length };
 	} catch (e) {
 		markLink(siteId, 'ga4', 'error', e instanceof Error ? e.message : String(e));

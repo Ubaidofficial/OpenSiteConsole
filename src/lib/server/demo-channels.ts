@@ -1,7 +1,7 @@
 import type { BingClient, BingDay, BingSite, BingTermRow } from './bing';
 import type { Ga4Day, Ga4Property } from './ga4';
 import type { ClarityMetric } from './clarity';
-import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, h01 } from './demo';
+import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01 } from './demo';
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
 
@@ -96,4 +96,22 @@ export function demoOpenSeoProjects() {
 		{ id: 'demo-proj-trailmaps', name: 'Trailmaps (demo)', domain: 'trailmaps.example', url: 'https://openseo.example/p/demo-proj-trailmaps' },
 		{ id: 'demo-proj-other', name: 'Unrelated project', domain: 'unrelated.example', url: 'https://openseo.example/p/demo-proj-other' }
 	];
+}
+
+/** Demo: unique users per channel over a window (about 60% of summed daily users, since people return). */
+export function demoGa4UsersByChannel(property: string, start: string, end: string): { channel: string; users: number }[] {
+	const sum = new Map<string, number>();
+	for (const r of demoGa4Daily(property, start, end)) sum.set(r.channel, (sum.get(r.channel) ?? 0) + r.users);
+	return [...sum].map(([channel, users]) => ({ channel, users: Math.round(users * 0.6) }));
+}
+
+/** Demo: Google-organic landing pages derived from the demo Search Console pages, so the two sources line up. */
+export async function demoGa4Landing(property: string, start: string, end: string): Promise<{ page: string; sessions: number; engagedSessions: number; keyEvents: number }[]> {
+	for (const a of DEMO_ACCOUNTS) {
+		const i = DEMO_GA4_PROPERTIES(a.sub).findIndex((p) => p.prop.property === property);
+		if (i < 0) continue;
+		const rows = await new DemoClient(a.sub).query(a.sites[i].siteUrl, { startDate: start, endDate: end, dimensions: ['page'], rowLimit: 5000 });
+		return rows.map((r) => ({ page: new URL(r.keys[0]).pathname, sessions: Math.round(r.clicks * 1.12) + 1, engagedSessions: Math.round(r.clicks * 0.7), keyEvents: Math.round(r.clicks * 0.04 * 10) / 10 }));
+	}
+	return [];
 }
