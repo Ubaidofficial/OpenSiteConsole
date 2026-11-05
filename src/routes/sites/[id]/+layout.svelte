@@ -33,6 +33,7 @@
 		['/cannibalization', 'Cannibalization'],
 		['/decay', 'Decay'],
 		['/segments', 'Segments'],
+		['/types', 'Search types'],
 		['/sitemaps', 'Sitemaps'],
 		['/inspect', 'Inspect'],
 		['/bing', 'Bing'],

@@ -35,6 +35,8 @@ export interface SiteRow {
 	last_sync_at: number | null;
 	sync_status: string;
 	sync_message: string | null;
+	types_synced_at: number | null;
+	appearance_pulled_on: string | null;
 	created_at: number;
 }
 

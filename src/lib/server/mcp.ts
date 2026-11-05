@@ -1,5 +1,6 @@
 import { db } from './db';
-import { allSites, brandTerms, fittedCurve, periodFor, queryPageRows, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare } from './queries';
+import { allSites, brandTerms, fittedCurve, periodFor, queryPageRows, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
+import { ALL_TYPES } from '../searchTypes';
 import { displayName } from './clients';
 import { addDays } from './dates';
 import { computeCannibalization, computeCtrGaps, computeDecay, computeStriking, ctrOf, detectAnomalies, isBranded, pctChange } from '../analytics';
@@ -73,6 +74,25 @@ const TOOLS: Tool[] = [
 				google: { clicks: g.clicks, impressions: g.impressions, ctr: r2(ctrOf(g) * 100) + '%', position: r2(g.position), clicksChange: pctChange(g.clicks, gp.clicks), impressionsChange: pctChange(g.impressions, gp.impressions), anonymisedClickShare: anonymisedShare(site.id, p.start, p.end) },
 				bing: l.bing ? { clicks: bn.c ?? 0, impressions: bn.i ?? 0, clicksChange: pctChange(bn.c ?? 0, bp.c ?? 0) } : null,
 				ga4OrganicSearch: l.ga4 ? { sessions: gn.s ?? 0, keyEvents: gn.k ?? 0, sessionsChange: pctChange(gn.s ?? 0, gpv.s ?? 0) } : null
+			};
+		}
+	},
+	{
+		name: 'get_search_types',
+		description: 'Google traffic split by search type (web, image, video, news, discover, googleNews) for a window vs the previous window, plus the search-appearance report (rich results and similar). The overview numbers are web only; this shows the rest.',
+		schema: { ...siteArg, ...daysArg },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const p = periodFor(site, days(a));
+			const now = typeBreakdown(site.id, p.start, p.end);
+			const prev = typeBreakdown(site.id, p.prevStart, p.prevEnd);
+			const app = appearanceFor(site.id, days(a));
+			return {
+				site: displayName(site.site_url),
+				period: { start: p.start, end: p.end },
+				note: 'Types fetched from Search Console; a type with no traffic is omitted. Web is the default report.',
+				types: ALL_TYPES.filter((t) => now[t] && (now[t]!.clicks > 0 || now[t]!.impressions > 0)).map((t) => ({ type: t, clicks: now[t]!.clicks, impressions: now[t]!.impressions, ctr: r2(ctrOf(now[t]!) * 100) + '%', position: r2(now[t]!.position), clicksChange: prev[t] ? pctChange(now[t]!.clicks, prev[t]!.clicks) : null })),
+				searchAppearance: { endingOn: app.pulledOn, rows: app.rows.map((r) => ({ appearance: r.appearance, clicks: r.clicks, impressions: r.impressions, position: r2(r.position) })) }
 			};
 		}
 	},

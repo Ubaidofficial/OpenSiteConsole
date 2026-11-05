@@ -18,6 +18,8 @@ export interface QueryBody {
 	rowLimit?: number;
 	startRow?: number;
 	type?: 'web' | 'image' | 'video' | 'news' | 'discover' | 'googleNews';
+	/** Current name of `type`. The real client sends both, so an API that only knows one still filters correctly. */
+	searchType?: 'web' | 'image' | 'video' | 'news' | 'discover' | 'googleNews';
 	dataState?: 'all' | 'final';
 	aggregationType?: 'auto' | 'byPage' | 'byProperty';
 	dimensionFilterGroups?: unknown[];
@@ -243,7 +245,7 @@ export class RealClient implements GscClient {
 	async query(siteUrl: string, body: QueryBody) {
 		const r = await this.call<{ rows?: SearchRow[] }>(`${WM}/sites/${enc(siteUrl)}/searchAnalytics/query`, {
 			method: 'POST',
-			body: JSON.stringify(body)
+			body: JSON.stringify(body.type && !body.searchType ? { ...body, searchType: body.type } : body)
 		});
 		return r.rows ?? [];
 	}

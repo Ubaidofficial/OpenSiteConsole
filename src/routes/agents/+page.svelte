@@ -40,7 +40,7 @@
 	<section class="card p-4 text-sm">
 		<h2 class="mb-2 font-medium">Endpoint</h2>
 		<code class="block break-all rounded bg-black/5 p-2 dark:bg-white/10">{data.mcpUrl}</code>
-		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address. Tools: list_sites, get_overview, get_top_queries, get_top_pages, get_opportunities, get_bing_performance, get_ga4_summary, get_clarity_snapshot, get_openseo_project.</p>
+		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address. Tools: list_sites, get_overview, get_search_types, get_top_queries, get_top_pages, get_opportunities, get_bing_performance, get_ga4_summary, get_clarity_snapshot, get_openseo_project.</p>
 	</section>
 </div>
 

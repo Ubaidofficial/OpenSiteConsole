@@ -146,6 +146,25 @@ CREATE TABLE IF NOT EXISTS clarity_calls (
 	day TEXT NOT NULL, n INTEGER NOT NULL,
 	PRIMARY KEY (integration_id, day)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS site_daily_type (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	search_type TEXT NOT NULL,          -- image | video | news | discover | googleNews (web lives in site_daily)
+	date TEXT NOT NULL,
+	clicks INTEGER NOT NULL,
+	impressions INTEGER NOT NULL,
+	position REAL NOT NULL,
+	PRIMARY KEY (site_id, search_type, date)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS site_appearance (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,              -- window length ending on pulled_on
+	appearance TEXT NOT NULL,           -- Google's searchAppearance value, e.g. RICH_RESULT
+	pulled_on TEXT NOT NULL,
+	clicks INTEGER NOT NULL,
+	impressions INTEGER NOT NULL,
+	position REAL NOT NULL,
+	PRIMARY KEY (site_id, days, appearance)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS api_keys (
 	id INTEGER PRIMARY KEY,
 	name TEXT NOT NULL, prefix TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,
@@ -163,6 +182,8 @@ declare global {
 function migrate(db: Database.Database) {
 	const cols = (t: string) => (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
 	if (!cols('accounts').includes('scopes')) db.exec("ALTER TABLE accounts ADD COLUMN scopes TEXT NOT NULL DEFAULT ''");
+	if (!cols('sites').includes('types_synced_at')) db.exec('ALTER TABLE sites ADD COLUMN types_synced_at INTEGER');
+	if (!cols('sites').includes('appearance_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN appearance_pulled_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.
 	const version = db.pragma('user_version', { simple: true }) as number;
