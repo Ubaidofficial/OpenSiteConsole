@@ -131,7 +131,7 @@ export function allSites(opts: { includeHidden?: boolean } = {}): (SiteRow & { a
 		.prepare(
 			`SELECT s.*, a.email AS account_email, a.label AS account_label, a.status AS account_status
 			 FROM sites s JOIN accounts a ON a.id = s.account_id
-			 ${opts.includeHidden ? '' : 'WHERE s.hidden = 0'} ORDER BY s.site_url`
+			 ${opts.includeHidden ? '' : "WHERE s.hidden = 0 AND s.permission != 'none'"} ORDER BY s.site_url`
 		)
 		.all() as never;
 }

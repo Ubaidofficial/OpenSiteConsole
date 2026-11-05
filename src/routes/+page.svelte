@@ -136,18 +136,27 @@
 					<div class="min-w-0 flex-1">
 						<div class="flex items-center gap-2">
 							<a href="/sites/{c.id}?days={data.days}" class="pii truncate text-lg leading-tight font-semibold tracking-tight after:absolute after:inset-0 after:rounded-2xl">{title(c)}</a>
+							{#if c.removed}<span class="chip shrink-0 !px-1.5 !py-0 text-[10px]" title="Google no longer lists this property for the account">removed in Search Console</span>{/if}
 							{#if isPrefix(c)}<span class="chip shrink-0 !px-1.5 !py-0 text-[10px]">URL prefix</span>{/if}
 							<a href={c.href} target="_blank" rel="noreferrer noopener" class="relative z-10 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100" aria-label="Open the site in a new tab" title="Open site"><ExternalLink class="size-3.5" /></a>
 						</div>
 						<div class="pii truncate text-sm text-muted-foreground">{c.label ? c.name + ' · ' : ''}{c.account}</div>
 						{#if c.coveredBy}<div class="pii truncate text-xs text-warn" title={privacy.on ? undefined : `This property's data is already included in ${c.coveredBy}`}>↳ included in {c.coveredBy.replace('sc-domain:', '')}</div>{/if}
 					</div>
-					{#if c.hasData}
-						<div class="flex shrink-0 flex-col items-end gap-1">
-							<span class="tnum rounded-full bg-muted px-3 py-1 text-sm font-medium">{fmtInt(c.clicks)} clicks</span>
-							<Delta value={c.clicksDelta} why={c.comparable ? 'Too little data in the previous period' : 'Previous period still loading'} />
-						</div>
-					{/if}
+					<div class="flex shrink-0 items-start gap-2">
+						{#if c.hasData}
+							<div class="flex flex-col items-end gap-1">
+								<span class="tnum rounded-full bg-muted px-3 py-1 text-sm font-medium">{fmtInt(c.clicks)} clicks</span>
+								<Delta value={c.clicksDelta} why={c.comparable ? 'Too little data in the previous period' : 'Previous period still loading'} />
+							</div>
+						{/if}
+						<form method="POST" action="?/toggleHidden" use:enhance={hideEnhance(c)} class="relative z-10">
+							<input type="hidden" name="id" value={c.id} />
+							<button class="grid size-8 place-items-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground" aria-label={c.hidden ? 'Show on dashboard' : 'Hide from dashboard'} title={c.hidden ? 'Show on dashboard again' : 'Hide from dashboard (leaves the totals and stops syncing)'}>
+								{#if c.hidden}<Eye class="size-4" />{:else}<EyeOff class="size-4" />{/if}
+							</button>
+						</form>
+					</div>
 				</div>
 
 				{#if !c.hasData}
@@ -173,12 +182,6 @@
 					<span class="ml-auto truncate">
 						{#if c.syncStatus === 'running' || c.syncStatus === 'queued'}<RefreshCw class="mr-1 inline size-3 animate-spin" />{c.syncStatus}{:else if c.syncStatus === 'error'}<span class="text-bad" title={privacy.on ? undefined : (c.syncMessage ?? 'Sync failed')}>⚠ sync error</span>{:else}synced {ago(c.lastSync)}{/if}{#if !c.backfillDone && c.hasData} · loading history{/if}
 					</span>
-					<form method="POST" action="?/toggleHidden" use:enhance={hideEnhance(c)} class="relative z-10">
-						<input type="hidden" name="id" value={c.id} />
-						<button class="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground" aria-label={c.hidden ? 'Show on dashboard' : 'Hide from dashboard'} title={c.hidden ? 'Show on dashboard again' : 'Hide from dashboard (leaves the totals and stops syncing)'}>
-							{#if c.hidden}<Eye class="size-4" />{:else}<EyeOff class="size-4" />{/if}
-						</button>
-					</form>
 				</div>
 			</article>
 		{/each}

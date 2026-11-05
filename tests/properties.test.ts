@@ -69,6 +69,15 @@ describe('totals count each site once', () => {
 		expect(hideCoveredDuplicates()).toBe(0); // idempotent
 	});
 
+	it('drops a property Search Console no longer lists from cards and totals, but keeps its data', () => {
+		db().prepare("UPDATE sites SET permission = 'none' WHERE id = 2").run();
+		const cards = siteCards(7);
+		expect(cards.map((c) => c.site.id).sort()).toEqual([1, 3]);
+		expect(portfolioTotals(cards).duplicates).toBe(0);
+		expect(siteCards(7, { includeHidden: true }).map((c) => c.site.id).sort()).toEqual([1, 2, 3]);
+		expect((db().prepare('SELECT COUNT(*) n FROM site_daily WHERE site_id = 2').get() as { n: number }).n).toBe(1);
+	});
+
 	it('portfolio analytics skip the covered property too', () => {
 		const d = db();
 		const ins = d.prepare("INSERT INTO sa_rows VALUES (?,'2026-11-03','best widget','https://example-consulting.example/p','usa','MOBILE',1,500,8)");
