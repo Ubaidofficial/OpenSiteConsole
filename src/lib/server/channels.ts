@@ -1,7 +1,7 @@
 import { db } from './db';
 import { config } from './config';
 import { RealBingClient, type BingClient } from './bing';
-import { DemoBing, DEMO_GA4_PROPERTIES, demoClarityFetch, demoGa4Daily, demoGa4Landing, demoGa4UsersByChannel, demoGa4MeasurementId, demoGtmContainers, demoGtmLive } from './demo-channels';
+import { DemoBing, DEMO_GA4_PROPERTIES, demoClarityFetch, demoGa4Daily, demoGa4Landing, demoGa4UsersByChannel, demoGa4MeasurementId, demoGa4AiTraffic, demoGtmContainers, demoGtmLive } from './demo-channels';
 import { callsLeft, CLARITY_SYNC_DIMENSIONS, fetchInsights, utcDay } from './clarity';
 import * as ga4 from './ga4';
 import * as gtm from './gtm';
@@ -27,6 +27,8 @@ export interface Ga4Source {
 	usersByChannel(property: string, start: string, end: string): Promise<ga4.Ga4ChannelUsers[]>;
 	/** Google-organic landing pages over a whole window. */
 	landing(property: string, start: string, end: string): Promise<ga4.Ga4Landing[]>;
+	/** Sessions from AI assistants over a whole window, by landing page. */
+	aiTraffic(property: string, start: string, end: string): Promise<ga4.Ga4Ai[]>;
 }
 
 export function ga4SourceFor(accountId: number): Ga4Source {
@@ -40,7 +42,8 @@ export function ga4SourceFor(accountId: number): Ga4Source {
 			measurementIds: async (property) => [demoGa4MeasurementId(property)],
 			daily: async (property, s, e) => demoGa4Daily(property, s, e),
 			usersByChannel: async (property, s, e) => demoGa4UsersByChannel(property, s, e),
-			landing: (property, s, e) => demoGa4Landing(property, s, e)
+			landing: (property, s, e) => demoGa4Landing(property, s, e),
+			aiTraffic: (property, s, e) => demoGa4AiTraffic(property, s, e)
 		};
 	}
 	return {
@@ -49,7 +52,8 @@ export function ga4SourceFor(accountId: number): Ga4Source {
 		measurementIds: (p) => ga4.webStreamMeasurementIds(accountId, p),
 		daily: (p, s, e) => ga4.dailyByChannel(accountId, p, s, e),
 		usersByChannel: (p, s, e) => ga4.usersByChannel(accountId, p, s, e),
-		landing: (p, s, e) => ga4.organicGoogleLanding(accountId, p, s, e)
+		landing: (p, s, e) => ga4.organicGoogleLanding(accountId, p, s, e),
+		aiTraffic: (p, s, e) => ga4.aiAssistantTraffic(accountId, p, s, e)
 	};
 }
 
@@ -95,16 +99,22 @@ export async function pullGa4Periods(siteId: number, property: string, src: Ga4S
 	const horizon = retentionHorizon(today);
 	const insU = d.prepare('INSERT OR REPLACE INTO ga4_period_users VALUES (?,?,?,?,?)');
 	const insL = d.prepare('INSERT OR REPLACE INTO ga4_landing VALUES (?,?,?,?,?,?,?)');
+	const insA = d.prepare('INSERT OR REPLACE INTO ga4_ai VALUES (?,?,?,?,?,?,?,?)');
 	try {
 		for (const days of PERIODS) {
 			let start = addDays(today, -(days - 1));
 			if (start < horizon) start = horizon;
-			const [users, landing] = await Promise.all([src.usersByChannel(property, start, today), src.landing(property, start, today)]);
+			// The AI-assistant report is an extra: if it fails, users and landing pages are still stored.
+			const [users, landing, ai] = await Promise.all([src.usersByChannel(property, start, today), src.landing(property, start, today), src.aiTraffic(property, start, today).catch(() => null)]);
 			d.transaction(() => {
 				d.prepare('DELETE FROM ga4_period_users WHERE site_id = ? AND days = ?').run(siteId, days);
 				d.prepare('DELETE FROM ga4_landing WHERE site_id = ? AND days = ?').run(siteId, days);
 				for (const u of users) insU.run(siteId, days, u.channel, u.users, today);
 				for (const l of landing) insL.run(siteId, days, l.page, l.sessions, l.engagedSessions, l.keyEvents, today);
+				if (ai) {
+					d.prepare('DELETE FROM ga4_ai WHERE site_id = ? AND days = ?').run(siteId, days);
+					for (const a of ai) insA.run(siteId, days, a.assistant, a.page, a.sessions, a.engagedSessions, a.keyEvents, today);
+				}
 			})();
 		}
 		d.prepare('UPDATE sites SET ga4_periods_on = ? WHERE id = ?').run(today, siteId);

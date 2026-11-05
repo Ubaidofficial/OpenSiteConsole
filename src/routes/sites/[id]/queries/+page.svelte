@@ -36,6 +36,9 @@
 	<select class="input" value={data.b} onchange={(e) => setParam('b', e.currentTarget.value)}>
 		<option value="all">All queries</option><option value="nonbrand">Non-branded</option><option value="brand">Branded</option>
 	</select>
+	<select class="input" value={data.onlyQuestions ? 'questions' : ''} onchange={(e) => setParam('q', e.currentTarget.value)} title="Question-style queries: how, what, why, can… or containing a question mark (English only)">
+		<option value="">Any wording</option><option value="questions">Questions only</option>
+	</select>
 	<select class="input" value={data.filters.country ?? ''} onchange={(e) => setParam('country', e.currentTarget.value)}>
 		<option value="">All countries</option>{#each data.countries as c}<option value={c}>{c.toUpperCase()}</option>{/each}
 	</select>

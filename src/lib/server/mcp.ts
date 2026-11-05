@@ -14,6 +14,12 @@ import { coverageMap } from '../property';
 import { gtmSnapshot, trackingHealth } from './tracking';
 import { tagTypeLabel } from './gtm';
 import { allLinks } from './links';
+import { aiTrafficReport, countryCannibalReport, forecastReport, groupsReport, heatmapReport, localesReport, trajectories, trendsReport, urlClassesReport } from './insights';
+import { evaluateTest, listTests } from './seotests';
+import { indexSummary, recentEvents } from './indexmon';
+import { storedChecks } from './onpage';
+import { isQuestionQuery } from '../trends';
+import { EVENT_SEVERITY } from '../indexing';
 
 /** Read-only MCP server (Streamable HTTP, JSON responses). Nothing here writes or spends money. */
 
@@ -22,7 +28,7 @@ interface Tool {
 	name: string;
 	description: string;
 	schema: Record<string, unknown>;
-	run: (args: Record<string, unknown>, sites: Site[]) => unknown;
+	run: (args: Record<string, unknown>, sites: Site[]) => unknown | Promise<unknown>;
 }
 
 const siteArg = { site: { type: 'string', description: 'Site id (from list_sites), domain such as example.com, or property URL' } };
@@ -124,7 +130,7 @@ const TOOLS: Tool[] = [
 	{
 		name: 'get_top_queries',
 		description: 'Top Google queries in a window with change vs the previous window. `branded` filters on brand terms (default: all).',
-		schema: { ...siteArg, ...daysArg, limit: { type: 'integer' }, branded: { type: 'string', enum: ['all', 'only', 'exclude'] } },
+		schema: { ...siteArg, ...daysArg, limit: { type: 'integer' }, branded: { type: 'string', enum: ['all', 'only', 'exclude'] }, questions: { type: 'boolean', description: 'Only question-style queries (how, what, why, can ... ?). English only.' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			const p = periodFor(site, days(a));
@@ -132,6 +138,7 @@ const TOOLS: Tool[] = [
 			const prev = new Map(topQueries(site.id, p.prevStart, p.prevEnd, {}, 20000).map((r) => [r.query, r]));
 			return topQueries(site.id, p.start, p.end, {}, 5000)
 				.filter((r) => (a.branded === 'only' ? isBranded(r.query, terms) : a.branded === 'exclude' ? !isBranded(r.query, terms) : true))
+				.filter((r) => (a.questions ? isQuestionQuery(r.query) : true))
 				.slice(0, limit(a))
 				.map((r) => ({ query: r.query, clicks: r.clicks, impressions: r.impressions, ctr: r2(ctrOf(r) * 100) + '%', position: r2(r.position), clicksChange: pctChange(r.clicks, prev.get(r.query)?.clicks ?? 0) }));
 		}
@@ -270,6 +277,118 @@ const TOOLS: Tool[] = [
 		}
 	},
 	{
+		name: 'get_trends',
+		description: 'Movement over time from stored Search Console history. view: movers (queries and pages whose clicks changed by more than noise, winners and losers), new_lost (queries that appeared or vanished), bands (how many non-branded queries sit in positions 1-3, 4-10, 11-20, 21-50, 51+, now vs previous), questions (question-style queries and their share), trajectories (direction of the top queries over 12 weeks), forecast (weekly click projection for 8 weeks: level plus a damped trend, NOT seasonality-aware; last year\'s same weeks are included when stored).',
+		schema: { ...siteArg, ...daysArg, view: { type: 'string', enum: ['movers', 'new_lost', 'bands', 'questions', 'trajectories', 'forecast'] }, limit: { type: 'integer' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const lim = limit(a);
+			const view = String(a.view ?? 'movers');
+			if (view === 'trajectories') return { site: displayName(site.site_url), trajectories: trajectories(site, lim) };
+			if (view === 'forecast') {
+				const f = forecastReport(site);
+				return f.projection ? { site: displayName(site.site_url), method: f.projection.method, weeklyTrendPct: r2(f.projection.weeklyTrendPct * 100), basedOnWeeks: f.projection.basedOnWeeks, history: f.weekly.slice(-12).map((w) => ({ weekEnding: w.weekEnd, clicks: w.clicks })), projection: f.projection.points, sameWeeksLastYear: f.lastYear, caution: 'A projection of recent behaviour, not a prediction. It ignores seasonality and Google updates.' } : { site: displayName(site.site_url), note: 'Needs at least 8 complete weeks of stored history.' };
+			}
+			const t = trendsReport(site, days(a), lim);
+			switch (view) {
+				case 'movers':
+					return { period: t.period, queries: { winners: t.queryMovers.winners.map((m) => ({ query: m.key, clicks: m.clicks, previous: m.prevClicks, change: m.change })), losers: t.queryMovers.losers.map((m) => ({ query: m.key, clicks: m.clicks, previous: m.prevClicks, change: m.change })) }, pages: { winners: t.pageMovers.winners.map((m) => ({ page: m.key, clicks: m.clicks, previous: m.prevClicks, change: m.change })), losers: t.pageMovers.losers.map((m) => ({ page: m.key, clicks: m.clicks, previous: m.prevClicks, change: m.change })) } };
+				case 'new_lost':
+					return { period: t.period, newQueries: t.newQueries.map((r) => ({ query: r.key, clicks: r.clicks, impressions: r.impressions, position: r2(r.position) })), lostQueries: t.lostQueries.map((r) => ({ query: r.key, previousClicks: r.clicks, previousImpressions: r.impressions })) };
+				case 'bands':
+					return { period: t.period, note: 'Non-branded queries by average position.', now: t.bands.now, previous: t.bands.prev };
+				case 'questions':
+					return { period: t.period, count: t.questions.count, clickShare: r2(t.questions.clickShare * 100) + '%', impressionShare: r2(t.questions.impressionShare * 100) + '%', rows: t.questions.rows };
+				default:
+					throw new Error('`view` must be one of movers, new_lost, bands, questions, trajectories, forecast');
+			}
+		}
+	},
+	{
+		name: 'get_content_groups',
+		description: 'Groups of pages and queries. view: folders (pages grouped by URL folder with change vs previous window), topics (queries clustered by shared words, brand excluded), heatmap (monthly clicks per folder or page, complete months only, with distance from peak: shows which content is losing traffic over time), locales (locale folders such as /en-gb/ with where their clicks come from; flags region folders earning most clicks from another country), country_cannibalization (queries where several pages compete for the same query inside one country).',
+		schema: { ...siteArg, ...daysArg, view: { type: 'string', enum: ['folders', 'topics', 'heatmap', 'locales', 'country_cannibalization'] }, by: { type: 'string', enum: ['group', 'page'], description: 'heatmap rows' }, depth: { type: 'integer', description: 'folder depth (default 1)' }, limit: { type: 'integer' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const depth = Math.min(4, Math.max(1, Number(a.depth) || 1));
+			const view = String(a.view ?? 'folders');
+			const lim = limit(a, 30);
+			switch (view) {
+				case 'folders': {
+					const g = groupsReport(site, days(a), depth);
+					return g.groups.slice(0, lim).map((x) => ({ folder: x.key, pages: x.pages, clicks: x.clicks, impressions: x.impressions, position: r2(x.position), previousClicks: x.prevClicks, change: x.deltaPct == null ? null : r2(x.deltaPct * 100) + '%' }));
+				}
+				case 'topics': {
+					const g = groupsReport(site, days(a), depth);
+					return { unclusteredImpressionShare: r2(g.topics.unclusteredShare * 100) + '%', method: 'Queries grouped by their heaviest shared word; not semantic.', topics: g.topics.clusters.slice(0, lim).map((c) => ({ topic: c.topic, queries: c.queries, clicks: c.clicks, impressions: c.impressions, position: r2(c.position), examples: c.top })) };
+				}
+				case 'heatmap': {
+					const h = heatmapReport(site, a.by === 'page' ? 'page' : 'group', depth);
+					return { months: h.months, rows: h.rows.slice(0, lim).map((r) => ({ key: r.key, monthlyClicks: r.months, fromPeak: r.fromPeakPct == null ? null : r2(r.fromPeakPct * 100) + '%', secondHalfVsFirst: r.trendPct == null ? null : r2(r.trendPct * 100) + '%' })) };
+				}
+				case 'locales':
+					return localesReport(site, days(a)).map((l) => ({ folder: l.folder, clicks: l.clicks, impressions: l.impressions, topCountries: l.topCountries.map((c) => ({ country: c.country, share: r2(c.share * 100) + '%' })), shareFromOwnCountry: l.homeShare == null ? null : r2(l.homeShare * 100) + '%', checkHreflang: l.mismatch }));
+				case 'country_cannibalization':
+					return countryCannibalReport(site, days(a), lim).map((g) => ({ country: g.country, query: g.query, severity: g.severity, clicksAtStake: Math.round(g.potentialClicks), winner: g.winner, pages: g.pages.map((x) => ({ page: x.page, clicks: x.clicks, impressions: x.impressions, position: r2(x.position) })) }));
+				default:
+					throw new Error('`view` must be one of folders, topics, heatmap, locales, country_cannibalization');
+			}
+		}
+	},
+	{
+		name: 'get_ai_traffic',
+		description: 'GA4 sessions that arrived from AI assistants (ChatGPT, Perplexity, Gemini, Claude, Copilot) in a window: totals per assistant, share of all sessions and the landing pages they reach. Found by referrer name, so an assistant that sends no referrer appears as Direct and is not counted.',
+		schema: { ...siteArg, ...daysArg, limit: { type: 'integer' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const t = aiTrafficReport(site, days(a));
+			if (!t.linked) return { connected: false, hint: 'Link a GA4 property on the Connect page.' };
+			if (!t.synced) return { connected: true, note: 'GA4 has not finished its first sync.' };
+			return { sessions: t.sessions, shareOfAllSessions: t.shareOfAllSessions == null ? null : r2(t.shareOfAllSessions * 100) + '%', assistants: t.assistants, topLandingPages: t.pages.slice(0, limit(a, 25)), pulledOn: t.pulledOn };
+		}
+	},
+	{
+		name: 'get_seo_tests',
+		description: 'SEO tests defined for a site (before/after, split against control pages, redirect/switch) with their results: the change in clicks and impressions of the test pages relative to the control pages, a 95% interval, a p-value and a verdict (positive, negative, inconclusive, too-little-data). Observational, not randomised: a significant result means unlikely to be noise given the control, not proof of cause.',
+		schema: siteArg,
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			return listTests(site.id).map((t) => {
+				const o = evaluateTest(site, t);
+				const fmt = (r: typeof o.clicks) => ({ verdict: r.verdict, lift: r.lift == null ? null : r2(r.lift * 100) + '%', interval95: r.ciLow == null ? null : `${r2(r.ciLow! * 100)}% to ${r2(r.ciHigh! * 100)}%`, p: r.p == null ? null : r2(r.p), totals: r.totals, note: r.note });
+				return { id: t.id, name: t.name, kind: t.kind, changeDate: t.start_date, windowDays: t.window_days, daysSinceChange: o.postDays, testPages: o.treatmentPages, controlPages: o.controlPages, clicks: fmt(o.clicks), impressions: fmt(o.impressions), averagePosition: o.position ? { before: r2(o.position.before), after: r2(o.position.after) } : null, redirectParts: o.parts };
+			});
+		}
+	},
+	{
+		name: 'get_indexing_status',
+		description: 'Stored indexing information from Google URL Inspection. view: summary (counts of indexed / not indexed / unknown among inspected URLs, and the not-indexed list with Google\'s reason), events (recent changes the monitor found: de-indexed, newly indexed, canonical swapped, robots-blocked, fetch errors), performance (URLs classed dead, not-indexed, fading, underperforming or weak, with clicks lost). Reads stored results only; the monitor is switched on per site in the app because it spends URL Inspection quota.',
+		schema: { ...siteArg, ...daysArg, view: { type: 'string', enum: ['summary', 'events', 'performance'] }, limit: { type: 'integer' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const view = String(a.view ?? 'summary');
+			if (view === 'events') return recentEvents(site.id, limit(a, 50)).map((e) => ({ url: e.url, at: new Date(e.at).toISOString(), event: e.kind, severity: EVENT_SEVERITY[e.kind as keyof typeof EVENT_SEVERITY] ?? 'warn', detail: e.detail }));
+			if (view === 'performance') {
+				const u = urlClassesReport(site, days(a));
+				return { period: u.period, counts: u.counts, clicksLostByClass: u.lostClicks, urls: u.rows.slice(0, limit(a, 50)).map((r) => ({ page: r.page, class: r.cls, clicks: r.clicks, previousClicks: r.prevClicks, impressions: r.impressions, position: r2(r.position), indexed: r.index, fetchState: r.fetchState })), caution: 'Only pages Search Console has shown at least once are visible here. Compare with your sitemap to find pages with no impressions at all.' };
+			}
+			const s = indexSummary(site.id);
+			return { monitoring: !!site.index_monitor, checkedUrls: s.checked, ...s.counts, lastCheck: s.lastCheck ? new Date(s.lastCheck).toISOString() : null, notIndexed: s.notIndexed.slice(0, limit(a, 25)) };
+		}
+	},
+	{
+		name: 'get_onpage_check',
+		description: 'Stored on-page SEO checks: for each checked page, its title, meta description and H1, whether its top Google queries appear in them (exact, all words, some words, none), and issues (missing or long title, no description, no or several H1, noindex, canonical pointing elsewhere), with a 0-100 score. Pages are fetched from the app (same-site only), never from this tool. Pass `url` for one page.',
+		schema: { ...siteArg, url: { type: 'string' }, limit: { type: 'integer' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			let rows = storedChecks(site.id);
+			if (a.url) rows = rows.filter((r) => r.url === String(a.url));
+			if (!rows.length) return { checked: 0, hint: 'No pages have been checked yet. Run "Check top pages" on the site\'s On-page tab.' };
+			return rows.sort((x, y) => (x.score ?? 101) - (y.score ?? 101)).slice(0, limit(a, 25)).map((r) => ({ url: r.url, checkedAt: new Date(r.checkedAt).toISOString(), error: r.error ?? null, score: r.score, title: r.parsed?.title ?? null, metaDescription: r.parsed?.description ?? null, h1: r.parsed?.h1 ?? [], issues: r.issues ?? [], topQueries: r.queries ?? [] }));
+		}
+	},
+	{
 		name: 'get_clarity_snapshot',
 		description: 'Latest stored Microsoft Clarity snapshot (last ~24h when it was taken; Clarity only exposes 1-3 days and 10 API calls/day/project, so OpenSiteConsole stores one snapshot per day). dimension: "" (totals), URL or Device.',
 		schema: { ...siteArg, dimension: { type: 'string', enum: ['', 'URL', 'Device'] } },
@@ -310,7 +429,7 @@ export async function handleMcp(request: Request): Promise<Response> {
 	const reply = (body: object) => new Response(JSON.stringify(body), { headers });
 	switch (msg.method) {
 		case 'initialize':
-			return reply(rpc(msg.id, { protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'opensiteconsole', version: '0.3.0' }, instructions: 'Read-only first-party search and tracking data (Google Search Console, GA4, Google Tag Manager, Bing, Clarity, Core Web Vitals). Call list_sites first, or get_connections to see which tools are connected. get_tracking_health cross-checks Search Console, GA4 and Tag Manager. Use get_openseo_project to hand a site to OpenSEO tools.' }));
+			return reply(rpc(msg.id, { protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'opensiteconsole', version: '0.4.0' }, instructions: 'Read-only first-party search and tracking data (Google Search Console, GA4, Google Tag Manager, Bing, Clarity, Core Web Vitals). Call list_sites first, or get_connections to see which tools are connected. get_trends, get_content_groups, get_seo_tests, get_indexing_status, get_onpage_check and get_ai_traffic answer from stored data. get_tracking_health cross-checks Search Console, GA4 and Tag Manager. Use get_openseo_project to hand a site to OpenSEO tools.' }));
 		case 'ping':
 			return reply(rpc(msg.id, {}));
 		case 'tools/list':
@@ -319,7 +438,7 @@ export async function handleMcp(request: Request): Promise<Response> {
 			const tool = TOOLS.find((t) => t.name === msg.params?.name);
 			if (!tool) return reply(rpcErr(msg.id, -32602, `Unknown tool ${String(msg.params?.name)}`));
 			try {
-				const out = tool.run((msg.params?.arguments as Record<string, unknown>) ?? {}, sites);
+				const out = await tool.run((msg.params?.arguments as Record<string, unknown>) ?? {}, sites);
 				return reply(rpc(msg.id, { content: [{ type: 'text', text: JSON.stringify(out) }] }));
 			} catch (e) {
 				return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: e instanceof Error ? e.message : 'Tool failed' }] }));

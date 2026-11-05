@@ -178,6 +178,43 @@ export async function demoGa4Landing(property: string, start: string, end: strin
 	return [];
 }
 
+/**
+ * Demo AI-assistant sessions, a small share of the demo Google-organic landing pages (ChatGPT largest), so the AI view
+ * lines up with the pages the other reports show. Not every page gets any.
+ */
+export async function demoGa4AiTraffic(property: string, start: string, end: string): Promise<{ assistant: 'ChatGPT' | 'Perplexity' | 'Gemini' | 'Claude' | 'Copilot'; page: string; sessions: number; engagedSessions: number; keyEvents: number }[]> {
+	const pages = (await demoGa4Landing(property, start, end)).sort((a, b) => b.sessions - a.sessions).slice(0, 12);
+	const shares = [['ChatGPT', 0.05], ['Perplexity', 0.02], ['Gemini', 0.015], ['Claude', 0.01], ['Copilot', 0.005]] as const;
+	return pages.flatMap((p) =>
+		shares.flatMap(([assistant, share]) => {
+			const sessions = Math.round(p.sessions * share * (0.6 + h01(property, p.page, assistant)));
+			return sessions >= 1 ? [{ assistant, page: p.page, sessions, engagedSessions: Math.round(sessions * 0.7), keyEvents: Math.round(sessions * 0.05 * 10) / 10 }] : [];
+		})
+	);
+}
+
+/**
+ * Demo page fetcher for the on-page check (demo sites are .example domains that do not exist). Pages get deterministic
+ * HTML with planted problems: some lack a meta description, some have a generic title, one is noindex, one has two H1s.
+ */
+export function demoPageFetch(siteUrl: string): typeof fetch {
+	const host = hostKey(siteUrl);
+	const def = sites.find((s) => hostKey(s.siteUrl) === host) ?? sites[0];
+	return (async (input: RequestInfo | URL) => {
+		const url = new URL(String(input));
+		const r = h01(host, url.pathname);
+		const slug = url.pathname.split('/').filter(Boolean).pop() ?? 'home';
+		if (r < 0.06) return new Response('gone', { status: 404 });
+		const words = slug.replace(/-\d+$/, '').replace(/-/g, ' ');
+		const title = r < 0.3 ? `Home | ${def.brand}` : `${def.topic} - ${words} | ${def.brand}`;
+		const desc = r > 0.55 && r < 0.75 ? '' : `<meta name="description" content="A practical guide to ${def.topic}: ${words}.">`;
+		const robots = r > 0.94 ? '<meta name="robots" content="noindex,follow">' : '';
+		const h1 = r > 0.8 && r < 0.9 ? '' : `<h1>${r < 0.45 ? words : def.topic}</h1>${r > 0.9 && r <= 0.94 ? '<h1>Welcome</h1>' : ''}`;
+		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}"></head><body>${h1}<p>demo</p></body></html>`;
+		return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
+	}) as typeof fetch;
+}
+
 /** Demo CrUX: a fetch stand-in. Some sites have field data, the rest answer 404 ("not enough traffic"), like the real API. */
 export function demoCruxFetch(): typeof fetch {
 	return (async (_url: RequestInfo | URL, init?: RequestInit) => {

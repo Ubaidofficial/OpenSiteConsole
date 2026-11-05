@@ -203,6 +203,46 @@ CREATE TABLE IF NOT EXISTS gtm_snapshots (
 	payload TEXT NOT NULL,              -- JSON {tags, triggers, variables}: compact summaries of the live version
 	fetched_at INTEGER NOT NULL
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_ai (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,
+	assistant TEXT NOT NULL,            -- ChatGPT | Perplexity | Gemini | Claude | Copilot
+	page TEXT NOT NULL,                 -- landing path, no query string
+	sessions INTEGER NOT NULL,
+	engaged_sessions INTEGER NOT NULL,
+	key_events REAL NOT NULL,
+	pulled_on TEXT NOT NULL,
+	PRIMARY KEY (site_id, days, assistant, page)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS seo_tests (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	name TEXT NOT NULL,
+	kind TEXT NOT NULL,                 -- split | before_after | switch
+	start_date TEXT NOT NULL,           -- the day the change went live
+	window_days INTEGER NOT NULL DEFAULT 28,
+	treatment TEXT NOT NULL,            -- JSON {prefixes, urls}
+	control TEXT NOT NULL,              -- JSON {prefixes, urls}, or {"restOfSite":true}
+	meta TEXT NOT NULL DEFAULT '{}',    -- switch: {old, new} scopes
+	note TEXT,
+	created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS index_events (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	at INTEGER NOT NULL,
+	kind TEXT NOT NULL,                 -- deindexed | indexed | canonical_changed | blocked | unblocked | fetch_error
+	detail TEXT
+);
+CREATE INDEX IF NOT EXISTS index_events_site ON index_events(site_id, at);
+CREATE TABLE IF NOT EXISTS onpage_checks (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	checked_at INTEGER NOT NULL,
+	payload TEXT NOT NULL,              -- JSON {status, finalUrl, error?, parsed, queries, issues, score}
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS api_keys (
 	id INTEGER PRIMARY KEY,
 	name TEXT NOT NULL, prefix TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,
@@ -224,6 +264,8 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('appearance_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN appearance_pulled_on TEXT');
 	if (!cols('sites').includes('ga4_periods_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_periods_on TEXT');
 	if (!cols('sites').includes('crux_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN crux_pulled_on TEXT');
+	if (!cols('sites').includes('index_monitor')) db.exec('ALTER TABLE sites ADD COLUMN index_monitor INTEGER NOT NULL DEFAULT 0');
+	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.
 	const version = db.pragma('user_version', { simple: true }) as number;

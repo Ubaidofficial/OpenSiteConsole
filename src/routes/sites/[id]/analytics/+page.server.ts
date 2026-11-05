@@ -4,6 +4,7 @@ import { getSite } from '$lib/server/clients';
 import { dailySeries, periodFor } from '$lib/server/queries';
 import { linksFor } from '$lib/server/links';
 import { pctChange } from '$lib/analytics';
+import { aiTrafficReport } from '$lib/server/insights';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { days } = await parent();
@@ -20,6 +21,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	const uniqueUsers = new Map((d.prepare('SELECT channel, users FROM ga4_period_users WHERE site_id = ? AND days = ?').all(site.id, days) as { channel: string; users: number }[]).map((r) => [r.channel, r.users]));
 	return {
 		linked: true as const,
+		ai: aiTrafficReport(site, days),
 		property: link.label ?? link.external_id,
 		status: { state: link.sync_status, message: link.sync_message, lastSync: link.last_sync_at },
 		series: dailySeries(site.id, p.start, p.end).map((g) => ({ date: g.date, clicks: organic.get(g.date) ?? 0, impressions: g.clicks, position: 0 })),

@@ -6,6 +6,7 @@ import { syncAccountSites } from './accounts';
 import { syncBing, syncClarity, syncGa4, syncGtm } from './channels';
 import type { LinkKind } from './links';
 import { cruxIntegration, syncCrux } from './crux';
+import { monitorSite } from './indexmon';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -61,6 +62,11 @@ export function enqueueCruxSync(siteId: number): boolean {
 	return enqueue(`crux:${siteId}`, () => syncCrux(siteId));
 }
 
+/** Indexing monitor for one site: inspects its top URLs and records changes. Opt-in per site, since it spends URL Inspection quota. */
+export function enqueueIndexMonitor(siteId: number): boolean {
+	return enqueue(`index:${siteId}`, () => monitorSite(siteId));
+}
+
 const SIX_HOURS = 6 * 3600_000;
 const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, gtm: 12 * 3600_000, clarity: 22 * 3600_000 };
 
@@ -79,6 +85,11 @@ export function schedulerTick() {
 	if (cruxIntegration()) {
 		const today = pacificToday();
 		for (const s of sites) if ((d.prepare('SELECT crux_pulled_on p FROM sites WHERE id = ?').get(s.id) as { p: string | null }).p !== today) enqueueCruxSync(s.id);
+	}
+	const today = pacificToday();
+	for (const s of sites) {
+		const row = d.prepare('SELECT index_monitor m, index_checked_on c FROM sites WHERE id = ?').get(s.id) as { m: number; c: string | null };
+		if (row.m && row.c !== today) enqueueIndexMonitor(s.id);
 	}
 	const links = d
 		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','gtm','clarity')")

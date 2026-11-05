@@ -1,4 +1,5 @@
 import { googleJson, accessToken, type HttpOptions } from './google';
+import { assistantOf, GA4_SOURCE_PATTERN, type Assistant } from '../ai';
 
 /** Endpoints and scopes verified against Google's GA4 docs. */
 const ADMIN = 'https://analyticsadmin.googleapis.com/v1beta';
@@ -130,6 +131,45 @@ export async function organicGoogleLanding(accountId: number, property: string, 
 		cur.engagedSessions += m[1];
 		cur.keyEvents += m[2];
 		merged.set(page, cur);
+	}
+	return [...merged.values()];
+}
+
+export interface Ga4Ai { assistant: Assistant; page: string; sessions: number; engagedSessions: number; keyEvents: number }
+
+/**
+ * Sessions that arrived from AI assistants (ChatGPT, Perplexity, Gemini, Claude, Copilot), by landing page. Sources are
+ * picked with a regular-expression filter and then named by `assistantOf`; rows it does not recognise are dropped.
+ */
+export async function aiAssistantTraffic(accountId: number, property: string, startDate: string, endDate: string, http: HttpOptions = {}): Promise<Ga4Ai[]> {
+	const r = await googleJson<{ rows?: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[] }>(
+		tok(accountId),
+		`${DATA}/${property}:runReport`,
+		{
+			method: 'POST',
+			body: JSON.stringify({
+				dateRanges: [{ startDate, endDate }],
+				dimensions: [{ name: 'sessionSource' }, { name: 'landingPagePlusQueryString' }],
+				metrics: ['sessions', 'engagedSessions', 'keyEvents'].map((name) => ({ name })),
+				dimensionFilter: { filter: { fieldName: 'sessionSource', stringFilter: { matchType: 'PARTIAL_REGEXP', value: GA4_SOURCE_PATTERN, caseSensitive: false } } },
+				orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+				limit: 10000
+			})
+		},
+		http
+	);
+	const merged = new Map<string, Ga4Ai>();
+	for (const row of r.rows ?? []) {
+		const assistant = assistantOf(row.dimensionValues[0].value);
+		if (!assistant) continue;
+		const page = landingPath(row.dimensionValues[1].value);
+		const m = row.metricValues.map((v) => Number(v.value));
+		const key = `${assistant}\n${page}`;
+		const cur = merged.get(key) ?? { assistant, page, sessions: 0, engagedSessions: 0, keyEvents: 0 };
+		cur.sessions += m[0];
+		cur.engagedSessions += m[1];
+		cur.keyEvents += m[2];
+		merged.set(key, cur);
 	}
 	return [...merged.values()];
 }
