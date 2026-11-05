@@ -27,7 +27,12 @@ synced locally (with planted patterns: a decaying page group, cannibalising page
 3. Put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`, restart, open **Accounts → Connect Google account**. Repeat per account.
 4. While the OAuth consent screen is in *Testing*, Google expires refresh tokens after about 7 days — publish the app (or accept re-connecting weekly). Verify this against Google's current OAuth docs.
 
-Production: `pnpm build && node build` (or the untested Dockerfile). **Set `ADMIN_PASSWORD`** before exposing it beyond localhost —
+**Faster day-to-day use:** `pnpm serve` builds and starts the production server on `http://localhost:5173` (pages load in tens of
+milliseconds instead of the hundreds `pnpm dev` takes, because dev compiles on demand). It reads `.env`, and defaults `ORIGIN`/`PORT`/`HOST`
+for you. Do not run `node build` directly on localhost: without `ORIGIN` in the process environment, SvelteKit assumes https and rejects
+every form submit as cross-site. `pnpm update` pulls the latest `main` and installs packages.
+
+Production: `pnpm serve` (or `pnpm start` after `pnpm build`; or the untested Dockerfile). **Set `ADMIN_PASSWORD`** before exposing it beyond localhost —
 without it the app refuses non-loopback requests. Put it behind HTTPS.
 
 ## Getting credentials
