@@ -59,7 +59,7 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 
 - **Privacy eye** (header): blurs site names, accounts, avatars, page and sitemap URLs, and branded queries (those containing your brand terms) for screenshots and screen sharing; hover tooltips that would reveal them are suppressed. The choice is remembered per browser. Numbers and non-branded queries stay visible. Your browser's own status bar can still show a link's address on hover.
 - **Eye on a card:** hides that site from the dashboard (it leaves the totals and stops syncing). A toast offers Undo, and "Show hidden sites" at the bottom brings it back.
-- **Theme menu** (header): Light, Dark or System.
+- **Light theme only**: there is no theme switcher, and the app ignores your OS dark-mode setting.
 - **Dashed end of each chart:** the last two days, which Google may still revise.
 
 ## What it does

@@ -4,8 +4,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn/ui "neutral" design tokens (light) */
+/* The app is light-only: no theme switcher, and the browser never swaps in dark form controls or scrollbars.
+   (The .dark token block below is kept but unused, in case a dark theme returns.) */
 :root {
+	color-scheme: light;
 	--radius: 0.75rem;
 	--background: oklch(0.985 0.002 95);
 	--foreground: oklch(0.145 0 0);

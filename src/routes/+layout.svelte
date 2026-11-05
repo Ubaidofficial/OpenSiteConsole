@@ -1,10 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import { ModeWatcher, mode } from 'mode-watcher';
 	import { Toaster, toast } from 'svelte-sonner';
 	import { Bot, LayoutDashboard, Layers, Map as MapIcon, Plug, RefreshCw, Users } from '@lucide/svelte';
-	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import PrivacyToggle from '$lib/components/privacy-toggle.svelte';
 	import { privacy } from '$lib/privacy.svelte';
 	import { onMount } from 'svelte';
@@ -43,8 +41,7 @@
 	});
 </script>
 
-<ModeWatcher />
-<Toaster theme={mode.current} richColors closeButton position="bottom-right" />
+<Toaster theme="light" richColors closeButton position="bottom-right" />
 
 <header class="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
 	<div class="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
@@ -71,7 +68,6 @@
 			{#if data.readOnly}<span class="chip">read-only</span>{/if}
 			{#if data.hasPassword}<form method="POST" action="/logout"><button class="rounded-md px-2 py-1 hover:bg-accent hover:text-accent-foreground">Sign out</button></form>{/if}
 			<PrivacyToggle />
-			<ThemeToggle />
 		</div>
 	</div>
 </header>
