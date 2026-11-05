@@ -8,6 +8,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"start": "node build",
+		"update": "git fetch origin && git checkout main && git pull --ff-only && pnpm install",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"test": "vitest run --passWithNoTests"
 	},

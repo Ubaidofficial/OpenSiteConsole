@@ -4,6 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
+	import { RefreshCw } from '@lucide/svelte';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import Delta from '$lib/components/Delta.svelte';
 	import { fmtInt, fmtPct, fmtPos, ago } from '$lib/format';
@@ -54,17 +55,19 @@
 		<h1 class="pii truncate text-lg font-semibold">{data.site.label || data.site.name}</h1>
 		<div class="text-xs text-muted-foreground">
 			<span class="pii">{data.site.url}</span> · {data.period.start} → {data.period.end}
-			· {#if data.site.syncStatus === 'running' || data.site.syncStatus === 'queued'}⟳ {data.site.syncStatus}{:else if data.site.syncStatus === 'error'}<span class="text-bad">sync error: {data.site.syncMessage}</span>{:else}synced {ago(data.site.lastSync)}{/if}
+			· {#if data.site.syncStatus === 'running' || data.site.syncStatus === 'queued'}{data.site.syncStatus}…{:else if data.site.syncStatus === 'error'}<span class="text-bad">sync error: {data.site.syncMessage}</span>{:else}synced {ago(data.site.lastSync)}{/if}
 			{#if !data.site.backfillDone && data.site.syncedThrough} · backfilling history (back to {data.site.backfilledTo}){/if}
 		</div>
 	</div>
 	<div class="ml-auto flex flex-wrap items-center gap-3">
 		<PeriodPicker days={data.days} />
 		{#if data.openseo?.url}<a class="btn" href={data.openseo.url} target="_blank" rel="noreferrer noopener" title={privacy.on ? undefined : `OpenSEO project: ${data.openseo.name}`}>OpenSEO ↗</a>{/if}
-		<form method="POST" action="{base}/sync" use:enhance><button class="btn" disabled={syncing}>{syncing ? '⟳ Syncing…' : '⟳ Sync'}</button></form>
+		<form method="POST" action="{base}/sync" use:enhance><button class="btn" disabled={syncing}><RefreshCw class="size-3.5 {syncing ? 'animate-spin' : ''}" />{syncing ? 'Syncing…' : 'Sync'}</button></form>
 	</div>
 </div>
 
+<!-- The totals live on Overview only: every other tab is a table that already has these columns. -->
+{#if isActive('')}
 <div class="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
 	{#each kpis as k}
 		<div class="card px-3 py-2">
@@ -74,6 +77,7 @@
 		</div>
 	{/each}
 </div>
+{/if}
 
 <nav class="mb-4 flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
 	{#each tabs as [t, label]}

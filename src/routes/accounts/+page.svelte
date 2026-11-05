@@ -54,7 +54,7 @@
 			{#if !data.readOnly}
 				<form method="POST" action="?/addSite" use:enhance class="mt-3 flex flex-wrap gap-2 border-t pt-3" style="border-color:var(--border)">
 					<input type="hidden" name="id" value={a.id} />
-					<input class="input w-80" name="siteUrl" placeholder="Add property: sc-domain:example.com or https://example.com/" />
+					<input class="input min-w-64 flex-1 sm:max-w-xl" name="siteUrl" placeholder="sc-domain:example.com or https://example.com/" aria-label="Property to add" />
 					<button class="btn">Add property</button>
 				</form>
 			{/if}
