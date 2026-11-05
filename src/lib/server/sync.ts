@@ -101,15 +101,11 @@ export async function syncSite(siteId: number, opts: SyncOptions = {}): Promise<
 		await pullDays(recent);
 		if (recent.length) {
 			const newest = recent[recent.length - 1];
-			const oldest = recent[0];
-			d.prepare('UPDATE sites SET synced_through = MAX(COALESCE(synced_through, ?), ?), backfilled_to = COALESCE(MIN(backfilled_to, ?), ?) WHERE id = ?').run(
-				newest,
-				newest,
-				oldest,
-				oldest,
-				siteId
-			);
+			d.prepare('UPDATE sites SET synced_through = MAX(COALESCE(synced_through, ?), ?) WHERE id = ?').run(newest, newest, siteId);
 		}
+		// The window [start, today] is now covered whether or not it held any traffic. Seeding the backfill
+		// cursor from it (not from the oldest day that has data) is what lets low-traffic sites walk back at all.
+		d.prepare('UPDATE sites SET backfilled_to = CASE WHEN backfilled_to IS NULL OR backfilled_to > ? THEN ? ELSE backfilled_to END WHERE id = ?').run(start, start, siteId);
 
 		// 2. One backfill chunk towards the retention horizon
 		site = clientForSite(siteId).site;
@@ -125,10 +121,11 @@ export async function syncSite(siteId: number, opts: SyncOptions = {}): Promise<
 				progress(`Backfilling ${from} → ${end}`);
 				const dates = await pullTotals(client, siteId, site.site_url, from, end);
 				await pullDays(dates);
-				// An entirely empty chunk means we have walked past the start of the property's data.
-				const reachedStart = dates.length === 0 || from <= horizon;
-				d.prepare('UPDATE sites SET backfilled_to = ?, backfill_done = ? WHERE id = ?').run(dates[0] ?? from, reachedStart ? 1 : 0, siteId);
-				res.backfillDone = reachedStart;
+				// An empty chunk does not mean the property's data has ended: small sites have long quiet stretches.
+				// Totals are one cheap request per chunk, so always scan on to the retention horizon.
+				const reachedHorizon = from <= horizon;
+				d.prepare('UPDATE sites SET backfilled_to = ?, backfill_done = ? WHERE id = ?').run(from, reachedHorizon ? 1 : 0, siteId);
+				res.backfillDone = reachedHorizon;
 			}
 		}
 

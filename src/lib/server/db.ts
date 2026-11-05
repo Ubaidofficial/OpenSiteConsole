@@ -163,6 +163,13 @@ declare global {
 function migrate(db: Database.Database) {
 	const cols = (t: string) => (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
 	if (!cols('accounts').includes('scopes')) db.exec("ALTER TABLE accounts ADD COLUMN scopes TEXT NOT NULL DEFAULT ''");
+	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
+	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.
+	const version = db.pragma('user_version', { simple: true }) as number;
+	if (version < 1) {
+		db.exec('UPDATE sites SET backfill_done = 0');
+		db.pragma('user_version = 1');
+	}
 }
 
 export function openDb(path: string): Database.Database {
