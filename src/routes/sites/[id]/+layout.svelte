@@ -2,11 +2,27 @@
 	import { privacy } from '$lib/privacy.svelte';
 	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import Delta from '$lib/components/Delta.svelte';
 	import { fmtInt, fmtPct, fmtPos, ago } from '$lib/format';
 
 	let { data, children } = $props();
+	const syncing = $derived(data.site.syncStatus === 'running' || data.site.syncStatus === 'queued');
+	let wasSyncing = false;
+	$effect(() => {
+		if (syncing) {
+			wasSyncing = true;
+			const t = setInterval(() => invalidateAll(), 2500);
+			return () => clearInterval(t);
+		}
+		if (wasSyncing) {
+			wasSyncing = false;
+			if (data.site.syncStatus === 'error') toast.error('Sync failed', { description: privacy.on ? undefined : (data.site.syncMessage ?? undefined) });
+			else toast.success('Sync finished');
+		}
+	});
 	const base = $derived(`/sites/${data.site.id}`);
 	const tabs = [
 		['', 'Overview'],
@@ -45,7 +61,7 @@
 	<div class="ml-auto flex flex-wrap items-center gap-3">
 		<PeriodPicker days={data.days} />
 		{#if data.openseo?.url}<a class="btn" href={data.openseo.url} target="_blank" rel="noreferrer noopener" title={privacy.on ? undefined : `OpenSEO project: ${data.openseo.name}`}>OpenSEO ↗</a>{/if}
-		<form method="POST" action="{base}/sync" use:enhance><button class="btn">⟳ Sync</button></form>
+		<form method="POST" action="{base}/sync" use:enhance><button class="btn" disabled={syncing}>{syncing ? '⟳ Syncing…' : '⟳ Sync'}</button></form>
 	</div>
 </div>
 

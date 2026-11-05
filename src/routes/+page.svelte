@@ -29,6 +29,24 @@
 	]);
 	const why = $derived(data.totals.comparable ? 'Previous period had too little data for a reliable comparison' : `Comparison shown once the history finishes loading (${data.totals.loading} site${data.totals.loading === 1 ? '' : 's'} still downloading)`);
 
+	// A real sync takes minutes (one Google request per day of history), so follow it live instead of
+	// showing a stale "synced 3 h ago" until the page is reloaded.
+	const syncing = $derived(data.cards.filter((c) => !c.hidden && (c.syncStatus === 'running' || c.syncStatus === 'queued')).length);
+	let wasSyncing = false;
+	$effect(() => {
+		if (syncing > 0) {
+			wasSyncing = true;
+			const t = setInterval(() => invalidateAll(), 2500);
+			return () => clearInterval(t);
+		}
+		if (wasSyncing) {
+			wasSyncing = false;
+			const failed = data.cards.filter((c) => !c.hidden && c.syncStatus === 'error');
+			if (failed.length) toast.error(`Sync finished: ${failed.length} site${failed.length === 1 ? '' : 's'} failed`, { description: privacy.on ? undefined : `${failed[0].syncMessage ?? 'Unknown error'}. Hover “⚠ sync error” on a card for details.` });
+			else toast.success('Sync finished');
+		}
+	});
+
 	const title = (c: (typeof data.cards)[number]) => (c.label || c.name).replace(' (URL prefix)', '');
 	const isPrefix = (c: (typeof data.cards)[number]) => (c.label || c.name).endsWith('(URL prefix)');
 
@@ -73,7 +91,7 @@
 			<option value="clicksDelta">Sort: Δ clicks</option>
 			<option value="name">Sort: name</option>
 		</select>
-		<form method="POST" action="?/syncAll" use:enhance><button class="btn"><RefreshCw class="size-3.5" />Sync all</button></form>
+		<form method="POST" action="?/syncAll" use:enhance><button class="btn" disabled={syncing > 0}><RefreshCw class="size-3.5 {syncing > 0 ? 'animate-spin' : ''}" />{syncing > 0 ? `Syncing ${syncing}…` : 'Sync all'}</button></form>
 	</div>
 </div>
 
@@ -153,7 +171,7 @@
 					{/each}
 					{#each c.tags as t}<span class="chip !py-0 text-[10px]">{t}</span>{/each}
 					<span class="ml-auto truncate">
-						{#if c.syncStatus === 'running' || c.syncStatus === 'queued'}<RefreshCw class="mr-1 inline size-3 animate-spin" />{c.syncStatus}{:else if c.syncStatus === 'error'}<span class="text-bad">⚠ sync error</span>{:else}synced {ago(c.lastSync)}{/if}{#if !c.backfillDone && c.hasData} · loading history{/if}
+						{#if c.syncStatus === 'running' || c.syncStatus === 'queued'}<RefreshCw class="mr-1 inline size-3 animate-spin" />{c.syncStatus}{:else if c.syncStatus === 'error'}<span class="text-bad" title={privacy.on ? undefined : (c.syncMessage ?? 'Sync failed')}>⚠ sync error</span>{:else}synced {ago(c.lastSync)}{/if}{#if !c.backfillDone && c.hasData} · loading history{/if}
 					</span>
 					<form method="POST" action="?/toggleHidden" use:enhance={hideEnhance(c)} class="relative z-10">
 						<input type="hidden" name="id" value={c.id} />

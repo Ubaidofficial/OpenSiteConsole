@@ -31,7 +31,7 @@
 		if (typeof f.error === 'string') toast.error(f.error);
 		else if (typeof f.ok === 'string') toast.success(f.ok);
 		else if (typeof f.summary === 'string') toast.success(f.summary);
-		else if (typeof f.queued === 'number') toast.success(`Queued ${f.queued} site${f.queued === 1 ? '' : 's'} for sync`);
+		else if (typeof f.queued === 'number') (f.queued === 0 ? toast('Nothing to queue: every site is already syncing or has no access') : toast.success(`Queued ${f.queued} site${f.queued === 1 ? '' : 's'} for sync`));
 		else if (typeof f.hidden === 'number') toast.success(`Hid ${f.hidden} duplicate propert${f.hidden === 1 ? 'y' : 'ies'}`);
 		else if (typeof f.newKey === 'string') toast.success('API key created. Copy it now; it is shown once.');
 	});
