@@ -96,3 +96,10 @@ src/lib/server/          db, crypto, google client, sync engine, job queue, SQL 
 src/routes/              dashboard, portfolio, sitemaps, accounts, sites/[id]/* tabs, auth
 tests/                   vitest
 ```
+
+## License
+
+OpenSiteConsole is free software under the **GNU Affero General Public License v3.0** (AGPL-3.0-only). See [LICENSE](LICENSE).
+In short: you may use, study, modify and share it. If you modify it and let other people use your version over a network
+(for example as a hosted service), the AGPL requires you to offer those users the corresponding source code. This summary is
+not legal advice; the license text is what applies.
