@@ -55,7 +55,14 @@
 	const paths = $derived(
 		METRICS.filter((m) => on.includes(m.key)).map((m) => {
 			const y = scale(m.key);
-			const d = data.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[m.key]).toFixed(1)}`).join('');
+			// A day with no impressions has no position: break the line instead of plotting a fake 0.
+			let d = '';
+			let pen = false;
+			data.forEach((p, i) => {
+				if (m.key === 'position' && !p.position) return void (pen = false);
+				d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[m.key]).toFixed(1)}`;
+				pen = true;
+			});
 			return { ...m, d };
 		})
 	);
@@ -119,7 +126,7 @@
 			>
 				<div class="mb-1 font-medium">{p.date}</div>
 				{#each METRICS.filter((m) => on.includes(m.key)) as m}
-					<div style="color:{m.color}">{m.label} {m.key === 'position' ? fmtPos(p[m.key]) : fmtInt(p[m.key])}</div>
+					<div style="color:{m.color}">{m.label} {m.key === 'position' ? (p.position ? fmtPos(p.position) : '–') : fmtInt(p[m.key])}</div>
 				{/each}
 			</div>
 		{/if}

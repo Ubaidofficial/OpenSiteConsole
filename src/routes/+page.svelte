@@ -19,8 +19,9 @@
 		{ label: 'Clicks', v: fmtInt(data.totals.clicks), d: data.totals.clicksDelta, inv: false },
 		{ label: 'Impressions', v: fmtInt(data.totals.impressions), d: data.totals.impressionsDelta, inv: false },
 		{ label: 'CTR', v: fmtPct(data.totals.ctr), d: data.totals.ctrDelta, inv: false },
-		{ label: 'Avg position', v: fmtPos(data.totals.position), d: data.totals.positionDelta, inv: true }
+		{ label: 'Avg position', v: fmtPos(data.totals.position), d: data.totals.positionDelta, inv: true, pos: true }
 	]);
+	const why = $derived(data.totals.comparable ? 'Previous period had too little data for a reliable comparison' : `Comparison shown once the history finishes loading (${data.totals.loading} site${data.totals.loading === 1 ? '' : 's'} still downloading)`);
 </script>
 
 <div class="mb-4 flex flex-wrap items-center gap-3">
@@ -54,7 +55,11 @@
 			<div class="card p-3">
 				<div class="text-xs text-muted">{k.label} · all visible sites</div>
 				<div class="tnum mt-1 text-2xl font-semibold">{k.v}</div>
-				<Delta value={k.d} invert={k.inv} /> <span class="text-xs text-muted">vs previous {data.days}d</span>
+				{#if k.d == null}
+					<span class="text-xs text-muted" title={why}>{data.totals.comparable ? 'no reliable comparison' : 'comparison pending'}</span>
+				{:else}
+					<Delta value={k.d} invert={k.inv} mode={k.pos ? 'pos' : 'pct'} {why} /> <span class="text-xs text-muted">{k.pos ? 'places ' : ''}vs previous {data.days}d</span>
+				{/if}
 			</div>
 		{/each}
 	</div>
@@ -65,6 +70,9 @@
 		</div>
 	{/if}
 	{#if form?.hidden !== undefined}<p class="mb-3 text-xs text-muted">Hid {form.hidden} duplicate propert{form.hidden === 1 ? 'y' : 'ies'}. Use “Show hidden sites” below to bring them back.</p>{/if}
+	{#if !data.totals.comparable}
+		<p class="mb-3 text-xs text-muted">Comparisons with the previous period appear once each site has finished downloading its history ({data.totals.loading} still loading). Totals for the selected period are already correct for the days downloaded so far.</p>
+	{/if}
 	{#if form?.queued !== undefined}<p class="mb-3 text-xs text-muted">Queued {form.queued} site(s) for sync.</p>{/if}
 
 	<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -86,10 +94,10 @@
 					</div>
 				{:else}
 					<div class="tnum mt-3 grid grid-cols-4 gap-2 text-sm">
-						<div><div class="text-[11px] text-muted">Clicks</div><div class="font-medium">{fmtInt(c.clicks)}</div><Delta value={c.clicksDelta} /></div>
-						<div><div class="text-[11px] text-muted">Impr.</div><div class="font-medium">{fmtInt(c.impressions)}</div><Delta value={c.impressionsDelta} /></div>
-						<div><div class="text-[11px] text-muted">CTR</div><div class="font-medium">{fmtPct(c.ctr)}</div><Delta value={c.ctrDelta} /></div>
-						<div><div class="text-[11px] text-muted">Pos.</div><div class="font-medium">{fmtPos(c.position)}</div><Delta value={c.positionDelta} invert /></div>
+						<div><div class="text-[11px] text-muted">Clicks</div><div class="font-medium">{fmtInt(c.clicks)}</div><Delta value={c.clicksDelta} why={c.comparable ? 'Too little data in the previous period' : 'Previous period still loading'} /></div>
+						<div><div class="text-[11px] text-muted">Impr.</div><div class="font-medium">{fmtInt(c.impressions)}</div><Delta value={c.impressionsDelta} why={c.comparable ? 'Too little data in the previous period' : 'Previous period still loading'} /></div>
+						<div><div class="text-[11px] text-muted">CTR</div><div class="font-medium">{fmtPct(c.ctr)}</div><Delta value={c.ctrDelta} why="Needs 100+ impressions in both periods" /></div>
+						<div><div class="text-[11px] text-muted">Pos.</div><div class="font-medium">{fmtPos(c.position)}</div><Delta value={c.positionDelta} mode="pos" why="Needs 20+ impressions in both periods" /></div>
 					</div>
 				{/if}
 				<div class="mt-2 flex items-center gap-2 text-[11px] text-muted">

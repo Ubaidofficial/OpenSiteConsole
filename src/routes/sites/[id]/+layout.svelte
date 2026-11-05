@@ -27,7 +27,7 @@
 		{ l: 'Clicks', v: fmtInt(data.kpis.clicks), d: data.kpis.clicksDelta, inv: false },
 		{ l: 'Impressions', v: fmtInt(data.kpis.impressions), d: data.kpis.impressionsDelta, inv: false },
 		{ l: 'CTR', v: fmtPct(data.kpis.ctr), d: data.kpis.ctrDelta, inv: false },
-		{ l: 'Avg position', v: fmtPos(data.kpis.position), d: data.kpis.positionDelta, inv: true }
+		{ l: 'Avg position', v: fmtPos(data.kpis.position), d: data.kpis.positionDelta, inv: true, pos: true }
 	]);
 </script>
 
@@ -53,7 +53,7 @@
 		<div class="card px-3 py-2">
 			<div class="text-xs text-muted">{k.l}</div>
 			<div class="tnum text-xl font-semibold">{k.v}</div>
-			<Delta value={k.d} invert={k.inv} />
+			<Delta value={k.d} invert={k.inv} mode={k.pos ? 'pos' : 'pct'} why={data.kpis.comparable ? 'Too little data for a reliable comparison' : 'Previous period still downloading'} />{#if k.d != null && k.pos}<span class="text-xs text-muted"> places</span>{/if}
 		</div>
 	{/each}
 </div>

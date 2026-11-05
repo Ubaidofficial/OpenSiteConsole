@@ -6,7 +6,7 @@ import { enqueueSiteSync } from '$lib/server/jobs';
 import { db } from '$lib/server/db';
 import { listAccounts } from '$lib/server/accounts';
 import { displayName } from '$lib/server/clients';
-import { ctrOf, pctChange } from '$lib/analytics';
+import { ctrOf, pctChangeMin, positionShift } from '$lib/analytics';
 import { allLinks } from '$lib/server/links';
 import { hideCoveredDuplicates, hideableDuplicates } from '$lib/server/duplicates';
 
@@ -24,11 +24,13 @@ export const load: PageServerLoad = ({ url }) => {
 			clicks: totals.now.clicks,
 			impressions: totals.now.impressions,
 			position: totals.now.position,
-			clicksDelta: pctChange(totals.now.clicks, totals.prev.clicks),
-			impressionsDelta: pctChange(totals.now.impressions, totals.prev.impressions),
+			comparable: totals.comparable,
+			loading: totals.loading,
+			clicksDelta: totals.comparable ? pctChangeMin(totals.now.clicks, totals.prev.clicks, 10) : null,
+			impressionsDelta: totals.comparable ? pctChangeMin(totals.now.impressions, totals.prev.impressions, 100) : null,
 			ctr: ctrOf(totals.now),
-			ctrDelta: pctChange(ctrOf(totals.now), ctrOf(totals.prev)),
-			positionDelta: pctChange(totals.now.position, totals.prev.position),
+			ctrDelta: totals.comparable && totals.prev.impressions >= 100 && totals.now.impressions >= 100 ? pctChangeMin(ctrOf(totals.now), ctrOf(totals.prev), 1e-9) : null,
+			positionDelta: totals.comparable ? positionShift(totals.now, totals.prev) : null,
 			sites: totals.sites,
 			duplicates: totals.duplicates
 		},
@@ -55,10 +57,11 @@ export const load: PageServerLoad = ({ url }) => {
 			impressions: c.now.impressions,
 			ctr: ctrOf(c.now),
 			position: c.now.position,
-			clicksDelta: pctChange(c.now.clicks, c.prev.clicks),
-			impressionsDelta: pctChange(c.now.impressions, c.prev.impressions),
-			ctrDelta: pctChange(ctrOf(c.now), ctrOf(c.prev)),
-			positionDelta: pctChange(c.now.position, c.prev.position),
+			comparable: c.comparable,
+			clicksDelta: c.comparable ? pctChangeMin(c.now.clicks, c.prev.clicks, 10) : null,
+			impressionsDelta: c.comparable ? pctChangeMin(c.now.impressions, c.prev.impressions, 100) : null,
+			ctrDelta: c.comparable && c.prev.impressions >= 100 && c.now.impressions >= 100 ? pctChangeMin(ctrOf(c.now), ctrOf(c.prev), 1e-9) : null,
+			positionDelta: c.comparable ? positionShift(c.now, c.prev) : null,
 			spark: c.spark
 		}))
 	};

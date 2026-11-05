@@ -1,5 +1,5 @@
 import { db } from './db';
-import { addDays, daysBetween, makePeriod, pacificToday, type Period } from './dates';
+import { addDays, daysBetween, eachDay, makePeriod, pacificToday, type Period } from './dates';
 import { fitCtrCurve, isBranded, parseTerms, sumMetrics, type CtrCurve, type Metrics, type PRow, type QPRow, type QRow } from '../analytics';
 import type { SiteRow } from './clients';
 import { coverageMap } from '../property';
@@ -30,8 +30,23 @@ export function summary(siteId: number, start: string, end: string): Metrics {
 
 export interface DayRow extends Metrics { date: string }
 
-export function dailySeries(siteId: number, start: string, end: string): DayRow[] {
-	return db().prepare('SELECT date, clicks, impressions, position FROM site_daily WHERE site_id = ? AND date BETWEEN ? AND ? ORDER BY date').all(siteId, start, end) as DayRow[];
+/**
+ * Search Console returns no row for a day with no impressions, so small sites have gaps. Charts and anomaly
+ * detection need a real calendar: fill the missing days with zeros (position 0 = "no data", drawn as a gap).
+ */
+export function fillDays(rows: DayRow[], start: string, end: string): DayRow[] {
+	const have = new Map(rows.map((r) => [r.date, r]));
+	return eachDay(start, end).map((date) => have.get(date) ?? { date, clicks: 0, impressions: 0, position: 0 });
+}
+
+export function dailySeries(siteId: number, start: string, end: string, fill = true): DayRow[] {
+	const rows = db().prepare('SELECT date, clicks, impressions, position FROM site_daily WHERE site_id = ? AND date BETWEEN ? AND ? ORDER BY date').all(siteId, start, end) as DayRow[];
+	return fill ? fillDays(rows, start, end) : rows;
+}
+
+/** True once the stored history reaches back over the whole previous comparison period. */
+export function historyCoversPrevious(site: Pick<SiteRow, 'backfill_done' | 'backfilled_to'>, prevStart: string): boolean {
+	return !!site.backfill_done || (!!site.backfilled_to && site.backfilled_to <= prevStart);
 }
 
 export interface Filters { country?: string; device?: string; search?: string; page?: string }
@@ -125,6 +140,8 @@ export interface SiteCard {
 	site: ReturnType<typeof allSites>[number];
 	/** id of the Domain property that already contains this URL-prefix property's data, if any */
 	coveredBy: number | null;
+	/** previous-period comparisons are only trustworthy once that period has been downloaded */
+	comparable: boolean;
 	now: Metrics;
 	prev: Metrics;
 	spark: number[];
@@ -139,6 +156,7 @@ export function siteCards(days: number, opts: { includeHidden?: boolean } = {}):
 		return {
 			site,
 			coveredBy: cover.get(site.id) ?? null,
+			comparable: historyCoversPrevious(site, period.prevStart),
 			period,
 			now: summary(site.id, period.start, period.end),
 			prev: summary(site.id, period.prevStart, period.prevEnd),
@@ -150,7 +168,15 @@ export function siteCards(days: number, opts: { includeHidden?: boolean } = {}):
 /** Each site is counted once: URL-prefix properties already inside a Domain property are left out. */
 export function portfolioTotals(cards: SiteCard[]) {
 	const counted = cards.filter((c) => c.coveredBy === null);
-	return { now: sumMetrics(counted.map((c) => c.now)), prev: sumMetrics(counted.map((c) => c.prev)), sites: cards.length, duplicates: cards.length - counted.length };
+	return {
+		now: sumMetrics(counted.map((c) => c.now)),
+		prev: sumMetrics(counted.map((c) => c.prev)),
+		sites: cards.length,
+		duplicates: cards.length - counted.length,
+		/** false while any counted site is still downloading the history the comparison needs */
+		comparable: counted.every((c) => c.comparable),
+		loading: counted.filter((c) => !c.comparable).length
+	};
 }
 
 // ── Annotations & before/after ───────────────────────────────────────────────

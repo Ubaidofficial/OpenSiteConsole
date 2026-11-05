@@ -36,6 +36,19 @@ export function pctChange(now: number, prev: number): number | null {
 	return prev ? (now - prev) / prev : null;
 }
 
+/**
+ * Percent change, but only when the baseline is big enough to mean something: going from 1 click to 3 is
+ * "+200%" arithmetically and noise in practice. Below the floor we show nothing rather than a misleading number.
+ */
+export function pctChangeMin(now: number, prev: number, minPrev: number): number | null {
+	return prev >= minPrev ? (now - prev) / prev : null;
+}
+
+/** Position change in places (negative = improved). Needs real impressions on both sides. */
+export function positionShift(now: { position: number; impressions: number }, prev: { position: number; impressions: number }, minImpressions = 20): number | null {
+	return now.impressions >= minImpressions && prev.impressions >= minImpressions ? now.position - prev.position : null;
+}
+
 // ── Branded split ────────────────────────────────────────────────────────────
 const squash = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 

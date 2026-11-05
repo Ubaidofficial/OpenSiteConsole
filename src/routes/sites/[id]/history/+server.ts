@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSite } from '$lib/server/clients';
 import { addDays } from '$lib/server/dates';
-import { pageHistory, queryHistory, siteEnd } from '$lib/server/queries';
+import { fillDays, pageHistory, queryHistory, siteEnd } from '$lib/server/queries';
 
 export const GET: RequestHandler = ({ params, url }) => {
 	const site = getSite(Number(params.id));
@@ -11,5 +11,5 @@ export const GET: RequestHandler = ({ params, url }) => {
 	const value = url.searchParams.get('value') ?? '';
 	const end = siteEnd(site);
 	const start = addDays(end, -Math.min(600, Number(url.searchParams.get('days')) || 480));
-	return json(kind === 'page' ? pageHistory(site.id, value, start, end) : queryHistory(site.id, value, start, end));
+	return json(fillDays(kind === 'page' ? pageHistory(site.id, value, start, end) : queryHistory(site.id, value, start, end), start, end));
 };
