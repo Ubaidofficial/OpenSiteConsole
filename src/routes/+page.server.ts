@@ -8,13 +8,13 @@ import { listAccounts, syncAccountSites } from '$lib/server/accounts';
 import { displayName } from '$lib/server/clients';
 import { ctrOf, pctChangeMin, positionShift } from '$lib/analytics';
 import { allLinks } from '$lib/server/links';
-import { hideCoveredDuplicates, hideableDuplicates } from '$lib/server/duplicates';
+import { hideCoveredDuplicates, hideableDuplicates, purgeRemovedSite } from '$lib/server/duplicates';
 
 export const load: PageServerLoad = ({ url }) => {
 	const days = daysParam(url);
 	const showHidden = url.searchParams.get('hidden') === '1';
 	const cards = siteCards(days, { includeHidden: showHidden });
-	const totals = portfolioTotals(cards.filter((c) => !c.site.hidden));
+	const totals = portfolioTotals(cards.filter((c) => !c.site.hidden && c.site.permission !== 'none'));
 	const links = allLinks();
 	const has = (id: number, k: string) => links.some((l) => l.site_id === id && l.kind === k);
 	return {
@@ -92,6 +92,15 @@ export const actions: Actions = {
 		return { queued: n, removed, listError };
 	},
 	hideDuplicates: async () => ({ hidden: hideCoveredDuplicates() }),
+	purgeRemoved: async ({ request }) => {
+		try {
+			const id = intParam((await request.formData()).get('id'));
+			if (!purgeRemovedSite(id)) return fail(400, { error: 'Only properties removed from Search Console can be deleted here.' });
+			return { ok: 'Deleted the stored data for that removed property.' };
+		} catch {
+			return fail(400, { error: 'Invalid site' });
+		}
+	},
 	toggleHidden: async ({ request }) => {
 		try {
 			const id = intParam((await request.formData()).get('id'));

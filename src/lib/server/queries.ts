@@ -181,7 +181,7 @@ export interface SiteCard {
 
 export function siteCards(days: number, opts: { includeHidden?: boolean } = {}): SiteCard[] {
 	const sites = allSites(opts);
-	const cover = coverageMap(sites.filter((s) => !s.hidden));
+	const cover = coverageMap(sites.filter((s) => !s.hidden && s.permission !== 'none'));
 	return sites.map((site) => {
 		const period = periodFor(site, days);
 		return {
