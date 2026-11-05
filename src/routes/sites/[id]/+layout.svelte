@@ -33,9 +33,9 @@
 
 <div class="mb-3 flex flex-wrap items-start gap-3">
 	<div class="min-w-0">
-		<div class="text-xs text-muted"><a href="/" class="hover:underline">All sites</a> / {data.account.label ?? data.account.email}</div>
+		<div class="text-xs text-muted-foreground"><a href="/" class="hover:underline">All sites</a> / {data.account.label ?? data.account.email}</div>
 		<h1 class="truncate text-lg font-semibold">{data.site.label || data.site.name}</h1>
-		<div class="text-xs text-muted">
+		<div class="text-xs text-muted-foreground">
 			{data.site.url} · {data.period.start} → {data.period.end}
 			· {#if data.site.syncStatus === 'running' || data.site.syncStatus === 'queued'}⟳ {data.site.syncStatus}{:else if data.site.syncStatus === 'error'}<span class="text-bad">sync error: {data.site.syncMessage}</span>{:else}synced {ago(data.site.lastSync)}{/if}
 			{#if !data.site.backfillDone && data.site.syncedThrough} · backfilling history (back to {data.site.backfilledTo}){/if}
@@ -51,16 +51,16 @@
 <div class="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
 	{#each kpis as k}
 		<div class="card px-3 py-2">
-			<div class="text-xs text-muted">{k.l}</div>
+			<div class="text-xs text-muted-foreground">{k.l}</div>
 			<div class="tnum text-xl font-semibold">{k.v}</div>
-			<Delta value={k.d} invert={k.inv} mode={k.pos ? 'pos' : 'pct'} why={data.kpis.comparable ? 'Too little data for a reliable comparison' : 'Previous period still downloading'} />{#if k.d != null && k.pos}<span class="text-xs text-muted"> places</span>{/if}
+			<Delta value={k.d} invert={k.inv} mode={k.pos ? 'pos' : 'pct'} why={data.kpis.comparable ? 'Too little data for a reliable comparison' : 'Previous period still downloading'} />{#if k.d != null && k.pos}<span class="ml-1 text-xs text-muted-foreground">places</span>{/if}
 		</div>
 	{/each}
 </div>
 
-<nav class="mb-4 flex flex-wrap gap-1 border-b" style="border-color:var(--line)">
+<nav class="mb-4 flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
 	{#each tabs as [t, label]}
-		<a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] {isActive(t) ? 'border-[color:var(--accent)] font-medium' : 'border-transparent text-muted hover:text-[color:var(--ink)]'}">{label}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a>
+		<a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] {isActive(t) ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a>
 	{/each}
 </nav>
 

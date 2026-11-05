@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { enhance } from '$app/forms';
 	let { data, form } = $props();
 </script>
@@ -16,7 +17,7 @@
 {#if !data.googleConfigured}
 	<div class="card mb-5 p-4 text-sm">
 		<p class="mb-2 font-medium">Set up Google OAuth to connect real accounts</p>
-		<ol class="ml-5 list-decimal space-y-1 text-muted">
+		<ol class="ml-5 list-decimal space-y-1 text-muted-foreground">
 			<li>In Google Cloud Console, enable the <b>Search Console API</b>, then create an <b>OAuth client ID</b> of type <i>Web application</i>.</li>
 			<li>Add this authorised redirect URI: <code class="rounded bg-black/5 px-1 dark:bg-white/10">{data.redirectUri}</code></li>
 			<li>Put <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in <code>.env</code> (see <code>.env.example</code>) and restart.</li>
@@ -31,7 +32,7 @@
 			<div class="flex flex-wrap items-center gap-3">
 				<div>
 					<div class="font-medium">{a.label ?? a.email} {#if a.is_demo}<span class="chip">demo</span>{/if}</div>
-					<div class="text-xs text-muted">{a.email} · {a.sites} properties</div>
+					<div class="text-xs text-muted-foreground">{a.email} · {a.sites} properties</div>
 				</div>
 				{#if a.status === 'revoked'}
 					<span class="chip text-bad">access revoked</span>
@@ -44,14 +45,14 @@
 						<input class="input w-36" name="label" placeholder="Label" value={a.label ?? ''} />
 						<button class="btn">Save</button>
 					</form>
-					<form method="POST" action="?/remove" use:enhance onsubmit={(e) => { if (!confirm('Remove this account and all its stored data?')) e.preventDefault(); }}>
+					<form method="POST" action="?/remove" use:enhance>
 						<input type="hidden" name="id" value={a.id} /><input type="hidden" name="confirm" value="yes" />
-						<button class="btn btn-danger">Remove</button>
+						<ConfirmButton title="Remove this account?" description="The account's tokens and all stored Search Console data for its sites will be deleted from this app. Nothing changes in Google." confirmLabel="Remove account">Remove</ConfirmButton>
 					</form>
 				</div>
 			</div>
 			{#if !data.readOnly}
-				<form method="POST" action="?/addSite" use:enhance class="mt-3 flex flex-wrap gap-2 border-t pt-3" style="border-color:var(--line)">
+				<form method="POST" action="?/addSite" use:enhance class="mt-3 flex flex-wrap gap-2 border-t pt-3" style="border-color:var(--border)">
 					<input type="hidden" name="id" value={a.id} />
 					<input class="input w-80" name="siteUrl" placeholder="Add property: sc-domain:example.com or https://example.com/" />
 					<button class="btn">Add property</button>
@@ -59,7 +60,7 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="card p-6 text-center text-muted">No accounts connected yet.</div>
+		<div class="card p-6 text-center text-muted-foreground">No accounts connected yet.</div>
 	{/each}
 </div>
-<p class="mt-4 text-xs text-muted">OAuth tokens are encrypted at rest (AES-256-GCM). Scope requested: {data.readOnly ? 'webmasters.readonly' : 'webmasters (read/write, needed for sitemaps and property management)'}.</p>
+<p class="mt-4 text-xs text-muted-foreground">OAuth tokens are encrypted at rest (AES-256-GCM). Scope requested: {data.readOnly ? 'webmasters.readonly' : 'webmasters (read/write, needed for sitemaps and property management)'}.</p>

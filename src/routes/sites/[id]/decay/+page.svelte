@@ -17,9 +17,9 @@
 	];
 </script>
 
-<p class="mb-3 text-xs text-muted">
+<p class="mb-3 text-xs text-muted-foreground">
 	Pages that lost 25%+ of clicks versus the previous period <i>and</i> pass a significance test (a ±2σ Poisson check), so ordinary noise on low-traffic pages is ignored.
-	Whole-site change over the period: <b class="text-[color:var(--ink)]">{fmtSigned(data.siteDelta)}</b>.
+	Whole-site change over the period: <b class="text-[color:var(--foreground)]">{fmtSigned(data.siteDelta)}</b>.
 	“site-wide” means the page fell with the whole site (look at seasonality or a site-level issue); “page-specific” means it fell more than the site did.
 	{#if !data.hasYear}Year-over-year needs 12+ months of stored history; it will appear once the backfill reaches that far.{/if}
 </p>

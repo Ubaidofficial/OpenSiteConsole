@@ -89,11 +89,11 @@
 		{/each}
 	</div>
 	{#if data.length === 0}
-		<div class="flex items-center justify-center text-muted" style="height:{height}px">No data in this period yet</div>
+		<div class="flex items-center justify-center text-muted-foreground" style="height:{height}px">No data in this period yet</div>
 	{:else}
 		<svg {width} {height} role="img" aria-label="Traffic chart" onpointermove={move} onpointerleave={() => (hover = null)} class="touch-none">
 			{#each [0.25, 0.5, 0.75] as g}
-				<line x1={pad.l} x2={width - pad.r} y1={pad.t + g * innerH} y2={pad.t + g * innerH} stroke="var(--line)" stroke-dasharray="2 4" />
+				<line x1={pad.l} x2={width - pad.r} y1={pad.t + g * innerH} y2={pad.t + g * innerH} stroke="var(--border)" stroke-dasharray="2 4" />
 			{/each}
 			{#each markers as mk}
 				{@const i = idx(mk.date)}
@@ -112,10 +112,10 @@
 				<path d={p.d} fill="none" stroke={p.color} stroke-width="1.75" stroke-linejoin="round" />
 			{/each}
 			{#each ticks as t}
-				<text x={x(t)} y={height - 6} font-size="11" fill="var(--muted)" text-anchor={t === 0 ? 'start' : t === data.length - 1 ? 'end' : 'middle'}>{data[t].date.slice(5)}</text>
+				<text x={x(t)} y={height - 6} font-size="11" fill="var(--muted-foreground)" text-anchor={t === 0 ? 'start' : t === data.length - 1 ? 'end' : 'middle'}>{data[t].date.slice(5)}</text>
 			{/each}
 			{#if hover !== null}
-				<line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={pad.t + innerH} stroke="var(--muted)" opacity="0.5" />
+				<line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={pad.t + innerH} stroke="var(--muted-foreground)" opacity="0.5" />
 			{/if}
 		</svg>
 		{#if hover !== null}

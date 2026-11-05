@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { ConfirmButton } from '$lib/components/ui/confirm';
+	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { enhance } from '$app/forms';
 	import { fmtInt } from '$lib/format';
 	let { data, form } = $props();
@@ -8,14 +10,19 @@
 <div class="mb-4 flex items-center gap-3">
 	<h1 class="text-lg font-semibold">Sitemaps across all sites</h1>
 	<form method="POST" action="?/resubmitAll" class="ml-auto" use:enhance={() => { busy = true; return async ({ update }) => { await update(); busy = false; }; }}>
-		<button class="btn" disabled={busy} onclick={(e) => { if (!confirm('Resubmit every known sitemap on every site?')) e.preventDefault(); }}>{busy ? 'Resubmitting…' : 'Resubmit all'}</button>
+		<ConfirmButton class="btn" destructive={false} title="Resubmit every known sitemap?" description="This asks Google to re-read every sitemap of every site. It does not guarantee faster indexing." confirmLabel="Resubmit all">{busy ? 'Resubmitting…' : 'Resubmit all'}</ConfirmButton>
 	</form>
 </div>
 {#if form?.summary}<p class="mb-3 text-sm text-good">{form.summary}</p>{/if}
 {#if form?.error}<p class="mb-3 text-sm text-bad">{form.error}</p>{/if}
 
 {#await data.rows}
-	<div class="card p-6 text-muted">Asking Search Console about every property…</div>
+	<div class="card divide-y">
+		{#each Array(6) as _}
+			<div class="flex items-center gap-4 p-3"><Skeleton class="h-4 w-48" /><Skeleton class="h-4 w-24" /><Skeleton class="ml-auto h-4 w-40" /></div>
+		{/each}
+	</div>
+	<p class="mt-2 text-xs text-muted-foreground">Asking Search Console about every property…</p>
 {:then rows}
 	<div class="card overflow-x-auto">
 		<table class="w-full">

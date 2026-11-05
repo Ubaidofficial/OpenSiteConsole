@@ -1,37 +1,71 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
+	import { ModeWatcher, mode } from 'mode-watcher';
+	import { Toaster, toast } from 'svelte-sonner';
+	import { Bot, LayoutDashboard, Layers, Map as MapIcon, Plug, RefreshCw, Users } from '@lucide/svelte';
+	import ThemeToggle from '$lib/components/theme-toggle.svelte';
+
 	let { data, children } = $props();
 	const links = [
-		['/', 'Dashboard'],
-		['/portfolio', 'Portfolio'],
-		['/sitemaps', 'Sitemaps'],
-		['/connect', 'Connect'],
-		['/agents', 'Agents'],
-		['/accounts', 'Accounts']
-	];
+		['/', 'Dashboard', LayoutDashboard],
+		['/portfolio', 'Portfolio', Layers],
+		['/sitemaps', 'Sitemaps', MapIcon],
+		['/connect', 'Connect', Plug],
+		['/agents', 'Agents', Bot],
+		['/accounts', 'Accounts', Users]
+	] as const;
 	const active = (href: string) => (href === '/' ? page.url.pathname === '/' || page.url.pathname.startsWith('/sites') : page.url.pathname.startsWith(href));
+
+	// One place turns every form-action result into a toast, so no action finishes silently.
+	let seen: unknown = null;
+	$effect(() => {
+		const f = page.form as Record<string, unknown> | null;
+		if (!f || f === seen) return;
+		seen = f;
+		if (typeof f.error === 'string') toast.error(f.error);
+		else if (typeof f.ok === 'string') toast.success(f.ok);
+		else if (typeof f.summary === 'string') toast.success(f.summary);
+		else if (typeof f.queued === 'number') toast.success(`Queued ${f.queued} site${f.queued === 1 ? '' : 's'} for sync`);
+		else if (typeof f.hidden === 'number') toast.success(`Hid ${f.hidden} duplicate propert${f.hidden === 1 ? 'y' : 'ies'}`);
+		else if (typeof f.newKey === 'string') toast.success('API key created. Copy it now; it is shown once.');
+	});
 </script>
 
-<header class="border-b" style="border-color:var(--line);background:var(--panel)">
-	<div class="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5">
-		<a href="/" class="whitespace-nowrap font-semibold tracking-tight">OpenSiteConsole</a>
-		<nav class="order-last flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto">
-			{#each links as [href, label]}
-				<a {href} class="rounded-md px-2.5 py-1 text-[13px] {active(href) ? 'bg-black/[.06] font-medium dark:bg-white/10' : 'text-muted hover:text-[color:var(--ink)]'}">{label}</a>
+<ModeWatcher />
+<Toaster theme={mode.current} richColors closeButton position="bottom-right" />
+
+<header class="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
+	<div class="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
+		<a href="/" class="flex items-center gap-2 font-semibold tracking-tight whitespace-nowrap">
+			<span class="grid size-6 place-items-center rounded-md bg-primary text-primary-foreground"><LayoutDashboard class="size-3.5" /></span>
+			OpenSiteConsole
+		</a>
+		<nav class="order-last flex w-full gap-0.5 overflow-x-auto sm:order-none sm:w-auto" aria-label="Main">
+			{#each links as [href, label, Icon]}
+				<a
+					{href}
+					aria-current={active(href) ? 'page' : undefined}
+					class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors {active(href) ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'}"
+				>
+					<Icon class="size-3.5" />{label}
+				</a>
 			{/each}
 		</nav>
-		<div class="ml-auto flex items-center gap-3 text-xs text-muted">
-			{#if data.queue.active + data.queue.waiting > 0}<span title="Background syncs">⟳ syncing {data.queue.active + data.queue.waiting}</span>{/if}
+		<div class="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+			{#if data.queue.active + data.queue.waiting > 0}
+				<span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-1" title="Background syncs running"><RefreshCw class="size-3 animate-spin" />{data.queue.active + data.queue.waiting} syncing</span>
+			{/if}
 			{#if data.demo}<span class="chip">demo data</span>{/if}
 			{#if data.readOnly}<span class="chip">read-only</span>{/if}
-			{#if data.hasPassword}<form method="POST" action="/logout"><button class="hover:underline">Sign out</button></form>{/if}
+			{#if data.hasPassword}<form method="POST" action="/logout"><button class="rounded-md px-2 py-1 hover:bg-accent hover:text-accent-foreground">Sign out</button></form>{/if}
+			<ThemeToggle />
 		</div>
 	</div>
 </header>
 {#if data.revoked}
-	<div class="border-b px-4 py-2 text-sm text-bad" style="border-color:var(--line)">
-		{data.revoked} Google account(s) lost access. <a class="underline" href="/accounts">Reconnect</a> to resume syncing.
+	<div class="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive">
+		{data.revoked} Google account(s) lost access. <a class="font-medium underline" href="/accounts">Reconnect</a> to resume syncing.
 	</div>
 {/if}
-<main class="mx-auto max-w-[1400px] px-4 py-5">{@render children()}</main>
+<main class="mx-auto max-w-[1400px] px-4 py-6">{@render children()}</main>

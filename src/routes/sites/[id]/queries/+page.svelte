@@ -44,13 +44,13 @@
 	</select>
 	<a class="btn ml-auto" href="/sites/{page.params.id}/export?dim=query&days={page.url.searchParams.get('days') ?? 28}">Export CSV</a>
 </div>
-<p class="mb-2 text-xs text-muted">Branded = contains {data.brandTerms.length ? data.brandTerms.join(', ') : '(no brand terms — set them in Settings)'}. Click a row for its full-history chart.</p>
+<p class="mb-2 text-xs text-muted-foreground">Branded = contains {data.brandTerms.length ? data.brandTerms.join(', ') : '(no brand terms — set them in Settings)'}. Click a row for its full-history chart.</p>
 
 <DataTable rows={data.rows} {cols} sortKey="clicks" onRowClick={toggle} />
 
 {#if open}
 	<div class="card mt-3 p-4">
 		<div class="mb-2 font-medium">“{open}” — all stored history</div>
-		{#if loading}<p class="text-muted">Loading…</p>{:else}<Chart data={history} defaultMetrics={['clicks', 'position']} height={220} />{/if}
+		{#if loading}<p class="text-muted-foreground">Loading…</p>{:else}<Chart data={history} defaultMetrics={['clicks', 'position']} height={220} />{/if}
 	</div>
 {/if}

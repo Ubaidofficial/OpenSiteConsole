@@ -26,15 +26,15 @@
 	<div class="mb-1 font-medium">Your CTR by position <span class="chip ml-1">{data.curve.source === 'fitted' ? 'fitted to your data' : data.curve.source === 'mixed' ? 'partly fitted' : 'industry default'}</span></div>
 	<div class="tnum flex gap-4 overflow-x-auto text-xs">
 		{#each data.curve.values as v, i}
-			<div><div class="text-muted">#{i + 1}</div><div class={data.curve.fitted[i] ? 'font-semibold' : 'text-muted'}>{fmtPct(v)}</div></div>
+			<div><div class="text-muted-foreground">#{i + 1}</div><div class={data.curve.fitted[i] ? 'font-semibold' : 'text-muted-foreground'}>{fmtPct(v)}</div></div>
 		{/each}
 	</div>
-	<p class="mt-2 text-xs text-muted">Non-branded rows only. Bold = measured on this site (500+ impressions at that position); grey = fallback benchmark.</p>
+	<p class="mt-2 text-xs text-muted-foreground">Non-branded rows only. Bold = measured on this site (500+ impressions at that position); grey = fallback benchmark.</p>
 </div>
 
-<h2 class="mb-1 font-medium">Striking distance <span class="font-normal text-muted">· positions 4–20, ranked by estimated gain</span></h2>
-<p class="mb-2 text-xs text-muted">Moving all of these to position 3 is worth roughly <b class="text-[color:var(--ink)]">{fmtInt(gain)}</b> extra clicks per period (an estimate, not a forecast).</p>
+<h2 class="mb-1 font-medium">Striking distance <span class="font-normal text-muted-foreground">· positions 4–20, ranked by estimated gain</span></h2>
+<p class="mb-2 text-xs text-muted-foreground">Moving all of these to position 3 is worth roughly <b class="text-[color:var(--foreground)]">{fmtInt(gain)}</b> extra clicks per period (an estimate, not a forecast).</p>
 <DataTable rows={data.striking} cols={sCols} sortKey="expectedGain" />
 
-<h2 class="mb-1 mt-8 font-medium">Title/snippet candidates <span class="font-normal text-muted">· CTR well below your curve for the position</span></h2>
+<h2 class="mb-1 mt-8 font-medium">Title/snippet candidates <span class="font-normal text-muted-foreground">· CTR well below your curve for the position</span></h2>
 <DataTable rows={data.ctrGaps} cols={gCols} sortKey="missedClicks" empty="No pages are significantly under-performing their position." />

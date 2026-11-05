@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { enhance } from '$app/forms';
 	import { fmtInt } from '$lib/format';
 	let { data, form } = $props();
@@ -28,13 +29,13 @@
 					<td class="td tnum text-right {Number(s.errors) ? 'text-bad' : ''}">{fmtInt(Number(s.errors ?? 0))}</td>
 					<td class="td whitespace-nowrap text-right">
 						<form method="POST" action="?/submit" use:enhance class="inline"><input type="hidden" name="feed" value={s.path} /><button class="btn">Resubmit</button></form>
-						<form method="POST" action="?/delete" use:enhance class="inline" onsubmit={(e) => { if (!confirm('Remove this sitemap from Search Console?')) e.preventDefault(); }}><input type="hidden" name="feed" value={s.path} /><button class="btn btn-danger">Remove</button></form>
+						<form method="POST" action="?/delete" use:enhance class="inline"><input type="hidden" name="feed" value={s.path} /><ConfirmButton title="Remove this sitemap from Search Console?" description="This removes the sitemap entry in Google Search Console itself, for everyone with access to the property." confirmLabel="Remove sitemap">Remove</ConfirmButton></form>
 					</td>
 				</tr>
 			{:else}
-				<tr><td class="td text-muted" colspan="7">No sitemaps submitted for this property.</td></tr>
+				<tr><td class="td text-muted-foreground" colspan="7">No sitemaps submitted for this property.</td></tr>
 			{/each}
 		</tbody>
 	</table>
 </div>
-<p class="mt-3 text-xs text-muted">Live from Search Console — not cached. Google reads a sitemap on its own schedule; resubmitting nudges it but does not guarantee immediate indexing.</p>
+<p class="mt-3 text-xs text-muted-foreground">Live from Search Console — not cached. Google reads a sitemap on its own schedule; resubmitting nudges it but does not guarantee immediate indexing.</p>

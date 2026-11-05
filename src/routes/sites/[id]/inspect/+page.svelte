@@ -16,7 +16,7 @@
 		</div>
 	</form>
 	{#if form?.error}<p class="mt-2 text-sm text-bad">{form.error}</p>{/if}
-	{#if form && 'live' in form}<p class="mt-2 text-xs text-muted">{form.live} fetched from Google, {form.cached} from cache.{form.truncated ? ' Only the first 20 URLs were used.' : ''}</p>{/if}
+	{#if form && 'live' in form}<p class="mt-2 text-xs text-muted-foreground">{form.live} fetched from Google, {form.cached} from cache.{form.truncated ? ' Only the first 20 URLs were used.' : ''}</p>{/if}
 </div>
 
 <div class="card overflow-x-auto">
@@ -37,12 +37,12 @@
 							{#if s?.googleCanonical && s?.userCanonical && s.googleCanonical !== s.userCanonical}<span class="text-warn" title="Google chose {s.googleCanonical}">mismatch</span>{:else}ok{/if}
 						</td>
 					{/if}
-					<td class="td text-xs text-muted">{ago(at)}</td>
+					<td class="td text-xs text-muted-foreground">{ago(at)}</td>
 				</tr>
 			{:else}
-				<tr><td class="td text-muted" colspan="6">Nothing inspected yet.</td></tr>
+				<tr><td class="td text-muted-foreground" colspan="6">Nothing inspected yet.</td></tr>
 			{/each}
 		</tbody>
 	</table>
 </div>
-<p class="mt-3 text-xs text-muted">Uses the URL Inspection API (quota is per property, roughly 2,000 inspections per day — verify current limits in Google’s docs). Results are cached for 12 hours.</p>
+<p class="mt-3 text-xs text-muted-foreground">Uses the URL Inspection API (quota is per property, roughly 2,000 inspections per day — verify current limits in Google’s docs). Results are cached for 12 hours.</p>

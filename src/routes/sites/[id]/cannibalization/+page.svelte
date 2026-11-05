@@ -6,7 +6,7 @@
 </script>
 
 <div class="mb-3 flex items-center gap-3">
-	<p class="text-xs text-muted">Queries where two or more of your pages each hold a real share of impressions. URL variants (www, trailing slash, tracking params) are merged first, so they are not reported as conflicts.</p>
+	<p class="text-xs text-muted-foreground">Queries where two or more of your pages each hold a real share of impressions. URL variants (www, trailing slash, tracking params) are merged first, so they are not reported as conflicts.</p>
 	<label class="ml-auto flex items-center gap-2 text-xs whitespace-nowrap"><input type="checkbox" bind:checked={showAll} /> include lower-severity ({data.groups.length} total)</label>
 </div>
 <div class="space-y-3">
@@ -15,7 +15,7 @@
 			<div class="mb-2 flex flex-wrap items-center gap-3">
 				<span class="font-medium">{g.query}</span>
 				<span class="chip {g.severity === 'high' ? 'text-bad' : 'text-warn'}">{g.severity === 'high' ? 'pages close in position' : 'one page dominates'}</span>
-				<span class="tnum ml-auto text-xs text-muted">{fmtInt(g.totalClicks)} clicks · {fmtInt(g.totalImpressions)} impr. · up to ~{fmtInt(g.potentialClicks)} clicks at stake</span>
+				<span class="tnum ml-auto text-xs text-muted-foreground">{fmtInt(g.totalClicks)} clicks · {fmtInt(g.totalImpressions)} impr. · up to ~{fmtInt(g.potentialClicks)} clicks at stake</span>
 			</div>
 			<table class="w-full text-[13px]">
 				<tbody>
@@ -33,6 +33,6 @@
 			</table>
 		</div>
 	{:else}
-		<div class="card p-6 text-center text-muted">No cannibalization at this severity. Try “include lower-severity” or a longer period.</div>
+		<div class="card p-6 text-center text-muted-foreground">No cannibalization at this severity. Try “include lower-severity” or a longer period.</div>
 	{/each}
 </div>

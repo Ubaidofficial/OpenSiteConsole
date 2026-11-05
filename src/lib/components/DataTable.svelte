@@ -83,11 +83,11 @@
 		</thead>
 		<tbody>
 			{#each view as row}
-				<tr class="hover:bg-black/[.03] dark:hover:bg-white/[.04]" class:cursor-pointer={!!onRowClick} onclick={() => onRowClick?.(row)}>
+				<tr class="hover:bg-muted/50" class:cursor-pointer={!!onRowClick} onclick={() => onRowClick?.(row)}>
 					{#each cols as c}
 						<td class="td" class:text-right={c.type && c.type !== 'text' && c.type !== 'link'} class:tnum={c.type && c.type !== 'text' && c.type !== 'link'} style={c.width ? `max-width:${c.width}` : ''}>
 							{#if c.type === 'link'}
-								<a class="block max-w-[34rem] truncate text-[color:var(--accent)] hover:underline" href={c.href ? c.href(row) : String(row[c.key])} target="_blank" rel="noreferrer noopener" title={String(row[c.key])}>{String(row[c.key]).replace(/^https?:\/\/(www\.)?/, '')}</a>
+								<a class="block max-w-[34rem] truncate text-[color:var(--link)] hover:underline" href={c.href ? c.href(row) : String(row[c.key])} target="_blank" rel="noreferrer noopener" title={String(row[c.key])}>{String(row[c.key]).replace(/^https?:\/\/(www\.)?/, '')}</a>
 							{:else if c.type === 'delta'}
 								<span class:text-good={(row[c.key] ?? 0) > 0.005} class:text-bad={(row[c.key] ?? 0) < -0.005}>{cell(c, row[c.key])}</span>
 							{:else}
@@ -97,13 +97,13 @@
 					{/each}
 				</tr>
 			{:else}
-				<tr><td class="td text-muted" colspan={cols.length}>{empty}</td></tr>
+				<tr><td class="td text-muted-foreground" colspan={cols.length}>{empty}</td></tr>
 			{/each}
 		</tbody>
 	</table>
 </div>
 {#if pages > 1}
-	<div class="mt-2 flex items-center gap-2 text-xs text-muted">
+	<div class="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
 		<button class="btn" disabled={page === 0} onclick={() => page--}>Prev</button>
 		<span>Page {page + 1} / {pages} · {fmtInt(sorted.length)} rows</span>
 		<button class="btn" disabled={page >= pages - 1} onclick={() => page++}>Next</button>
