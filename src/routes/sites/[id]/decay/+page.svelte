@@ -1,0 +1,27 @@
+<script lang="ts">
+	import DataTable from '$lib/components/DataTable.svelte';
+	import { fmtSigned } from '$lib/format';
+	let { data } = $props();
+	const specific = $derived(data.rows.filter((r) => r.scope === 'page-specific').length);
+	const cols = [
+		{ key: 'page', label: 'Page', type: 'link' as const },
+		{ key: 'lostClicks', label: 'Lost clicks', type: 'int' as const },
+		{ key: 'deltaPct', label: 'Δ clicks', type: 'delta' as const },
+		{ key: 'relativeDeltaPct', label: 'vs site', type: 'delta' as const, title: 'Page change minus whole-site change' },
+		{ key: 'yoyDeltaPct', label: 'vs last year', type: 'delta' as const },
+		{ key: 'prevClicks', label: 'Before', type: 'int' as const },
+		{ key: 'clicks', label: 'Now', type: 'int' as const },
+		{ key: 'positionPrev', label: 'Pos before', type: 'pos' as const },
+		{ key: 'positionNow', label: 'Pos now', type: 'pos' as const },
+		{ key: 'scope', label: 'Scope', type: 'text' as const }
+	];
+</script>
+
+<p class="mb-3 text-xs text-muted">
+	Pages that lost 25%+ of clicks versus the previous period <i>and</i> pass a significance test (a ±2σ Poisson check), so ordinary noise on low-traffic pages is ignored.
+	Whole-site change over the period: <b class="text-[color:var(--ink)]">{fmtSigned(data.siteDelta)}</b>.
+	“site-wide” means the page fell with the whole site (look at seasonality or a site-level issue); “page-specific” means it fell more than the site did.
+	{#if !data.hasYear}Year-over-year needs 12+ months of stored history; it will appear once the backfill reaches that far.{/if}
+</p>
+<p class="mb-2 text-sm"><b>{data.rows.length}</b> decaying pages · <b>{specific}</b> page-specific</p>
+<DataTable rows={data.rows} {cols} sortKey="lostClicks" empty="No significant decay. Nothing lost more than 25% with statistical confidence." />

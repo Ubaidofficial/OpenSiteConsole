@@ -1,0 +1,56 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import DataTable from '$lib/components/DataTable.svelte';
+	import Chart from '$lib/components/Chart.svelte';
+
+	let { data } = $props();
+	let open = $state<string | null>(null);
+	let history = $state<any[]>([]);
+	let loading = $state(false);
+
+	function setParam(k: string, v: string) {
+		const u = new URL(page.url);
+		v ? u.searchParams.set(k, v) : u.searchParams.delete(k);
+		goto(u.pathname + u.search, { keepFocus: true });
+	}
+	async function toggle(row: { query: string }) {
+		if (open === row.query) return (open = null);
+		open = row.query;
+		loading = true;
+		const u = `/sites/${page.params.id}/history?kind=query&value=${encodeURIComponent(row.query)}&days=480`;
+		history = await fetch(u).then((r) => r.json());
+		loading = false;
+	}
+	const cols = [
+		{ key: 'query', label: 'Query', type: 'text' as const },
+		{ key: 'clicks', label: 'Clicks', type: 'int' as const },
+		{ key: 'clicksDelta', label: 'Δ clicks', type: 'delta' as const },
+		{ key: 'impressions', label: 'Impressions', type: 'int' as const },
+		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
+		{ key: 'position', label: 'Position', type: 'pos' as const }
+	];
+</script>
+
+<div class="mb-3 flex flex-wrap items-center gap-2">
+	<select class="input" value={data.b} onchange={(e) => setParam('b', e.currentTarget.value)}>
+		<option value="all">All queries</option><option value="nonbrand">Non-branded</option><option value="brand">Branded</option>
+	</select>
+	<select class="input" value={data.filters.country ?? ''} onchange={(e) => setParam('country', e.currentTarget.value)}>
+		<option value="">All countries</option>{#each data.countries as c}<option value={c}>{c.toUpperCase()}</option>{/each}
+	</select>
+	<select class="input" value={data.filters.device ?? ''} onchange={(e) => setParam('device', e.currentTarget.value)}>
+		<option value="">All devices</option>{#each data.devices as d}<option value={d}>{d}</option>{/each}
+	</select>
+	<a class="btn ml-auto" href="/sites/{page.params.id}/export?dim=query&days={page.url.searchParams.get('days') ?? 28}">Export CSV</a>
+</div>
+<p class="mb-2 text-xs text-muted">Branded = contains {data.brandTerms.length ? data.brandTerms.join(', ') : '(no brand terms — set them in Settings)'}. Click a row for its full-history chart.</p>
+
+<DataTable rows={data.rows} {cols} sortKey="clicks" onRowClick={toggle} />
+
+{#if open}
+	<div class="card mt-3 p-4">
+		<div class="mb-2 font-medium">“{open}” — all stored history</div>
+		{#if loading}<p class="text-muted">Loading…</p>{:else}<Chart data={history} defaultMetrics={['clicks', 'position']} height={220} />{/if}
+	</div>
+{/if}

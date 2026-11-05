@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	--bg: #f7f7f5;
+	--panel: #ffffff;
+	--ink: #1b1d1f;
+	--muted: #6b7075;
+	--line: #e4e4df;
+	--accent: #1f6feb;
+	--good: #11813f;
+	--bad: #c0392b;
+	--warn: #b7791f;
+	--c-clicks: #1f6feb;
+	--c-impr: #8b5cf6;
+	--c-pos: #d97706;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #131415;
+		--panel: #1b1d1f;
+		--ink: #ececea;
+		--muted: #9a9fa5;
+		--line: #2b2e31;
+		--accent: #5b9bff;
+		--good: #3fb97a;
+		--bad: #ef6b5b;
+		--warn: #e0a84a;
+		--c-clicks: #5b9bff;
+		--c-impr: #a78bfa;
+		--c-pos: #f0a24b;
+	}
+}
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+@layer components {
+	.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+	.btn { display: inline-flex; align-items: center; gap: .4rem; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: .4rem .75rem; font-size: 13px; cursor: pointer; }
+	.btn:hover { border-color: var(--muted); }
+	.btn:disabled { opacity: .5; cursor: not-allowed; }
+	.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+	.btn-danger { color: var(--bad); }
+	.input { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: .4rem .65rem; font-size: 13px; }
+	.chip { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: .1rem .55rem; font-size: 12px; color: var(--muted); }
+	.chip-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+	.th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: .5rem .75rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+	.td { padding: .45rem .75rem; border-bottom: 1px solid var(--line); }
+	.tag-good { color: var(--good); } .tag-bad { color: var(--bad); } .tag-warn { color: var(--warn); }
+}
+.text-muted { color: var(--muted); }
+.text-bad { color: var(--bad); }
+.text-good { color: var(--good); }
+.text-warn { color: var(--warn); }
