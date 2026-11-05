@@ -30,7 +30,7 @@ synced locally (with planted patterns: a decaying page group, cannibalising page
 **Faster day-to-day use:** `pnpm serve` builds and starts the production server on `http://localhost:5173` (pages load in tens of
 milliseconds instead of the hundreds `pnpm dev` takes, because dev compiles on demand). It reads `.env`, and defaults `ORIGIN`/`PORT`/`HOST`
 for you. Do not run `node build` directly on localhost: without `ORIGIN` in the process environment, SvelteKit assumes https and rejects
-every form submit as cross-site. `pnpm update` pulls the latest `main` and installs packages.
+every form submit as cross-site. `pnpm get-latest` pulls the latest `main` and installs packages (not `pnpm update`, which is pnpm's own command for upgrading dependencies).
 
 Production: `pnpm serve` (or `pnpm start` after `pnpm build`; or the untested Dockerfile). **Set `ADMIN_PASSWORD`** before exposing it beyond localhost —
 without it the app refuses non-loopback requests. Put it behind HTTPS.
