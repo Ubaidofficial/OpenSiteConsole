@@ -8,6 +8,7 @@ import { listAccounts } from '$lib/server/accounts';
 import { displayName } from '$lib/server/clients';
 import { ctrOf, pctChange } from '$lib/analytics';
 import { allLinks } from '$lib/server/links';
+import { hideCoveredDuplicates, hideableDuplicates } from '$lib/server/duplicates';
 
 export const load: PageServerLoad = ({ url }) => {
 	const days = daysParam(url);
@@ -28,8 +29,10 @@ export const load: PageServerLoad = ({ url }) => {
 			ctr: ctrOf(totals.now),
 			ctrDelta: pctChange(ctrOf(totals.now), ctrOf(totals.prev)),
 			positionDelta: pctChange(totals.now.position, totals.prev.position),
-			sites: totals.sites
+			sites: totals.sites,
+			duplicates: totals.duplicates
 		},
+		duplicates: hideableDuplicates().map((d) => ({ id: d.id, name: displayName(d.url) })),
 		accounts: listAccounts().map((a) => ({ id: a.id, label: a.label ?? a.email, status: a.status })),
 		cards: cards.map((c) => ({
 			id: c.site.id,
@@ -40,6 +43,7 @@ export const load: PageServerLoad = ({ url }) => {
 			accountId: c.site.account_id,
 			permission: c.site.permission,
 			hidden: !!c.site.hidden,
+			coveredBy: c.coveredBy ? (cards.find((x) => x.site.id === c.coveredBy)?.site.site_url ?? null) : null,
 			connected: { bing: has(c.site.id, 'bing'), ga4: has(c.site.id, 'ga4'), clarity: has(c.site.id, 'clarity'), openseo: has(c.site.id, 'openseo') },
 			syncStatus: c.site.sync_status,
 			syncMessage: c.site.sync_message,
@@ -69,6 +73,7 @@ export const actions: Actions = {
 		for (const s of sites) if (enqueueSiteSync(s.id, 'auto')) n++;
 		return { queued: n };
 	},
+	hideDuplicates: async () => ({ hidden: hideCoveredDuplicates() }),
 	toggleHidden: async ({ request }) => {
 		try {
 			const id = intParam((await request.formData()).get('id'));

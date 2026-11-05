@@ -1,4 +1,5 @@
 import { db } from './db';
+import { propertyLabel } from '../property';
 import { DemoClient } from './demo';
 import { RealClient, type GscClient } from './google';
 
@@ -50,5 +51,5 @@ export function clientForSite(siteId: number): { client: GscClient; site: SiteRo
 
 /** Display name: domain properties lose the sc-domain: prefix, URL-prefix properties lose the scheme. */
 export function displayName(siteUrl: string): string {
-	return siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+	return propertyLabel(siteUrl);
 }

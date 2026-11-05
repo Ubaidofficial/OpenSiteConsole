@@ -7,6 +7,7 @@ import { linksFor } from './links';
 import { openSeoProjectUrl } from './connect';
 import { authenticate } from './apikeys';
 import { hostKey } from './hosts';
+import { coverageMap } from '../property';
 
 /** Read-only MCP server (Streamable HTTP, JSON responses). Nothing here writes or spends money. */
 
@@ -41,11 +42,13 @@ const TOOLS: Tool[] = [
 		name: 'list_sites',
 		description: 'Every Search Console property this key can see, with which data sources are connected (bing, ga4, clarity, openseo) and the newest synced date. Start here.',
 		schema: {},
-		run: (_a, sites) =>
-			sites.map((s) => {
+		run: (_a, sites) => {
+			const cover = coverageMap(sites);
+			return sites.map((s) => {
 				const l = linksFor(s.id);
-				return { id: s.id, name: displayName(s.site_url), property: s.site_url, account: s.account_label ?? s.account_email, syncedThrough: s.synced_through, connected: { google: true, bing: !!l.bing, ga4: !!l.ga4, clarity: !!l.clarity, openseo: l.openseo ? { projectId: l.openseo.external_id, name: l.openseo.label } : false } };
-			})
+				return { duplicateOfSiteId: cover.get(s.id) ?? null, id: s.id, name: displayName(s.site_url), property: s.site_url, account: s.account_label ?? s.account_email, syncedThrough: s.synced_through, connected: { google: true, bing: !!l.bing, ga4: !!l.ga4, clarity: !!l.clarity, openseo: l.openseo ? { projectId: l.openseo.external_id, name: l.openseo.label } : false } };
+			});
+		}
 	},
 	{
 		name: 'get_overview',

@@ -2,6 +2,7 @@ import { db } from './db';
 import { addDays, daysBetween, makePeriod, pacificToday, type Period } from './dates';
 import { fitCtrCurve, isBranded, parseTerms, sumMetrics, type CtrCurve, type Metrics, type PRow, type QPRow, type QRow } from '../analytics';
 import type { SiteRow } from './clients';
+import { coverageMap } from '../property';
 
 const WPOS = 'SUM(position * impressions) * 1.0 / NULLIF(SUM(impressions), 0)';
 const num = (n: unknown) => (typeof n === 'number' ? n : 0);
@@ -122,6 +123,8 @@ export function allSites(opts: { includeHidden?: boolean } = {}): (SiteRow & { a
 
 export interface SiteCard {
 	site: ReturnType<typeof allSites>[number];
+	/** id of the Domain property that already contains this URL-prefix property's data, if any */
+	coveredBy: number | null;
 	now: Metrics;
 	prev: Metrics;
 	spark: number[];
@@ -129,10 +132,13 @@ export interface SiteCard {
 }
 
 export function siteCards(days: number, opts: { includeHidden?: boolean } = {}): SiteCard[] {
-	return allSites(opts).map((site) => {
+	const sites = allSites(opts);
+	const cover = coverageMap(sites.filter((s) => !s.hidden));
+	return sites.map((site) => {
 		const period = periodFor(site, days);
 		return {
 			site,
+			coveredBy: cover.get(site.id) ?? null,
 			period,
 			now: summary(site.id, period.start, period.end),
 			prev: summary(site.id, period.prevStart, period.prevEnd),
@@ -141,8 +147,10 @@ export function siteCards(days: number, opts: { includeHidden?: boolean } = {}):
 	});
 }
 
+/** Each site is counted once: URL-prefix properties already inside a Domain property are left out. */
 export function portfolioTotals(cards: SiteCard[]) {
-	return { now: sumMetrics(cards.map((c) => c.now)), prev: sumMetrics(cards.map((c) => c.prev)), sites: cards.length };
+	const counted = cards.filter((c) => c.coveredBy === null);
+	return { now: sumMetrics(counted.map((c) => c.now)), prev: sumMetrics(counted.map((c) => c.prev)), sites: cards.length, duplicates: cards.length - counted.length };
 }
 
 // ── Annotations & before/after ───────────────────────────────────────────────

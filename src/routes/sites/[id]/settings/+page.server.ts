@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { clientForSite, displayName, getSite } from '$lib/server/clients';
+import { clientForSite, getSite } from '$lib/server/clients';
+import { bareName } from '$lib/property';
 import { config } from '$lib/server/config';
 import { audit, db } from '$lib/server/db';
 import { enqueueSiteSync } from '$lib/server/jobs';
@@ -46,7 +47,7 @@ export const actions: Actions = {
 		if (config.readOnly) return fail(403, { error: 'READ_ONLY=1: property removal is disabled.' });
 		const site = getSite(Number(params.id))!;
 		const typed = String((await request.formData()).get('confirm') ?? '').trim();
-		if (typed !== displayName(site.site_url)) return fail(400, { error: `Type ${displayName(site.site_url)} exactly to confirm.` });
+		if (typed !== bareName(site.site_url)) return fail(400, { error: `Type ${bareName(site.site_url)} exactly to confirm.` });
 		try {
 			await clientForSite(site.id).client.deleteSite(site.site_url);
 		} catch (e) {

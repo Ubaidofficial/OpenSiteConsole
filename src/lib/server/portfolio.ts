@@ -3,6 +3,7 @@ import { allSites, brandTerms, fittedCurve, pageTotals, periodFor, queryPageRows
 import { computeCannibalization, computeDecay, computeStriking, detectAnomalies, isBranded, pctChange } from '../analytics';
 import { addDays } from './dates';
 import { displayName } from './clients';
+import { coverageMap } from '../property';
 
 type Kind = 'striking' | 'cannibalization' | 'decay' | 'anomalies';
 const cache = new Map<string, { at: number; value: unknown }>();
@@ -23,7 +24,11 @@ function memo<T>(kind: Kind, days: number, fn: () => T): T {
 	return value;
 }
 
-const live = () => allSites().filter((s) => s.synced_through && !['siteUnverifiedUser', 'none'].includes(s.permission));
+const live = () => {
+	const visible = allSites();
+	const covered = coverageMap(visible); // avoid counting the same queries once per overlapping property
+	return visible.filter((s) => s.synced_through && !['siteUnverifiedUser', 'none'].includes(s.permission) && !covered.has(s.id));
+};
 const tag = (s: ReturnType<typeof live>[number]) => ({ siteId: s.id, site: s.label || displayName(s.site_url) });
 
 export function portfolioStriking(days: number) {

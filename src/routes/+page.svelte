@@ -24,7 +24,7 @@
 </script>
 
 <div class="mb-4 flex flex-wrap items-center gap-3">
-	<h1 class="text-lg font-semibold">All sites <span class="font-normal text-muted">· {data.totals.sites}</span></h1>
+	<h1 class="text-lg font-semibold">All sites <span class="font-normal text-muted">· {data.totals.sites}{#if data.totals.duplicates} ({data.totals.duplicates} overlapping){/if}</span></h1>
 	<PeriodPicker days={data.days} />
 	<div class="ml-auto flex flex-wrap items-center gap-2">
 		<input class="input w-48" placeholder="Search sites or tags" bind:value={q} />
@@ -58,6 +58,13 @@
 			</div>
 		{/each}
 	</div>
+	{#if data.duplicates.length}
+		<div class="card mb-4 flex flex-wrap items-center gap-3 p-3 text-sm">
+			<span><b>{data.duplicates.length}</b> URL-prefix {data.duplicates.length === 1 ? 'property is' : 'properties are'} already covered by a Domain property ({data.duplicates.map((d) => d.name.replace(' (URL prefix)', '')).join(', ')}). Totals count each site once, but both are still syncing.</span>
+			<form method="POST" action="?/hideDuplicates" use:enhance class="ml-auto"><button class="btn">Hide duplicates</button></form>
+		</div>
+	{/if}
+	{#if form?.hidden !== undefined}<p class="mb-3 text-xs text-muted">Hid {form.hidden} duplicate propert{form.hidden === 1 ? 'y' : 'ies'}. Use “Show hidden sites” below to bring them back.</p>{/if}
 	{#if form?.queued !== undefined}<p class="mb-3 text-xs text-muted">Queued {form.queued} site(s) for sync.</p>{/if}
 
 	<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -67,6 +74,7 @@
 					<div class="min-w-0">
 						<div class="truncate font-medium">{c.label || c.name}</div>
 						<div class="truncate text-xs text-muted">{c.label ? c.name + ' · ' : ''}{c.account}</div>
+						{#if c.coveredBy}<div class="truncate text-[11px] text-warn" title="This property's data is already included in {c.coveredBy}">↳ included in {c.coveredBy.replace('sc-domain:', '')}</div>{/if}
 					</div>
 					<Sparkline values={c.spark} />
 				</div>
