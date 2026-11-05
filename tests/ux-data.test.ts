@@ -72,3 +72,22 @@ describe('signed percent formatting', () => {
 		expect(fmtSigned(null)).toBe('–');
 	});
 });
+
+import { seriesTrend, trendOf } from '../src/lib/trend';
+describe('trend colouring', () => {
+	const ramp = (a: number, b: number, n = 28) => Array.from({ length: n }, (_, i) => a + ((b - a) * i) / (n - 1));
+	it('reads direction from the series when there is no reliable comparison', () => {
+		expect(seriesTrend(ramp(2, 20))).toBe('up');
+		expect(seriesTrend(ramp(20, 2))).toBe('down');
+		expect(seriesTrend(ramp(10, 10.5))).toBe('flat');
+		expect(seriesTrend([0, 1, 0, 0, 1, 0, 0, 0])).toBe('flat'); // two clicks never paint a card
+		expect(seriesTrend([1, 2])).toBe('flat');
+	});
+	it('prefers the period-over-period change so the line agrees with the percentage next to it', () => {
+		expect(trendOf(0.4, ramp(20, 2))).toBe('up'); // the delta wins over the series shape
+		expect(trendOf(-0.2, ramp(2, 20))).toBe('down');
+		expect(trendOf(0.012, ramp(20, 2))).toBe('up'); // +1.2% counts as growth, matching the green percentage
+		expect(trendOf(0.002, ramp(2, 20))).toBe('flat'); // within ±0.5%
+		expect(trendOf(null, ramp(2, 20))).toBe('up');
+	});
+});

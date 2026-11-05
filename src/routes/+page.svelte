@@ -5,6 +5,7 @@
 	import { Eye, EyeOff, ExternalLink, RefreshCw, Search } from '@lucide/svelte';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import AreaSpark from '$lib/components/AreaSpark.svelte';
+	import { trendOf } from '$lib/trend';
 	import SiteAvatar from '$lib/components/SiteAvatar.svelte';
 	import Delta from '$lib/components/Delta.svelte';
 	import { privacy } from '$lib/privacy.svelte';
@@ -138,7 +139,7 @@
 						{:else}Waiting for first sync…{/if}
 					</div>
 				{:else}
-					<AreaSpark values={c.spark} class="mt-5" />
+					<AreaSpark values={c.spark} trend={trendOf(c.clicksDelta, c.spark)} class="mt-5" />
 					<div class="tnum mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
 						<span class="inline-flex items-center gap-1.5">Impr. <b class="font-medium text-foreground">{fmtInt(c.impressions)}</b><Delta value={c.impressionsDelta} why={c.comparable ? 'Too little data in the previous period' : 'Previous period still loading'} /></span>
 						<span class="inline-flex items-center gap-1.5">CTR <b class="font-medium text-foreground">{fmtPct(c.ctr)}</b><Delta value={c.ctrDelta} why="Needs 100+ impressions in both periods" /></span>
@@ -165,7 +166,7 @@
 		{/each}
 	</div>
 	<p class="mt-6 text-xs text-muted-foreground">
-		Periods end at each site's newest synced day (Search Console data lags ~2 days; days are Pacific time). Dashed line = the last 2 days, which Google may still revise.
+		Periods end at each site's newest synced day (Search Console data lags ~2 days; days are Pacific time). Green line = clicks growing, red = falling (vs the previous period); dashed end = the last 2 days, which Google may still revise.
 		<a class="underline underline-offset-2" href="?days={data.days}&hidden={data.showHidden ? 0 : 1}">{data.showHidden ? 'Hide' : 'Show'} hidden sites</a>
 	</p>
 {/if}
