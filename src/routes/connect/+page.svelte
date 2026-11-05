@@ -150,7 +150,7 @@
 						<td class="td {r.google === 'synced' ? 'text-good' : 'text-muted-foreground'}">{r.google === 'synced' ? '✓' : r.google}</td>
 						{#each ['bing', 'ga4', 'clarity', 'openseo'] as const as k}
 							{@const l = r.links[k]}
-							<td class="td align-top text-xs">
+							<td class="td text-xs">
 								{#if l}
 									<div class="flex items-center gap-1">
 										<span class={l.status === 'error' ? 'text-bad' : 'text-good'}>{l.status === 'error' ? '⚠' : '✓'}</span>
