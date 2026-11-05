@@ -55,6 +55,13 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 - **Agents page** → create an API key (optionally limited to some sites) → add OpenSiteConsole as an MCP server next to OpenSEO's. Nine read-only tools; nothing can write or spend money.
 - Connect OpenSEO on the Connect page and each site is linked to its OpenSEO project by domain. An agent calls `get_openseo_project` to obtain the project id, then uses OpenSEO's own tools (keyword research, rank tracking, audits) on it — first-party history from here, third-party data from there.
 
+## Using the dashboard
+
+- **Privacy eye** (header): blurs site names, accounts and URLs for screenshots and screen sharing; the choice is remembered per browser. Numbers stay visible.
+- **Eye on a card:** hides that site from the dashboard (it leaves the totals and stops syncing). A toast offers Undo, and "Show hidden sites" at the bottom brings it back.
+- **Theme menu** (header): Light, Dark or System.
+- **Dashed end of each chart:** the last two days, which Google may still revise.
+
 ## What it does
 
 | Area | Details |

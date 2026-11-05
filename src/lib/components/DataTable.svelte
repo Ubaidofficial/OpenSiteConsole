@@ -85,7 +85,7 @@
 			{#each view as row}
 				<tr class="hover:bg-muted/50" class:cursor-pointer={!!onRowClick} onclick={() => onRowClick?.(row)}>
 					{#each cols as c}
-						<td class="td" class:text-right={c.type && c.type !== 'text' && c.type !== 'link'} class:tnum={c.type && c.type !== 'text' && c.type !== 'link'} style={c.width ? `max-width:${c.width}` : ''}>
+						<td class="td" class:pii={c.key === 'site'} class:text-right={c.type && c.type !== 'text' && c.type !== 'link'} class:tnum={c.type && c.type !== 'text' && c.type !== 'link'} style={c.width ? `max-width:${c.width}` : ''}>
 							{#if c.type === 'link'}
 								<a class="block max-w-[34rem] truncate text-[color:var(--link)] hover:underline" href={c.href ? c.href(row) : String(row[c.key])} target="_blank" rel="noreferrer noopener" title={String(row[c.key])}>{String(row[c.key]).replace(/^https?:\/\/(www\.)?/, '')}</a>
 							{:else if c.type === 'delta'}

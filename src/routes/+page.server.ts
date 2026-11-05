@@ -39,6 +39,7 @@ export const load: PageServerLoad = ({ url }) => {
 		cards: cards.map((c) => ({
 			id: c.site.id,
 			name: displayName(c.site.site_url),
+			href: c.site.site_url.startsWith('sc-domain:') ? `https://${c.site.site_url.slice(10)}/` : c.site.site_url,
 			label: c.site.label,
 			tags: c.site.tags ? c.site.tags.split(',').filter(Boolean) : [],
 			account: c.site.account_label ?? c.site.account_email,

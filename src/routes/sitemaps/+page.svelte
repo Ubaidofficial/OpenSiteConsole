@@ -34,7 +34,7 @@
 					{@const err = r.sitemaps.reduce((a, s) => a + Number(s.errors ?? 0), 0)}
 					{@const last = r.sitemaps.map((s) => s.lastDownloaded ?? '').sort().pop()}
 					<tr>
-						<td class="td"><a class="hover:underline" href="/sites/{r.id}/sitemaps">{r.name}</a></td>
+						<td class="td"><a class="pii hover:underline" href="/sites/{r.id}/sitemaps">{r.name}</a></td>
 						{#if r.error}
 							<td class="td text-bad" colspan="5">{r.error}</td>
 						{:else}

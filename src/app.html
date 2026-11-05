@@ -4,6 +4,12 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>OpenSiteConsole</title>
+		<script>
+			// Apply privacy mode before first paint so site names never flash on screen.
+			try {
+				if (localStorage.getItem('osc_privacy') === '1') document.documentElement.dataset.privacy = 'on';
+			} catch {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

@@ -61,3 +61,14 @@ describe('comparison readiness', () => {
 		expect(dailySeries(1, addDays('2026-11-03', -6), '2026-11-03')).toHaveLength(7);
 	});
 });
+
+import { fmtSigned } from '../src/lib/format';
+describe('signed percent formatting', () => {
+	it('formats normally, uses a real minus sign, and caps absurd increases', () => {
+		expect(fmtSigned(0.123)).toBe('+12.3%');
+		expect(fmtSigned(-0.5)).toBe('−50.0%');
+		expect(fmtSigned(114.118)).toBe('>+999%'); // +11411.8% is noise, not information
+		expect(fmtSigned(9.5)).toBe('+950.0%');
+		expect(fmtSigned(null)).toBe('–');
+	});
+});

@@ -33,10 +33,10 @@
 
 <div class="mb-3 flex flex-wrap items-start gap-3">
 	<div class="min-w-0">
-		<div class="text-xs text-muted-foreground"><a href="/" class="hover:underline">All sites</a> / {data.account.label ?? data.account.email}</div>
-		<h1 class="truncate text-lg font-semibold">{data.site.label || data.site.name}</h1>
+		<div class="text-xs text-muted-foreground"><a href="/" class="hover:underline">All sites</a> / <span class="pii">{data.account.label ?? data.account.email}</span></div>
+		<h1 class="pii truncate text-lg font-semibold">{data.site.label || data.site.name}</h1>
 		<div class="text-xs text-muted-foreground">
-			{data.site.url} · {data.period.start} → {data.period.end}
+			<span class="pii">{data.site.url}</span> · {data.period.start} → {data.period.end}
 			· {#if data.site.syncStatus === 'running' || data.site.syncStatus === 'queued'}⟳ {data.site.syncStatus}{:else if data.site.syncStatus === 'error'}<span class="text-bad">sync error: {data.site.syncMessage}</span>{:else}synced {ago(data.site.lastSync)}{/if}
 			{#if !data.site.backfillDone && data.site.syncedThrough} · backfilling history (back to {data.site.backfilledTo}){/if}
 		</div>

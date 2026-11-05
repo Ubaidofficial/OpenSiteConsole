@@ -31,8 +31,8 @@
 		<div class="card p-4">
 			<div class="flex flex-wrap items-center gap-3">
 				<div>
-					<div class="font-medium">{a.label ?? a.email} {#if a.is_demo}<span class="chip">demo</span>{/if}</div>
-					<div class="text-xs text-muted-foreground">{a.email} · {a.sites} properties</div>
+					<div class="pii font-medium">{a.label ?? a.email} {#if a.is_demo}<span class="chip">demo</span>{/if}</div>
+					<div class="text-xs text-muted-foreground"><span class="pii">{a.email}</span> · {a.sites} properties</div>
 				</div>
 				{#if a.status === 'revoked'}
 					<span class="chip text-bad">access revoked</span>

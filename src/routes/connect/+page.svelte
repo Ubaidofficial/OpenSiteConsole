@@ -37,7 +37,7 @@
 		<ul class="mb-3 space-y-1 text-sm">
 			{#each data.accounts as a}
 				<li class="flex items-center gap-2">
-					<span>{a.email}</span>
+					<span class="pii">{a.email}</span>
 					{#if a.status === 'revoked'}<span class="chip text-bad">revoked</span>{/if}
 					{#if a.ga4}<span class="chip text-good">GA4 ✓</span>{:else}<span class="chip text-warn" title="Reconnect to grant GA4 access">GA4 not granted</span>{/if}
 				</li>
@@ -97,7 +97,7 @@
 			<tbody>
 				{#each data.rows as r (r.id)}
 					<tr>
-						<td class="td whitespace-nowrap">{r.name}</td>
+						<td class="td pii whitespace-nowrap">{r.name}</td>
 						<td class="td">
 							{#if r.links.clarity}
 								<span class="text-good">✓ connected</span> <span class="text-xs text-muted-foreground">· {r.clarityCallsLeft} calls left today</span>
@@ -145,7 +145,7 @@
 			<tbody>
 				{#each data.rows as r (r.id)}
 					<tr>
-						<td class="td whitespace-nowrap"><a class="hover:underline" href="/sites/{r.id}">{r.name}</a><div class="text-[11px] text-muted-foreground">{r.account}</div></td>
+						<td class="td whitespace-nowrap"><a class="pii hover:underline" href="/sites/{r.id}">{r.name}</a><div class="pii text-[11px] text-muted-foreground">{r.account}</div></td>
 						<td class="td {r.google === 'synced' ? 'text-good' : 'text-muted-foreground'}">{r.google === 'synced' ? '✓' : r.google}</td>
 						{#each ['bing', 'ga4', 'clarity', 'openseo'] as const as k}
 							{@const l = r.links[k]}

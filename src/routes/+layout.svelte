@@ -5,6 +5,11 @@
 	import { Toaster, toast } from 'svelte-sonner';
 	import { Bot, LayoutDashboard, Layers, Map as MapIcon, Plug, RefreshCw, Users } from '@lucide/svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
+	import PrivacyToggle from '$lib/components/privacy-toggle.svelte';
+	import { privacy } from '$lib/privacy.svelte';
+	import { onMount } from 'svelte';
+
+	onMount(() => privacy.init());
 
 	let { data, children } = $props();
 	const links = [
@@ -59,6 +64,7 @@
 			{#if data.demo}<span class="chip">demo data</span>{/if}
 			{#if data.readOnly}<span class="chip">read-only</span>{/if}
 			{#if data.hasPassword}<form method="POST" action="/logout"><button class="rounded-md px-2 py-1 hover:bg-accent hover:text-accent-foreground">Sign out</button></form>{/if}
+			<PrivacyToggle />
 			<ThemeToggle />
 		</div>
 	</div>
