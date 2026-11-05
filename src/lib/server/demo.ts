@@ -50,6 +50,15 @@ export const DEMO_ACCOUNTS: { sub: string; email: string; label: string; sites: 
 	}
 ];
 
+/** Share of web traffic each non-web type gets, per site (0 = the site has none). Deterministic. */
+const TYPE_SHARE: Record<string, (siteUrl: string) => number> = {
+	image: (u) => (h01(u, 'image') > 0.35 ? 0.05 + h01(u, 'image', 's') * 0.05 : 0),
+	video: (u) => (h01(u, 'video') > 0.7 ? 0.015 : 0),
+	news: () => 0,
+	discover: (u) => (h01(u, 'discover') > 0.6 ? 0.08 : 0),
+	googleNews: () => 0
+};
+
 interface Atom {
 	query: string;
 	page: string;
@@ -166,6 +175,22 @@ export class DemoClient implements GscClient {
 	async deleteSite() {}
 
 	async query(siteUrl: string, body: QueryBody): Promise<SearchRow[]> {
+		const dimsIn = body.dimensions ?? [];
+		if (dimsIn.length === 1 && dimsIn[0] === 'searchAppearance') return this.appearance(siteUrl, body);
+		const type = body.type ?? body.searchType ?? 'web';
+		// Other search types: a deterministic share of web traffic, present only for some sites, with Discover and
+		// Images showing the usual shape (lots of impressions, few clicks).
+		const share = type === 'web' ? 1 : TYPE_SHARE[type]?.(siteUrl) ?? 0;
+		if (share === 0) return [];
+		if (type !== 'web') {
+			const rows = await this.query(siteUrl, { ...body, type: 'web', searchType: undefined });
+			const ctrScale = type === 'discover' ? 0.35 : type === 'image' ? 0.5 : 0.8;
+			return rows.map((r) => {
+				const impressions = Math.round(r.impressions * share * (type === 'discover' ? 1.5 : 1));
+				const clicks = Math.round(r.clicks * share * ctrScale);
+				return { ...r, clicks, impressions, ctr: impressions ? clicks / impressions : 0, position: type === 'image' ? r.position + 4 : r.position };
+			});
+		}
 		const last = this.lastDay();
 		const end = body.endDate > last ? last : body.endDate;
 		const first = addDays(last, -DEMO_HISTORY_DAYS);
@@ -194,6 +219,18 @@ export class DemoClient implements GscClient {
 		rows.sort((a, b) => (dims[0] === 'date' ? a.keys[0].localeCompare(b.keys[0]) : b.clicks - a.clicks));
 		const from = body.startRow ?? 0;
 		return rows.slice(from, from + (body.rowLimit ?? 1000));
+	}
+
+	/** Demo search-appearance report: a couple of codes per site, as a small share of web traffic in the window. */
+	private async appearance(siteUrl: string, body: QueryBody): Promise<SearchRow[]> {
+		const days = await this.query(siteUrl, { startDate: body.startDate, endDate: body.endDate, dimensions: ['date'], rowLimit: 25000 });
+		const clicks = days.reduce((a, r) => a + r.clicks, 0);
+		const impressions = days.reduce((a, r) => a + r.impressions, 0);
+		const pos = impressions ? days.reduce((a, r) => a + r.position * r.impressions, 0) / impressions : 0;
+		const kinds: [string, number][] = [['RICH_RESULT', 0.06], ['REVIEW_SNIPPET', 0.04], ['VIDEO', 0.02]];
+		return kinds
+			.filter(([k]) => h01(siteUrl, 'appearance', k) > 0.4)
+			.map(([k, f]) => ({ keys: [k], clicks: Math.round(clicks * f), impressions: Math.round(impressions * f * 1.2), ctr: 0, position: Math.max(1, pos - 1) }));
 	}
 
 	async listSitemaps(siteUrl: string) {

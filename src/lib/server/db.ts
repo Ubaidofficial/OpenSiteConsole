@@ -134,6 +134,33 @@ CREATE TABLE IF NOT EXISTS ga4_daily (
 	key_events REAL NOT NULL, pageviews INTEGER NOT NULL,
 	PRIMARY KEY (site_id, date, channel)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_period_users (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,              -- window length ending on pulled_on
+	channel TEXT NOT NULL,
+	users INTEGER NOT NULL,             -- unique users over the whole window (not a sum of daily users)
+	pulled_on TEXT NOT NULL,
+	PRIMARY KEY (site_id, days, channel)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_landing (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,
+	page TEXT NOT NULL,                 -- landing path, no query string
+	sessions INTEGER NOT NULL,
+	engaged_sessions INTEGER NOT NULL,
+	key_events REAL NOT NULL,
+	pulled_on TEXT NOT NULL,            -- Google organic only
+	PRIMARY KEY (site_id, days, page)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS crux_daily (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	date TEXT NOT NULL,                 -- the day we took the snapshot (CrUX is a rolling 28-day window)
+	form_factor TEXT NOT NULL,          -- PHONE | DESKTOP
+	origin TEXT NOT NULL,               -- the origin CrUX had data for
+	lcp REAL, inp REAL, cls REAL, fcp REAL, ttfb REAL,   -- p75
+	lcp_good REAL, inp_good REAL, cls_good REAL,         -- share of loads rated good
+	PRIMARY KEY (site_id, date, form_factor)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS clarity_snapshots (
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
 	day TEXT NOT NULL,                  -- UTC day the call was made (data covers the preceding 24h)
@@ -145,6 +172,25 @@ CREATE TABLE IF NOT EXISTS clarity_calls (
 	integration_id INTEGER NOT NULL REFERENCES integrations(id) ON DELETE CASCADE,
 	day TEXT NOT NULL, n INTEGER NOT NULL,
 	PRIMARY KEY (integration_id, day)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS site_daily_type (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	search_type TEXT NOT NULL,          -- image | video | news | discover | googleNews (web lives in site_daily)
+	date TEXT NOT NULL,
+	clicks INTEGER NOT NULL,
+	impressions INTEGER NOT NULL,
+	position REAL NOT NULL,
+	PRIMARY KEY (site_id, search_type, date)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS site_appearance (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,              -- window length ending on pulled_on
+	appearance TEXT NOT NULL,           -- Google's searchAppearance value, e.g. RICH_RESULT
+	pulled_on TEXT NOT NULL,
+	clicks INTEGER NOT NULL,
+	impressions INTEGER NOT NULL,
+	position REAL NOT NULL,
+	PRIMARY KEY (site_id, days, appearance)
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS api_keys (
 	id INTEGER PRIMARY KEY,
@@ -163,6 +209,10 @@ declare global {
 function migrate(db: Database.Database) {
 	const cols = (t: string) => (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
 	if (!cols('accounts').includes('scopes')) db.exec("ALTER TABLE accounts ADD COLUMN scopes TEXT NOT NULL DEFAULT ''");
+	if (!cols('sites').includes('types_synced_at')) db.exec('ALTER TABLE sites ADD COLUMN types_synced_at INTEGER');
+	if (!cols('sites').includes('appearance_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN appearance_pulled_on TEXT');
+	if (!cols('sites').includes('ga4_periods_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_periods_on TEXT');
+	if (!cols('sites').includes('crux_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN crux_pulled_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.
 	const version = db.pragma('user_version', { simple: true }) as number;

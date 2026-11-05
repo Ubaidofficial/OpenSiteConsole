@@ -37,7 +37,9 @@ export const actions: Actions = {
 		db().transaction(() => {
 			db().prepare('DELETE FROM sa_rows WHERE site_id = ?').run(id);
 			db().prepare('DELETE FROM site_daily WHERE site_id = ?').run(id);
-			db().prepare('UPDATE sites SET synced_through = NULL, backfilled_to = NULL, backfill_done = 0, last_sync_at = NULL WHERE id = ?').run(id);
+			db().prepare('DELETE FROM site_daily_type WHERE site_id = ?').run(id);
+			db().prepare('DELETE FROM site_appearance WHERE site_id = ?').run(id);
+			db().prepare('UPDATE sites SET synced_through = NULL, backfilled_to = NULL, backfill_done = 0, last_sync_at = NULL, types_synced_at = NULL, appearance_pulled_on = NULL WHERE id = ?').run(id);
 		})();
 		audit('site.reset', { siteId: id });
 		enqueueSiteSync(id, 'auto');

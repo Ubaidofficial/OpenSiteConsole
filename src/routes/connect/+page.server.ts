@@ -6,7 +6,7 @@ import { allSites } from '$lib/server/queries';
 import { displayName } from '$lib/server/clients';
 import { listAccounts } from '$lib/server/accounts';
 import { allLinks, integrationMeta, linksFor, listIntegrations, removeIntegration, removeLink, setLink, type LinkKind } from '$lib/server/links';
-import { autoMatchGa4, connectBingKey, connectClarity, connectOpenSeo, hasGa4Scope } from '$lib/server/connect';
+import { autoMatchGa4, connectBingKey, connectClarity, connectCrux, connectOpenSeo, hasGa4Scope } from '$lib/server/connect';
 import { callsLeft } from '$lib/server/clarity';
 import { enqueueLinkSync } from '$lib/server/jobs';
 import { intParam } from '$lib/server/params';
@@ -21,7 +21,9 @@ export const load: PageServerLoad = ({ url }) => {
 	const accounts = listAccounts();
 	const bing = listIntegrations('bing').map((i) => ({ id: i.id, label: i.label, auth: integrationMeta(i).auth ?? 'apikey', status: i.status, demo: !!i.is_demo, sites: links.filter((l) => l.kind === 'bing' && l.integration_id === i.id).length }));
 	const openseo = listIntegrations('openseo')[0];
+	const crux = listIntegrations('crux')[0];
 	return {
+		crux: crux ? { demo: !!crux.is_demo, sites: (db().prepare('SELECT COUNT(DISTINCT site_id) n FROM crux_daily').get() as { n: number }).n } : null,
 		demo: config.demo,
 		bingOAuth: !!env('BING_CLIENT_ID') && !!env('BING_CLIENT_SECRET'),
 		bingRedirect: `${config.origin}/auth/bing/callback`,
@@ -122,6 +124,18 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, { error: msg(e), section: 'openseo' });
 		}
+	},
+	crux: async ({ request }) => {
+		try {
+			const r = await connectCrux(String((await request.formData()).get('apiKey') ?? ''));
+			return { ok: `Chrome UX Report connected. Fetching Core Web Vitals for ${r.sites} site(s); sites with too little Chrome traffic simply have none.`, section: 'crux' };
+		} catch (e) {
+			return fail(400, { error: msg(e), section: 'crux' });
+		}
+	},
+	cruxRemove: async () => {
+		for (const i of listIntegrations('crux')) removeIntegration(i.id);
+		return { ok: 'Chrome UX Report disconnected. Stored snapshots are kept.', section: 'crux' };
 	},
 	openseoRemove: async () => {
 		for (const i of listIntegrations('openseo')) removeIntegration(i.id);

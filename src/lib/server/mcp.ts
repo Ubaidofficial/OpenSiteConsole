@@ -1,5 +1,8 @@
 import { db } from './db';
-import { allSites, brandTerms, fittedCurve, periodFor, queryPageRows, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare } from './queries';
+import { allSites, brandTerms, fittedCurve, periodFor, queryPageRows, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
+import { ALL_TYPES } from '../searchTypes';
+import { cruxIntegration, cruxLatest } from './crux';
+import { rate, VITALS } from '../vitals';
 import { displayName } from './clients';
 import { addDays } from './dates';
 import { computeCannibalization, computeCtrGaps, computeDecay, computeStriking, ctrOf, detectAnomalies, isBranded, pctChange } from '../analytics';
@@ -77,6 +80,45 @@ const TOOLS: Tool[] = [
 		}
 	},
 	{
+		name: 'get_search_types',
+		description: 'Google traffic split by search type (web, image, video, news, discover, googleNews) for a window vs the previous window, plus the search-appearance report (rich results and similar). The overview numbers are web only; this shows the rest.',
+		schema: { ...siteArg, ...daysArg },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const p = periodFor(site, days(a));
+			const now = typeBreakdown(site.id, p.start, p.end);
+			const prev = typeBreakdown(site.id, p.prevStart, p.prevEnd);
+			const app = appearanceFor(site.id, days(a));
+			return {
+				site: displayName(site.site_url),
+				period: { start: p.start, end: p.end },
+				note: 'Types fetched from Search Console; a type with no traffic is omitted. Web is the default report.',
+				types: ALL_TYPES.filter((t) => now[t] && (now[t]!.clicks > 0 || now[t]!.impressions > 0)).map((t) => ({ type: t, clicks: now[t]!.clicks, impressions: now[t]!.impressions, ctr: r2(ctrOf(now[t]!) * 100) + '%', position: r2(now[t]!.position), clicksChange: prev[t] ? pctChange(now[t]!.clicks, prev[t]!.clicks) : null })),
+				searchAppearance: { endingOn: app.pulledOn, rows: app.rows.map((r) => ({ appearance: r.appearance, clicks: r.clicks, impressions: r.impressions, position: r2(r.position) })) }
+			};
+		}
+	},
+	{
+		name: 'get_web_vitals',
+		description: 'Core Web Vitals (LCP, INP, CLS, plus FCP and TTFB) for a site from the Chrome UX Report: real-user 75th-percentile values for phone and desktop over the last 28 days, rated good / needs-improvement / poor. Site-wide field data, not per page. Sites with too little Chrome traffic have none.',
+		schema: { ...siteArg },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			if (!cruxIntegration()) return { connected: false, hint: 'Connect the Chrome UX Report (Core Web Vitals) on the Connect page.' };
+			const { latest } = cruxLatest(site.id);
+			if (!latest.size) return { connected: true, data: false, hint: 'No data yet: Chrome only reports sites with enough real visits.' };
+			return {
+				connected: true,
+				devices: [...latest.values()].map((r) => ({
+					device: r.form_factor === 'PHONE' ? 'phone' : 'desktop',
+					origin: r.origin,
+					snapshot: r.date,
+					metrics: VITALS.filter((v) => r[v.key] != null).map((v) => ({ metric: v.name, value: r[v.key], unit: v.unit || 'score', rating: rate(v.key, r[v.key]), goodShare: v.core ? ({ lcp: r.lcp_good, inp: r.inp_good, cls: r.cls_good } as Record<string, number | null>)[v.key] : null }))
+				}))
+			};
+		}
+	},
+	{
 		name: 'get_top_queries',
 		description: 'Top Google queries in a window with change vs the previous window. `branded` filters on brand terms (default: all).',
 		schema: { ...siteArg, ...daysArg, limit: { type: 'integer' }, branded: { type: 'string', enum: ['all', 'only', 'exclude'] } },
@@ -147,13 +189,18 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_ga4_summary',
-		description: 'GA4 sessions, engaged sessions, users and key events by channel group for a window (compare Organic Search with Google clicks).',
+		description: 'GA4 sessions, engaged sessions, unique users and key events by channel group for a window (compare Organic Search with Google clicks), plus the top landing pages for Google organic sessions.',
 		schema: { ...siteArg, ...daysArg },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			if (!linksFor(site.id).ga4) return { connected: false, hint: 'Link a GA4 property on the Connect page.' };
 			const p = periodFor(site, days(a));
-			return db().prepare('SELECT channel, SUM(sessions) sessions, SUM(engaged_sessions) engagedSessions, SUM(users) users, ROUND(SUM(key_events),1) keyEvents, SUM(pageviews) pageviews FROM ga4_daily WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY channel ORDER BY sessions DESC').all(site.id, p.start, p.end);
+			const d = db();
+			const n = days(a);
+			const unique = new Map((d.prepare('SELECT channel, users FROM ga4_period_users WHERE site_id = ? AND days = ?').all(site.id, n) as { channel: string; users: number }[]).map((r) => [r.channel, r.users]));
+			const channels = (d.prepare('SELECT channel, SUM(sessions) sessions, SUM(engaged_sessions) engagedSessions, ROUND(SUM(key_events),1) keyEvents, SUM(pageviews) pageviews FROM ga4_daily WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY channel ORDER BY sessions DESC').all(site.id, p.start, p.end) as { channel: string }[]).map((r) => ({ ...r, uniqueUsers: unique.get(r.channel) ?? null }));
+			const landing = d.prepare('SELECT page, sessions, engaged_sessions engagedSessions, ROUND(key_events,1) keyEvents FROM ga4_landing WHERE site_id = ? AND days = ? ORDER BY sessions DESC LIMIT ?').all(site.id, n, limit(a, 25));
+			return { period: { start: p.start, end: p.end }, note: 'uniqueUsers is over the whole window (GA4 Total users) and is null until the next GA4 sync; landing pages are Google organic only, by URL path.', channels, topGoogleOrganicLandingPages: landing };
 		}
 	},
 	{

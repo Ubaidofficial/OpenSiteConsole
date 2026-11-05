@@ -1,7 +1,7 @@
 import type { BingClient, BingDay, BingSite, BingTermRow } from './bing';
 import type { Ga4Day, Ga4Property } from './ga4';
 import type { ClarityMetric } from './clarity';
-import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, h01 } from './demo';
+import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01 } from './demo';
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
 
@@ -96,4 +96,53 @@ export function demoOpenSeoProjects() {
 		{ id: 'demo-proj-trailmaps', name: 'Trailmaps (demo)', domain: 'trailmaps.example', url: 'https://openseo.example/p/demo-proj-trailmaps' },
 		{ id: 'demo-proj-other', name: 'Unrelated project', domain: 'unrelated.example', url: 'https://openseo.example/p/demo-proj-other' }
 	];
+}
+
+/** Demo: unique users per channel over a window (about 60% of summed daily users, since people return). */
+export function demoGa4UsersByChannel(property: string, start: string, end: string): { channel: string; users: number }[] {
+	const sum = new Map<string, number>();
+	for (const r of demoGa4Daily(property, start, end)) sum.set(r.channel, (sum.get(r.channel) ?? 0) + r.users);
+	return [...sum].map(([channel, users]) => ({ channel, users: Math.round(users * 0.6) }));
+}
+
+/** Demo: Google-organic landing pages derived from the demo Search Console pages, so the two sources line up. */
+export async function demoGa4Landing(property: string, start: string, end: string): Promise<{ page: string; sessions: number; engagedSessions: number; keyEvents: number }[]> {
+	for (const a of DEMO_ACCOUNTS) {
+		const i = DEMO_GA4_PROPERTIES(a.sub).findIndex((p) => p.prop.property === property);
+		if (i < 0) continue;
+		const rows = await new DemoClient(a.sub).query(a.sites[i].siteUrl, { startDate: start, endDate: end, dimensions: ['page'], rowLimit: 5000 });
+		return rows.map((r) => ({ page: new URL(r.keys[0]).pathname, sessions: Math.round(r.clicks * 1.12) + 1, engagedSessions: Math.round(r.clicks * 0.7), keyEvents: Math.round(r.clicks * 0.04 * 10) / 10 }));
+	}
+	return [];
+}
+
+/** Demo CrUX: a fetch stand-in. Some sites have field data, the rest answer 404 ("not enough traffic"), like the real API. */
+export function demoCruxFetch(): typeof fetch {
+	return (async (_url: RequestInfo | URL, init?: RequestInit) => {
+		const body = JSON.parse(String(init?.body ?? '{}')) as { origin?: string; formFactor?: string };
+		const host = hostKey(body.origin ?? '');
+		const phone = body.formFactor === 'PHONE';
+		if (h01(host, 'crux') < 0.25 || (body.origin ?? '').includes('://www.') !== (h01(host, 'www') > 0.5)) return new Response(JSON.stringify({ error: { code: 404, message: 'chrome ux report data not found' } }), { status: 404 });
+		const r = (k: string, base: number, spread: number) => base * (phone ? 1.25 : 0.85) * (1 + (h01(host, k) - 0.5) * spread);
+		// The good share must agree with the p75 the way real data does: p75 within "good" means at least 75% of loads were good.
+		const metric = (p75: number, good: number, poor: number, seed: string, text = false) => {
+			const jitter = h01(host, seed, phone ? 'p' : 'd');
+			const share = p75 <= good ? 0.76 + jitter * 0.19 : p75 <= poor ? 0.4 + jitter * 0.34 : 0.2 + jitter * 0.2;
+			return { histogram: [{ start: 0, end: good, density: Math.round(share * 100) / 100 }], percentiles: { p75: text ? p75.toFixed(2) : p75 } };
+		};
+		return new Response(
+			JSON.stringify({
+				record: {
+					metrics: {
+						largest_contentful_paint: metric(Math.round(r('lcp', 2300, 1.2)), 2500, 4000, 'lg'),
+						interaction_to_next_paint: metric(Math.round(r('inp', 190, 1.4)), 200, 500, 'ig'),
+						cumulative_layout_shift: metric(Number(r('cls', 0.08, 1.6).toFixed(2)), 0.1, 0.25, 'cg', true),
+						first_contentful_paint: metric(Math.round(r('fcp', 1700, 1.0)), 1800, 3000, 'fg'),
+						experimental_time_to_first_byte: metric(Math.round(r('ttfb', 700, 1.0)), 800, 1800, 'tg')
+					}
+				}
+			}),
+			{ status: 200 }
+		);
+	}) as typeof fetch;
 }

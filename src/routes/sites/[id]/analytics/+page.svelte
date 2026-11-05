@@ -8,7 +8,7 @@
 		{ key: 'sessions', label: 'Sessions', type: 'int' as const },
 		{ key: 'sessionsDelta', label: 'Δ sessions', type: 'delta' as const },
 		{ key: 'engagementRate', label: 'Engaged', type: 'pct' as const },
-		{ key: 'users', label: 'Users', type: 'int' as const },
+		{ key: 'users', label: 'Users', title: 'Unique users over the whole period, as GA4 reports Total users. Appears after the next GA4 sync.', type: 'int' as const },
 		{ key: 'keyEvents', label: 'Key events', type: 'int' as const },
 		{ key: 'pageviews', label: 'Views', type: 'int' as const }
 	];

@@ -3,6 +3,7 @@ import { addDays, daysBetween, eachDay, makePeriod, pacificToday, type Period } 
 import { fitCtrCurve, isBranded, parseTerms, sumMetrics, type CtrCurve, type Metrics, type PRow, type QPRow, type QRow } from '../analytics';
 import type { SiteRow } from './clients';
 import { coverageMap } from '../property';
+import { ALL_TYPES, type AnyType } from '../searchTypes';
 
 const WPOS = 'SUM(position * impressions) * 1.0 / NULLIF(SUM(impressions), 0)';
 const num = (n: unknown) => (typeof n === 'number' ? n : 0);
@@ -29,6 +30,36 @@ export function summary(siteId: number, start: string, end: string): Metrics {
 }
 
 export interface DayRow extends Metrics { date: string }
+
+/** Totals per search type for a window. Web comes from site_daily; the others from site_daily_type. Missing = no traffic. */
+export function typeBreakdown(siteId: number, start: string, end: string): Partial<Record<AnyType, Metrics>> {
+	const out: Partial<Record<AnyType, Metrics>> = { web: summary(siteId, start, end) };
+	const rows = db()
+		.prepare(`SELECT search_type t, SUM(clicks) clicks, SUM(impressions) impressions, ${WPOS} position FROM site_daily_type WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY search_type`)
+		.all(siteId, start, end) as { t: AnyType; clicks: number; impressions: number; position: number | null }[];
+	for (const r of rows) out[r.t] = metrics(r);
+	return out;
+}
+
+/** Daily clicks per search type (calendar filled with zeros), for the small trend charts. */
+export function typeSeries(siteId: number, start: string, end: string): Record<AnyType, number[]> {
+	const days = eachDay(start, end);
+	const idx = new Map(days.map((d, i) => [d, i]));
+	const out = Object.fromEntries(ALL_TYPES.map((t) => [t, new Array(days.length).fill(0)])) as Record<AnyType, number[]>;
+	for (const r of dailySeries(siteId, start, end, false)) out.web[idx.get(r.date)!] = r.clicks;
+	const rows = db().prepare('SELECT search_type t, date, clicks FROM site_daily_type WHERE site_id = ? AND date BETWEEN ? AND ?').all(siteId, start, end) as { t: AnyType; date: string; clicks: number }[];
+	for (const r of rows) if (out[r.t] && idx.has(r.date)) out[r.t][idx.get(r.date)!] = r.clicks;
+	return out;
+}
+
+export interface AppearanceRow extends Metrics { appearance: string }
+/** Latest search-appearance report for the window length, if one has been pulled. */
+export function appearanceFor(siteId: number, days: number): { rows: AppearanceRow[]; pulledOn: string | null } {
+	const rows = db()
+		.prepare('SELECT appearance, clicks, impressions, position, pulled_on FROM site_appearance WHERE site_id = ? AND days = ? ORDER BY clicks DESC, impressions DESC')
+		.all(siteId, days) as (AppearanceRow & { pulled_on: string })[];
+	return { rows: rows.map((r) => ({ appearance: r.appearance, ...metrics(r) })), pulledOn: rows[0]?.pulled_on ?? null };
+}
 
 /**
  * Search Console returns no row for a day with no impressions, so small sites have gaps. Charts and anomaly

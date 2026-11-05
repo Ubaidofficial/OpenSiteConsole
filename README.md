@@ -27,7 +27,12 @@ synced locally (with planted patterns: a decaying page group, cannibalising page
 3. Put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`, restart, open **Accounts → Connect Google account**. Repeat per account.
 4. While the OAuth consent screen is in *Testing*, Google expires refresh tokens after about 7 days — publish the app (or accept re-connecting weekly). Verify this against Google's current OAuth docs.
 
-Production: `pnpm build && node build` (or the untested Dockerfile). **Set `ADMIN_PASSWORD`** before exposing it beyond localhost —
+**Faster day-to-day use:** `pnpm serve` builds and starts the production server on `http://localhost:5173` (pages load in tens of
+milliseconds instead of the hundreds `pnpm dev` takes, because dev compiles on demand). It reads `.env`, and defaults `ORIGIN`/`PORT`/`HOST`
+for you. Do not run `node build` directly on localhost: without `ORIGIN` in the process environment, SvelteKit assumes https and rejects
+every form submit as cross-site. `pnpm get-latest` pulls the latest `main` and installs packages (not `pnpm update`, which is pnpm's own command for upgrading dependencies).
+
+Production: `pnpm serve` (or `pnpm start` after `pnpm build`; or the untested Dockerfile). **Set `ADMIN_PASSWORD`** before exposing it beyond localhost —
 without it the app refuses non-loopback requests. Put it behind HTTPS.
 
 ## Getting credentials
@@ -46,13 +51,13 @@ without it the app refuses non-loopback requests. Put it behind HTTPS.
 
 ## Connecting sources (the "Connect" page)
 
-One page, five independent steps, status per site. Google sign-in grants Search Console and GA4 together; Bing needs a key (or OAuth);
-GA4 properties are auto-matched to sites by their web-stream URL; Clarity needs a token per site; OpenSEO needs its URL + an `oseo_` API key.
+One page, six independent steps, status per site. Google sign-in grants Search Console and GA4 together; Bing needs a key (or OAuth);
+GA4 properties are auto-matched to sites by their web-stream URL; Clarity needs a token per site; OpenSEO needs its URL + an `oseo_` API key; Core Web Vitals needs one free Google API key (enable the *Chrome UX Report API* in Google Cloud, then Credentials → API key).
 Sites are matched by domain; anything unmatched is listed and can be linked by hand. In demo mode, type `demo` as any key/token.
 
 ## OpenSEO and AI agents
 
-- **Agents page** → create an API key (optionally limited to some sites) → add OpenSiteConsole as an MCP server next to OpenSEO's. Nine read-only tools; nothing can write or spend money.
+- **Agents page** → create an API key (optionally limited to some sites) → add OpenSiteConsole as an MCP server next to OpenSEO's. Eleven read-only tools; nothing can write or spend money.
 - Connect OpenSEO on the Connect page and each site is linked to its OpenSEO project by domain. An agent calls `get_openseo_project` to obtain the project id, then uses OpenSEO's own tools (keyword research, rank tracking, audits) on it — first-party history from here, third-party data from there.
 
 ## Using the dashboard
@@ -69,6 +74,9 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 | **Warehouse** | Incremental sync (re-pulls the newest 3 days, which Google revises) + resumable backfill to the retention horizon. Stores `date × query × page × country × device`, plus accurate daily totals. Background scheduler; per-site status. |
 | **Dashboard** | Every property from every account: KPIs, sparklines, period-over-period deltas, search, tags, hide. |
 | **Site analysis** | Change chart with anomaly bands; queries & pages (branded split, country/device filters, full-history chart per row, CSV export); segments. |
+| **Search types** | Web, Image, Video, News, Discover and Google News reported separately (Overview and the dashboard are Web only, as in Search Console), plus the *search appearance* report (rich results and similar), which Google only provides on its own. |
+| **GA4 join** | Pages tab shows GA4 sessions, engagement and key events for **Google-organic** landing pages next to each page's Search Console clicks (matched by URL path). Users are unique users over the window, as GA4 reports them, not a sum of daily users. |
+| **Core Web Vitals** | LCP, INP, CLS (plus FCP, TTFB) from the Chrome UX Report for phone and desktop, rated good / needs improvement / poor; one snapshot a day, so history builds from when you connect. Site-wide field data, not per page. |
 | **Opportunities** | Striking distance ranked by *estimated extra clicks* using a **CTR curve fitted to your own data**; pages whose CTR is far below your curve. |
 | **Cannibalization** | Merges URL variants first (www / slash / tracking params), then flags queries split across real competing pages, with clicks at stake. |
 | **Decay** | Significance-tested (Poisson z) drops, labelled *page-specific* vs *site-wide*, with year-over-year when history allows. |
@@ -82,9 +90,9 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 
 - **Anonymised queries**: Google hides some queries, so query tables never sum to the totals. The share is shown per site.
 - **Per-day row cap** (`MAX_ROWS_PER_DAY`, default 100k): very large sites lose long-tail detail beyond it. Totals stay exact. Large sites may want Google's bulk BigQuery export instead.
-- **Not yet built**: Bing / Yandex / GA4, email/Slack alerts & digests, multi-user roles, i18n, PDF/client reports, SERP/rank tracking, the Indexing API.
+- **Not yet built**: Yandex, email/Slack alerts & digests, multi-user roles, i18n, PDF/client reports, SERP/rank tracking, the Indexing API.
 - **Verified**: unit/integration tests (`pnpm test`), type-check, production build, and a headless-browser crawl of every page against **demo data**.
-  **Not verified**: a live Google OAuth round-trip and real Search Console / GA4 / Clarity responses, the Bing OAuth flow, and the OpenSEO connection against a real instance — no credentials were available. Bing's API-key endpoint and its error format *were* confirmed against the live service (a deliberately invalid key returned Bing's documented `InvalidApiKey`). The MCP server was checked with the official MCP SDK client. Expect to debug first contact with the real APIs.
+  **Not verified**: a live Google OAuth round-trip and real Search Console / GA4 / Clarity / Chrome UX Report responses (search types, search appearance, GA4 landing pages and Core Web Vitals are tested against documented response shapes and demo data only), the Bing OAuth flow, and the OpenSEO connection against a real instance — no credentials were available. Bing's API-key endpoint and its error format *were* confirmed against the live service (a deliberately invalid key returned Bing's documented `InvalidApiKey`). The MCP server was checked with the official MCP SDK client. Expect to debug first contact with the real APIs.
 - Unconfirmed details coded defensively: GA4 `rows[].dimensionValues/metricValues` field names and the web-stream `defaultUri` used for auto-matching (if absent, link GA4 by hand); Clarity metric field names beyond `Traffic` (shown generically).
 - Search Console API quotas (including URL Inspection) change; check Google's current documentation.
 

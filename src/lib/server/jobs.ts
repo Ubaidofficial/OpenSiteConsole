@@ -1,9 +1,11 @@
 import { db } from './db';
 import { config } from './config';
+import { pacificToday } from './dates';
 import { syncSite } from './sync';
 import { syncAccountSites } from './accounts';
 import { syncBing, syncClarity, syncGa4 } from './channels';
 import type { LinkKind } from './links';
+import { cruxIntegration, syncCrux } from './crux';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -54,6 +56,11 @@ export function enqueueLinkSync(siteId: number, kind: Exclude<LinkKind, 'openseo
 	return queued;
 }
 
+/** Core Web Vitals snapshot for one site (CrUX data changes daily, so at most once a day). */
+export function enqueueCruxSync(siteId: number): boolean {
+	return enqueue(`crux:${siteId}`, () => syncCrux(siteId));
+}
+
 const SIX_HOURS = 6 * 3600_000;
 const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, clarity: 22 * 3600_000 };
 
@@ -68,6 +75,10 @@ export function schedulerTick() {
 	for (const s of sites) {
 		if (!s.backfill_done) enqueueSiteSync(s.id, 'auto');
 		else if (!s.last_sync_at || Date.now() - s.last_sync_at > SIX_HOURS) enqueueSiteSync(s.id, 'incremental');
+	}
+	if (cruxIntegration()) {
+		const today = pacificToday();
+		for (const s of sites) if ((d.prepare('SELECT crux_pulled_on p FROM sites WHERE id = ?').get(s.id) as { p: string | null }).p !== today) enqueueCruxSync(s.id);
 	}
 	const links = d
 		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','clarity')")
