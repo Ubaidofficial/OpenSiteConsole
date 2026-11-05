@@ -152,6 +152,15 @@ CREATE TABLE IF NOT EXISTS ga4_landing (
 	pulled_on TEXT NOT NULL,            -- Google organic only
 	PRIMARY KEY (site_id, days, page)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS crux_daily (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	date TEXT NOT NULL,                 -- the day we took the snapshot (CrUX is a rolling 28-day window)
+	form_factor TEXT NOT NULL,          -- PHONE | DESKTOP
+	origin TEXT NOT NULL,               -- the origin CrUX had data for
+	lcp REAL, inp REAL, cls REAL, fcp REAL, ttfb REAL,   -- p75
+	lcp_good REAL, inp_good REAL, cls_good REAL,         -- share of loads rated good
+	PRIMARY KEY (site_id, date, form_factor)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS clarity_snapshots (
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
 	day TEXT NOT NULL,                  -- UTC day the call was made (data covers the preceding 24h)
@@ -203,6 +212,7 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('types_synced_at')) db.exec('ALTER TABLE sites ADD COLUMN types_synced_at INTEGER');
 	if (!cols('sites').includes('appearance_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN appearance_pulled_on TEXT');
 	if (!cols('sites').includes('ga4_periods_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_periods_on TEXT');
+	if (!cols('sites').includes('crux_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN crux_pulled_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.
 	const version = db.pragma('user_version', { simple: true }) as number;

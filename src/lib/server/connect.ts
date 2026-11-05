@@ -8,7 +8,8 @@ import { fetchInsights, ClarityApiError, utcDay } from './clarity';
 import { demoClarityFetch, demoOpenSeoProjects } from './demo-channels';
 import { listOpenSeoProjects } from './openseo';
 import { getIntegration, integrationMeta, linksFor, listIntegrations, removeIntegration, saveIntegration, setLink } from './links';
-import { enqueueLinkSync } from './jobs';
+import { enqueueCruxSync, enqueueLinkSync } from './jobs';
+import { CruxError, queryOrigin } from './crux';
 import { audit } from './db';
 import { SCOPE_GA4 } from './ga4';
 
@@ -149,3 +150,18 @@ export const openSeoProjectUrl = (integrationId: number | null, projectId: strin
 	const i = getIntegration(integrationId);
 	return i ? `${integrationMeta(i).baseUrl ?? ''}/p/${projectId}` : null;
 };
+
+// ── Core Web Vitals (Chrome UX Report) ───────────────────────────────────────
+export async function connectCrux(apiKey: string) {
+	const key = apiKey.trim();
+	if (!key) throw new CruxError('Paste your Google API key', 400);
+	const demo = config.demo && key === 'demo';
+	// Validate the key against an origin with lots of traffic: 200 or "no data" both prove the key and API are fine.
+	if (!demo) await queryOrigin(key, 'https://web.dev', 'PHONE');
+	for (const i of listIntegrations('crux')) removeIntegration(i.id);
+	const id = saveIntegration('crux', 'Chrome UX Report', { apiKey: key }, {}, demo);
+	audit('crux.connected');
+	const sites = visibleSites().filter((s) => !s.hidden);
+	for (const s of sites) enqueueCruxSync(s.id);
+	return { id, sites: sites.length };
+}

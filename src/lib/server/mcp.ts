@@ -1,6 +1,8 @@
 import { db } from './db';
 import { allSites, brandTerms, fittedCurve, periodFor, queryPageRows, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
 import { ALL_TYPES } from '../searchTypes';
+import { cruxIntegration, cruxLatest } from './crux';
+import { rate, VITALS } from '../vitals';
 import { displayName } from './clients';
 import { addDays } from './dates';
 import { computeCannibalization, computeCtrGaps, computeDecay, computeStriking, ctrOf, detectAnomalies, isBranded, pctChange } from '../analytics';
@@ -93,6 +95,26 @@ const TOOLS: Tool[] = [
 				note: 'Types fetched from Search Console; a type with no traffic is omitted. Web is the default report.',
 				types: ALL_TYPES.filter((t) => now[t] && (now[t]!.clicks > 0 || now[t]!.impressions > 0)).map((t) => ({ type: t, clicks: now[t]!.clicks, impressions: now[t]!.impressions, ctr: r2(ctrOf(now[t]!) * 100) + '%', position: r2(now[t]!.position), clicksChange: prev[t] ? pctChange(now[t]!.clicks, prev[t]!.clicks) : null })),
 				searchAppearance: { endingOn: app.pulledOn, rows: app.rows.map((r) => ({ appearance: r.appearance, clicks: r.clicks, impressions: r.impressions, position: r2(r.position) })) }
+			};
+		}
+	},
+	{
+		name: 'get_web_vitals',
+		description: 'Core Web Vitals (LCP, INP, CLS, plus FCP and TTFB) for a site from the Chrome UX Report: real-user 75th-percentile values for phone and desktop over the last 28 days, rated good / needs-improvement / poor. Site-wide field data, not per page. Sites with too little Chrome traffic have none.',
+		schema: { ...siteArg },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			if (!cruxIntegration()) return { connected: false, hint: 'Connect the Chrome UX Report (Core Web Vitals) on the Connect page.' };
+			const { latest } = cruxLatest(site.id);
+			if (!latest.size) return { connected: true, data: false, hint: 'No data yet: Chrome only reports sites with enough real visits.' };
+			return {
+				connected: true,
+				devices: [...latest.values()].map((r) => ({
+					device: r.form_factor === 'PHONE' ? 'phone' : 'desktop',
+					origin: r.origin,
+					snapshot: r.date,
+					metrics: VITALS.filter((v) => r[v.key] != null).map((v) => ({ metric: v.name, value: r[v.key], unit: v.unit || 'score', rating: rate(v.key, r[v.key]), goodShare: v.core ? ({ lcp: r.lcp_good, inp: r.inp_good, cls: r.cls_good } as Record<string, number | null>)[v.key] : null }))
+				}))
 			};
 		}
 	},

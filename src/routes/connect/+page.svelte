@@ -137,6 +137,24 @@
 	{#if msgFor('openseo')?.error}<p class="mt-2 text-sm text-bad">{msgFor('openseo')?.error}</p>{/if}
 </section>
 
+<!-- 6 Core Web Vitals -->
+<section class="card mt-4 p-4">
+	<h2 class="mb-1 font-medium">6 · Core Web Vitals <span class="chip ml-1">optional</span></h2>
+	<p class="mb-3 text-xs text-muted-foreground">
+		Real-user speed data (LCP, INP, CLS and more) from Google's Chrome UX Report, saved once a day per site. It needs a free API key: in Google Cloud Console enable the <b>Chrome UX Report API</b>, then create an API key under Credentials. Sites with too little Chrome traffic have no data, which is normal.
+	</p>
+	{#if data.crux}
+		<div class="mb-2 flex items-center gap-2 text-sm"><span>Connected</span><span class="text-xs text-muted-foreground">data for {data.crux.sites} site(s) so far</span>
+			<form method="POST" action="?/cruxRemove" use:enhance class="ml-auto"><button class="btn btn-danger">Disconnect</button></form></div>
+	{/if}
+	<form method="POST" action="?/crux" use:enhance={submit('crux')} class="flex flex-wrap gap-2">
+		<input class="input min-w-0 flex-1" name="apiKey" type="password" autocomplete="off" placeholder="Google API key" required />
+		<button class="btn btn-primary" disabled={busy === 'crux'}>{busy === 'crux' ? 'Checking…' : data.crux ? 'Replace key' : 'Connect'}</button>
+	</form>
+	{#if msgFor('crux')?.ok}<p class="mt-2 text-sm text-good">{msgFor('crux')?.ok}</p>{/if}
+	{#if msgFor('crux')?.error}<p class="mt-2 text-sm text-bad">{msgFor('crux')?.error}</p>{/if}
+</section>
+
 <!-- Matrix -->
 <section class="mt-6">
 	<h2 class="mb-2 font-medium">Connections by site</h2>

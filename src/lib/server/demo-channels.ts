@@ -115,3 +115,34 @@ export async function demoGa4Landing(property: string, start: string, end: strin
 	}
 	return [];
 }
+
+/** Demo CrUX: a fetch stand-in. Some sites have field data, the rest answer 404 ("not enough traffic"), like the real API. */
+export function demoCruxFetch(): typeof fetch {
+	return (async (_url: RequestInfo | URL, init?: RequestInit) => {
+		const body = JSON.parse(String(init?.body ?? '{}')) as { origin?: string; formFactor?: string };
+		const host = hostKey(body.origin ?? '');
+		const phone = body.formFactor === 'PHONE';
+		if (h01(host, 'crux') < 0.25 || (body.origin ?? '').includes('://www.') !== (h01(host, 'www') > 0.5)) return new Response(JSON.stringify({ error: { code: 404, message: 'chrome ux report data not found' } }), { status: 404 });
+		const r = (k: string, base: number, spread: number) => base * (phone ? 1.25 : 0.85) * (1 + (h01(host, k) - 0.5) * spread);
+		// The good share must agree with the p75 the way real data does: p75 within "good" means at least 75% of loads were good.
+		const metric = (p75: number, good: number, poor: number, seed: string, text = false) => {
+			const jitter = h01(host, seed, phone ? 'p' : 'd');
+			const share = p75 <= good ? 0.76 + jitter * 0.19 : p75 <= poor ? 0.4 + jitter * 0.34 : 0.2 + jitter * 0.2;
+			return { histogram: [{ start: 0, end: good, density: Math.round(share * 100) / 100 }], percentiles: { p75: text ? p75.toFixed(2) : p75 } };
+		};
+		return new Response(
+			JSON.stringify({
+				record: {
+					metrics: {
+						largest_contentful_paint: metric(Math.round(r('lcp', 2300, 1.2)), 2500, 4000, 'lg'),
+						interaction_to_next_paint: metric(Math.round(r('inp', 190, 1.4)), 200, 500, 'ig'),
+						cumulative_layout_shift: metric(Number(r('cls', 0.08, 1.6).toFixed(2)), 0.1, 0.25, 'cg', true),
+						first_contentful_paint: metric(Math.round(r('fcp', 1700, 1.0)), 1800, 3000, 'fg'),
+						experimental_time_to_first_byte: metric(Math.round(r('ttfb', 700, 1.0)), 800, 1800, 'tg')
+					}
+				}
+			}),
+			{ status: 200 }
+		);
+	}) as typeof fetch;
+}

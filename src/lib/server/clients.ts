@@ -38,6 +38,7 @@ export interface SiteRow {
 	types_synced_at: number | null;
 	appearance_pulled_on: string | null;
 	ga4_periods_on: string | null;
+	crux_pulled_on: string | null;
 	created_at: number;
 }
 
