@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db, openDb } from '../src/lib/server/db';
 import { ensureDemoAccounts } from '../src/lib/server/accounts';
 import { handle } from '../src/hooks.server';
-import { hostnameOf, isLocalRequest, safeBack } from '../src/lib/server/guard';
+import { clientKey, hostnameOf, isLocalRequest, safeBack } from '../src/lib/server/guard';
 import { isPrivateIp } from '../src/lib/server/onpage';
 import { decode, stripTags } from '../src/lib/onpage';
 import { parseSitemapXml } from '../src/lib/sitemap';
@@ -80,6 +80,11 @@ describe('the gate: cross-site requests, demo mode, headers on every response', 
 		expect(anon).toMatchObject({ authed: false, accounts: 0, revoked: 0, googleConfigured: false, demo: false });
 		expect(JSON.stringify(anon)).not.toContain('owner@example.com');
 		expect((layoutLoad({ locals: { authed: true } } as never) as { accounts: number }).accounts).toBeGreaterThan(0);
+	});
+	it('a request without the proxy header counts in an "unknown" bucket instead of breaking the login page', () => {
+		expect(clientKey(() => '203.0.113.5')).toBe('203.0.113.5');
+		expect(clientKey(() => { throw new Error('Address header was specified with ADDRESS_HEADER=x-forwarded-for but is absent from request'); })).toBe('unknown');
+		expect(clientKey(() => '')).toBe('unknown');
 	});
 	it('redirects after an action stay inside the app', () => {
 		expect(safeBack('http://localhost:5173/sites/1/queries?x=1', 'http://localhost:5173', '/f')).toBe('/sites/1/queries?x=1');
@@ -271,5 +276,17 @@ describe('files and containers', () => {
 		for (const f of ['Dockerfile', 'Dockerfile.cloudflare']) expect(readFileSync(join(process.cwd(), f), 'utf8'), f).toMatch(/^USER node$/m);
 		const ep = readFileSync(join(process.cwd(), 'deploy/cloudflare/entrypoint.sh'), 'utf8');
 		expect(ep).toMatch(/env -u R2_ACCESS_KEY_ID -u R2_SECRET_ACCESS_KEY node build/);
+	});
+});
+
+describe('the Coolify compose file', () => {
+	const f = readFileSync(join(process.cwd(), 'compose.coolify.yaml'), 'utf8');
+	it('publishes no host port, keeps the data in a named volume, and refuses to deploy open', () => {
+		expect(f).not.toMatch(/^\s*ports:/m); // a published port would bypass the proxy
+		expect(f).toMatch(/osc-data:\/data/);
+		for (const v of ['ORIGIN', 'ADMIN_PASSWORD', 'APP_SECRET']) expect(f, v).toMatch(new RegExp(`\\$\\{${v}:\\?`));
+		expect(f).toMatch(/ADDRESS_HEADER=\$\{ADDRESS_HEADER:-X-Forwarded-For\}/);
+		expect(f).toMatch(/XFF_DEPTH=\$\{XFF_DEPTH:-1\}/);
+		expect(f).toMatch(/healthcheck:/);
 	});
 });

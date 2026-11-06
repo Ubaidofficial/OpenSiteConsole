@@ -43,7 +43,8 @@ every form submit as cross-site. `pnpm get-latest` pulls the latest `main` and i
 | Where | How | Status |
 |---|---|---|
 | **Your computer / a server** | `pnpm serve` (or `pnpm start` after `pnpm build`) | The tested route. |
-| **Docker** | `Dockerfile` and `compose.yaml` (data in a volume) | Written, **never built**. |
+| **Coolify / a Docker server behind a proxy** (recommended for always-on use) | [`compose.coolify.yaml`](compose.coolify.yaml) and [`deploy/coolify/`](deploy/coolify/README.md): the app plus a named volume for the database, healthcheck, proxy-header settings, backup and data-move steps. Works the same on Railway (volume at `/data`). | The compose file parses and the healthcheck and proxy-header settings were tested against a running server; the image was **never built** and nothing was deployed. |
+| **Docker (plain)** | `Dockerfile` and `compose.yaml` (data in a volume) | Written, **never built**. |
 | **Cloudflare** | [`deploy/cloudflare/`](deploy/cloudflare/README.md): a Worker in front of a Cloudflare Container running the app, the database replicated to an R2 bucket with Litestream, and a cron trigger that wakes it. Needs the Workers Paid plan and Docker on the computer you deploy from. | Written from the documentation. The Worker type-checks, `wrangler deploy --dry-run` accepts it and the start script is tested against a stand-in, but the image was **never built and nothing was deployed**. |
 | **Native Cloudflare Workers + D1** | Not supported. [`spike/workers/REPORT.md`](spike/workers/REPORT.md) sizes the port (374 functions and 818 calls become async; D1's 10 GB cap) and includes a working proof. | A feasibility spike: staged go, not a quick change. |
 

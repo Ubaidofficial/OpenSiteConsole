@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { config } from '$lib/server/config';
 import { safeEqual } from '$lib/server/crypto';
+import { clientKey } from '$lib/server/guard';
 import { createSession, SESSION_COOKIE } from '$lib/server/sessions';
 
 const attempts = new Map<string, { n: number; reset: number }>();
@@ -20,7 +21,7 @@ export const load: PageServerLoad = ({ locals }) => {
 
 export const actions: Actions = {
 	default: async ({ request, cookies, getClientAddress, url }) => {
-		const ip = getClientAddress();
+		const ip = clientKey(getClientAddress);
 		prune(Date.now());
 		const a = attempts.get(ip);
 		if (a && a.reset > Date.now() && a.n >= 5) return fail(429, { error: 'Too many attempts. Try again in a few minutes.' });
