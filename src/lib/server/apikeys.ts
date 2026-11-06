@@ -16,6 +16,20 @@ export function createApiKey(name: string, siteIds: number[] | null): { id: numb
 }
 
 export const listApiKeys = () => db().prepare('SELECT id, name, prefix, site_ids, created_at, last_used_at FROM api_keys ORDER BY id DESC').all() as ApiKeyRow[];
+/**
+ * Take a deleted site out of every key's scope. SQLite reuses the id of the newest site once it is deleted, so a key scoped to
+ * that id would otherwise silently start seeing whatever site is added next. A key left with no sites sees nothing (an empty
+ * list is not "all sites"; only a key stored with no list at all is).
+ */
+export function forgetSite(siteId: number) {
+	const keys = db().prepare('SELECT id, site_ids FROM api_keys WHERE site_ids IS NOT NULL').all() as { id: number; site_ids: string }[];
+	const upd = db().prepare('UPDATE api_keys SET site_ids = ? WHERE id = ?');
+	for (const k of keys) {
+		const ids = JSON.parse(k.site_ids) as number[];
+		if (ids.includes(siteId)) upd.run(JSON.stringify(ids.filter((x) => x !== siteId)), k.id);
+	}
+}
+
 export const deleteApiKey = (id: number) => void db().prepare('DELETE FROM api_keys WHERE id = ?').run(id);
 
 /** Returns the key's site scope (null = all sites) or undefined if the key is unknown. */

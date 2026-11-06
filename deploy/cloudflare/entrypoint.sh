@@ -5,7 +5,8 @@ set -eu
 
 DB="${DB_PATH:-/data/opensiteconsole.db}"
 CONFIG="${LITESTREAM_CONFIG:-/etc/litestream.yml}"
-APP="${OSC_APP_COMMAND:-node build}"
+# The app never needs the R2 keys (only Litestream does), so it is started without them in its environment.
+APP="${OSC_APP_COMMAND:-env -u R2_ACCESS_KEY_ID -u R2_SECRET_ACCESS_KEY node build}"
 mkdir -p "$(dirname "$DB")"
 
 if [ -n "${R2_BUCKET:-}" ] && [ -n "${R2_ACCOUNT_ID:-}" ] && [ -n "${R2_ACCESS_KEY_ID:-}" ] && [ -n "${R2_SECRET_ACCESS_KEY:-}" ]; then

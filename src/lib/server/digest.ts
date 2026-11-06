@@ -100,7 +100,7 @@ export async function postWebhook(text: string, digest: unknown, fetchImpl: type
 		return { ok: false, message: 'DIGEST_WEBHOOK_URL is not a valid URL.' };
 	}
 	if (u.protocol !== 'https:' && !(u.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(u.hostname))) return { ok: false, message: 'DIGEST_WEBHOOK_URL must be https.' };
-	const body = w.format === 'discord' ? { content: text.slice(0, 1900) } : w.format === 'json' ? { text, digest } : { text };
+	const body = w.format === 'discord' ? { content: text.slice(0, 1900), allowed_mentions: { parse: [] as string[] } } : w.format === 'json' ? { text, digest } : { text };
 	try {
 		const res = await fetchImpl(u, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(10_000), headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 		void res.body?.cancel().catch(() => {});

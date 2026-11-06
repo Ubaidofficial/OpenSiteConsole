@@ -19,18 +19,63 @@ const TIMEOUT_MS = 10_000;
 const allowPrivate = () => env('ONPAGE_ALLOW_PRIVATE') === '1';
 
 /** Loopback, private, link-local (cloud metadata lives at 169.254.169.254), carrier-grade NAT, multicast and reserved ranges. */
+function privateV4(a: number, b: number, c: number): boolean {
+	return (
+		a === 0 || a === 10 || a === 127 || a >= 224 || // this network, private, loopback, multicast and reserved
+		(a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) ||
+		(a === 100 && b >= 64 && b <= 127) || // carrier-grade NAT
+		(a === 198 && (b === 18 || b === 19)) || // benchmarking
+		(a === 192 && b === 0 && (c === 0 || c === 2)) || (a === 198 && b === 51 && c === 100) || (a === 203 && b === 0 && c === 113) || // documentation and protocol ranges
+		(a === 192 && b === 88 && c === 99)
+	);
+}
+
+/** The eight 16-bit groups of an IPv6 address (zone id and an embedded dotted IPv4 tail handled), or null if it is not one. */
+function ipv6Groups(addr: string): number[] | null {
+	let a = addr.split('%')[0];
+	const dotted = /(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(a);
+	if (dotted) {
+		const o = dotted.slice(1).map(Number);
+		if (o.some((n) => n > 255)) return null;
+		a = a.slice(0, dotted.index) + ((o[0] << 8) | o[1]).toString(16) + ':' + ((o[2] << 8) | o[3]).toString(16);
+	}
+	const halves = a.split('::');
+	if (halves.length > 2) return null;
+	const side = (x: string) => (x === '' ? [] : x.split(':'));
+	const head = side(halves[0]);
+	const tail = halves.length === 2 ? side(halves[1]) : [];
+	const fill = halves.length === 2 ? 8 - head.length - tail.length : 0;
+	if (fill < 0 || (halves.length === 1 && head.length !== 8)) return null;
+	const groups = [...head, ...Array(fill).fill('0'), ...tail].map((g) => (/^[0-9a-f]{1,4}$/.test(g) ? parseInt(g, 16) : NaN));
+	return groups.length === 8 && groups.every((g) => !Number.isNaN(g)) ? groups : null;
+}
+
+/**
+ * Loopback, private, link-local, carrier-grade NAT, documentation, multicast and reserved addresses, in every spelling Node can
+ * hand back: dotted or hex IPv4-mapped (::ffff:7f00:1), IPv4-compatible (::127.0.0.1), NAT64 (64:ff9b::/96) and 6to4 (2002::/16),
+ * which embed an IPv4 address that is judged by the same rules.
+ */
 export function isPrivateIp(addr: string): boolean {
 	const a = addr.replace(/^\[|\]$/g, '').toLowerCase();
 	const v = net.isIP(a);
 	if (v === 4) {
-		const [p, q] = a.split('.').map(Number);
-		return p === 0 || p === 10 || p === 127 || p >= 224 || (p === 169 && q === 254) || (p === 172 && q >= 16 && q <= 31) || (p === 192 && q === 168) || (p === 100 && q >= 64 && q <= 127) || (p === 192 && q === 0);
+		const [p, q, r] = a.split('.').map(Number);
+		return privateV4(p, q, r);
 	}
 	if (v === 6) {
-		if (a === '::' || a === '::1') return true;
-		const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(a);
-		if (mapped) return isPrivateIp(mapped[1]);
-		return /^f[cd]/.test(a) || /^fe[89ab]/.test(a) || /^ff/.test(a);
+		const g = ipv6Groups(a);
+		if (!g) return true; // cannot be read: refuse
+		const v4 = (hi: number, lo: number) => privateV4(hi >> 8, hi & 255, lo >> 8);
+		if (g.slice(0, 7).every((x) => x === 0) && g[7] <= 1) return true; // :: and ::1
+		if (g.slice(0, 5).every((x) => x === 0) && g[5] === 0xffff) return v4(g[6], g[7]); // ::ffff:a.b.c.d
+		if (g.slice(0, 6).every((x) => x === 0)) return v4(g[6], g[7]); // IPv4-compatible ::a.b.c.d
+		if (g[0] === 0x64 && g[1] === 0xff9b && g[2] === 0 && g.slice(2, 6).every((x) => x === 0)) return v4(g[6], g[7]); // NAT64
+		if (g[0] === 0x64 && g[1] === 0xff9b) return true; // NAT64 local-use /48
+		if (g[0] === 0x2002) return v4(g[1], g[2]); // 6to4
+		if (g[0] === 0x2001 && g[1] === 0) return true; // Teredo
+		if (g[0] === 0x2001 && g[1] === 0xdb8) return true; // documentation
+		if (g[0] === 0x100 && g.slice(1, 4).every((x) => x === 0)) return true; // discard-only
+		return (g[0] & 0xfe00) === 0xfc00 || (g[0] & 0xffc0) === 0xfe80 || (g[0] & 0xffc0) === 0xfec0 || (g[0] & 0xff00) === 0xff00; // ULA, link-local, site-local, multicast
 	}
 	return false;
 }

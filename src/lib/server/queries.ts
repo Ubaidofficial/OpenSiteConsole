@@ -82,13 +82,16 @@ export function historyCoversPrevious(site: Pick<SiteRow, 'backfill_done' | 'bac
 
 export interface Filters { country?: string; device?: string; search?: string; page?: string }
 
+/** A LIKE pattern that matches the text literally anywhere: % and _ in the text are not wildcards. */
+export const likeOf = (s: string) => `%${s.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+
 function where(f: Filters): { sql: string; args: string[] } {
 	const parts: string[] = [];
 	const args: string[] = [];
 	if (f.country) (parts.push('country = ?'), args.push(f.country));
 	if (f.device) (parts.push('device = ?'), args.push(f.device));
 	if (f.page) (parts.push('page = ?'), args.push(f.page));
-	if (f.search) (parts.push('(query LIKE ? OR page LIKE ?)'), args.push(`%${f.search}%`, `%${f.search}%`));
+	if (f.search) (parts.push("(query LIKE ? ESCAPE '\\' OR page LIKE ? ESCAPE '\\')"), args.push(likeOf(f.search), likeOf(f.search)));
 	return { sql: parts.length ? ' AND ' + parts.join(' AND ') : '', args };
 }
 
@@ -109,7 +112,7 @@ export function topPages(siteId: number, start: string, end: string, f: Filters 
 export type PerfDim = 'query' | 'page' | 'country' | 'device' | 'date';
 export interface PerfFilters { country?: string; device?: string; queryContains?: string; pageContains?: string }
 const PERF_DIMS: readonly string[] = ['query', 'page', 'country', 'device', 'date'];
-const like = (s: string) => `%${s.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+const like = likeOf;
 
 /** Web-search performance grouped by one dimension, from the query-level rows (so anonymised queries are not in it). */
 export function performanceBy(siteId: number, start: string, end: string, dim: PerfDim, f: PerfFilters = {}, limit = 50_000): (Metrics & { key: string })[] {
@@ -258,7 +261,7 @@ export function experiment(site: Pick<SiteRow, 'id' | 'synced_through'>, a: Pick
 	const scoped = (s: string, e: string) => {
 		if (!a.page_prefix) return metrics(summary(site.id, s, e));
 		return metrics(
-			d.prepare(`SELECT SUM(clicks) clicks, SUM(impressions) impressions, ${WPOS} position FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ? AND page LIKE ?`).get(site.id, s, e, `${a.page_prefix}%`) as never
+			d.prepare(`SELECT SUM(clicks) clicks, SUM(impressions) impressions, ${WPOS} position FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ? AND page LIKE ? ESCAPE '\\'`).get(site.id, s, e, likeOf(a.page_prefix).slice(0, -1).slice(1) + '%') as never
 		);
 	};
 	const per = (m: Metrics, days: number) => ({ clicksPerDay: days ? m.clicks / days : 0, impressionsPerDay: days ? m.impressions / days : 0, position: m.position });

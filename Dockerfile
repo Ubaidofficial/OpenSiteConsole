@@ -13,6 +13,9 @@ ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 DB_PATH=/data/opensiteconsole.db
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY package.json ./
+# Run as the unprivileged user that node images provide; it owns the data directory.
+RUN mkdir -p /data && chown node:node /data
+USER node
 VOLUME /data
 EXPOSE 3000
 CMD ["node", "build"]

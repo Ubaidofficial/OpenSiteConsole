@@ -9,7 +9,15 @@ export const MAX_ENTRIES_PER_FILE = 50_000; // the sitemap protocol's own limit
 export interface SitemapEntry { loc: string; lastmod: string | null }
 export interface ParsedSitemap { kind: 'index' | 'urlset' | 'unknown'; entries: SitemapEntry[]; truncated: boolean }
 
-const asciiLower = (s: string) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+/**
+ * Lower-case A-Z only, keeping every index aligned with the original. toLowerCase is far faster (a 40 MB file of capitals took
+ * 6 s with a callback per letter) and keeps the length unless a character expands (an upper-case I with a dot becomes two units),
+ * in which case alignment is not guaranteed and the slow, exact version is used.
+ */
+const asciiLower = (s: string) => {
+	const l = s.toLowerCase();
+	return l.length === s.length ? l : s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+};
 
 /** Text of the first <tag>…</tag> inside xml[from, to), without CDATA wrappers; null if absent. */
 function inner(xml: string, lower: string, tag: string, from: number, to: number): string | null {

@@ -37,6 +37,18 @@ export interface Digest {
 	top: (Pick<ActionItem, 'key' | 'type' | 'title' | 'blocking' | 'impact' | 'confidence' | 'href'> & { site: string; siteId: number })[];
 }
 
+/**
+ * Text that came from a website or from searchers (page paths, queries, test names) goes into a chat message. Slack treats
+ * <!channel>, <@user> and <http://x|label> in text as markup and mentions; escape those characters as Slack documents, and
+ * break up @everyone / @here / @channel so no text can ping a room.
+ */
+export const chatSafe = (s: string) =>
+	String(s)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/@(everyone|here|channel)/gi, '@\u200b$1');
+
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`;
 const n0 = (x: number) => Math.round(x).toLocaleString('en-US');
 
@@ -81,10 +93,10 @@ export function headlineOf(sites: SiteDigest[], top: Digest['top']): string[] {
  */
 export function renderText(d: Digest, base = ''): string {
 	const lines: string[] = [`*SEO digest, week ending ${d.weekEnd}*`, ''];
-	for (const h of d.headline) lines.push(`• ${h}`);
+	for (const h of d.headline) lines.push(`• ${chatSafe(h)}`);
 	if (d.top.length) {
 		lines.push('', '*Do this first*');
-		d.top.slice(0, 8).forEach((t, i) => lines.push(`${i + 1}. ${t.blocking ? '🛑 ' : ''}${t.site}: ${t.title}${t.impact != null ? ` (≈${n0(t.impact)} clicks / 28 d, ${t.confidence} confidence)` : ''}${base ? `\n    ${base}${t.href}` : ''}`));
+		d.top.slice(0, 8).forEach((t, i) => lines.push(`${i + 1}. ${t.blocking ? '🛑 ' : ''}${chatSafe(t.site)}: ${chatSafe(t.title)}${t.impact != null ? ` (≈${n0(t.impact)} clicks / 28 d, ${t.confidence} confidence)` : ''}${base ? `\n    ${base}${t.href}` : ''}`));
 	}
 	lines.push('', `Estimates come from each site's own data; they are not promises and not additive.${base ? ` Full list: ${base}/actions` : ''}`);
 	return lines.join('\n');
@@ -96,7 +108,7 @@ export const URGENT_SHOWN = 8;
 export function renderUrgent(items: { site: string; title: string; why: string; href: string }[], base = '', more = 0): string {
 	const total = items.length + more;
 	const lines = [`*SEO alert: ${total} blocking issue${total === 1 ? '' : 's'}*`, ''];
-	for (const i of items) lines.push(`🛑 *${i.site}*: ${i.title}\n    ${i.why}${base ? `\n    ${base}${i.href}` : ''}`);
+	for (const i of items) lines.push(`🛑 *${chatSafe(i.site)}*: ${chatSafe(i.title)}\n    ${chatSafe(i.why)}${base ? `\n    ${base}${i.href}` : ''}`);
 	if (more) lines.push(`…and ${more} more, to follow.`);
 	return lines.join('\n');
 }

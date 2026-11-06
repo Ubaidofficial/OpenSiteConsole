@@ -37,6 +37,9 @@ export class OpenSiteConsole extends Container<Env> {
 		for (const [k, v] of Object.entries(env)) if (typeof v === 'string' && !WORKER_ONLY.has(k)) vars[k] = v;
 		vars.PORT = String(PORT);
 		vars.HOST = '0.0.0.0';
+		// The app sees only the Worker as its peer. Tell it where the real visitor's address is (set by the fetch handler below), so
+		// the login attempt limit counts visitors separately instead of locking everyone out when one person guesses wrong.
+		vars.ADDRESS_HEADER = 'x-client-ip';
 		this.envVars = vars;
 	}
 
@@ -86,7 +89,11 @@ export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const problem = missingSetup(env);
 		if (problem) return new Response(`OpenSiteConsole is not configured yet.\n\n${problem}\n`, { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
-		return getContainer(env.OSC).fetch(request);
+		// Pass the visitor's address on in a header only this Worker sets (any copy sent by the visitor is dropped first).
+		const headers = new Headers(request.headers);
+		headers.delete('x-client-ip');
+		headers.set('x-client-ip', request.headers.get('cf-connecting-ip') ?? 'unknown');
+		return getContainer(env.OSC).fetch(new Request(request, { headers }));
 	},
 
 	async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
