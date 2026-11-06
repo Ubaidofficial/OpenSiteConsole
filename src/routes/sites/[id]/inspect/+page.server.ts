@@ -18,7 +18,7 @@ export const load: PageServerLoad = ({ params }) => {
 async function inspectMany(siteId: number, urls: string[], force: boolean) {
 	const { client, site } = clientForSite(siteId);
 	const d = db();
-	const get = d.prepare('SELECT fetched_at FROM url_inspections WHERE site_id = ? AND url = ?');
+	const get = d.prepare('SELECT fetched_at, result FROM url_inspections WHERE site_id = ? AND url = ?');
 	const put = d.prepare('INSERT OR REPLACE INTO url_inspections (site_id, url, fetched_at, result) VALUES (?,?,?,?)');
 	let live = 0;
 	let cached = 0;
@@ -26,7 +26,7 @@ async function inspectMany(siteId: number, urls: string[], force: boolean) {
 	// URL Inspection is quota-limited (~2000/day per property), so stay gentle: 3 at a time, 12h cache.
 	const worker = async () => {
 		for (let u = queue.shift(); u; u = queue.shift()) {
-			const hit = get.get(siteId, u) as { fetched_at: number } | undefined;
+			const hit = get.get(siteId, u) as { fetched_at: number; result: string } | undefined;
 			if (hit && !force && Date.now() - hit.fetched_at < TTL) {
 				cached++;
 				continue;
@@ -34,7 +34,9 @@ async function inspectMany(siteId: number, urls: string[], force: boolean) {
 			try {
 				put.run(siteId, u, Date.now(), JSON.stringify(await client.inspectUrl(site.site_url, u)));
 			} catch (e) {
-				put.run(siteId, u, Date.now(), JSON.stringify({ error: e instanceof Error ? e.message : 'Inspection failed' }));
+				// Keep the last good result (the indexing monitor diffs against it); only record the error if there is nothing better.
+				const good = hit && !(JSON.parse(hit.result) as { error?: string }).error;
+				if (!good) put.run(siteId, u, Date.now(), JSON.stringify({ error: e instanceof Error ? e.message : 'Inspection failed' }));
 			}
 			live++;
 		}

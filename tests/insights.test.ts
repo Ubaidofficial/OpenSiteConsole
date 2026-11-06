@@ -95,7 +95,7 @@ describe('reports over demo data', () => {
 	it('AI traffic is stored per assistant after the GA4 sync, ChatGPT first', () => {
 		const t = aiTrafficReport(site(), 28);
 		expect(t.linked).toBe(true);
-		if (!t.linked) return;
+		if (!t.linked || t.status !== 'ok') throw new Error('expected a finished AI report, got ' + (t.linked ? t.status : 'unlinked'));
 		expect(t.sessions).toBeGreaterThan(0);
 		expect(t.assistants[0].assistant).toBe('ChatGPT');
 		expect(t.shareOfAllSessions!).toBeLessThan(0.2);
@@ -149,14 +149,14 @@ describe('SEO tests', () => {
 			const put = (date: string, page: string, clicks: number) => ins.run(date, 'q ' + page, page, clicks, clicks * 20);
 			const end = o.endDate ?? '2026-06-30';
 			d.transaction(() => {
-				for (const day of dates('2026-04-01', end)) {
+				for (const day of dates('2025-12-01', end)) {
 					const post = day >= START;
 					for (let i = 0; i < 5; i++) put(day, `https://x.example/t/${i}`, pois(o.tMean * (post ? o.tAfter : 1)));
 					for (let i = 0; i < 20; i++) put(day, `https://x.example/c/${i}`, pois(o.cMean * (post ? o.cAfter : 1)));
 				}
 				o.extra?.(put);
 			})();
-			d.prepare('UPDATE sites SET synced_through = ? WHERE id = 1').run(end);
+			d.prepare('UPDATE sites SET synced_through = ?, backfill_done = 1 WHERE id = 1').run(end);
 			return getSite(1)!;
 		});
 	}
@@ -193,7 +193,7 @@ describe('SEO tests', () => {
 	});
 
 	it('split test with an explicit control group, and suggested control pages match on traffic', async () => {
-		const site = await load({ tMean: 8, tAfter: 1.4, cMean: 10, cAfter: 1, extra: (put) => { for (const day of dates('2026-04-01', '2026-06-30')) put(day, 'https://x.example/big', 500); } });
+		const site = await load({ tMean: 8, tAfter: 1.4, cMean: 10, cAfter: 1, extra: (put) => { for (const day of dates('2025-12-01', '2026-06-30')) put(day, 'https://x.example/big', 500); } });
 		const suggested = suggestControl(site, scope('/t/'), START);
 		expect(suggested.length).toBeGreaterThanOrEqual(15);
 		expect(suggested.slice(0, 15)).not.toContain('https://x.example/big'); // a 500/day page is a poor match for 8/day pages
@@ -217,7 +217,7 @@ describe('SEO tests', () => {
 		const site = await load({
 			tMean: 0, tAfter: 1, cMean: 10, cAfter: 1,
 			extra: (put) => {
-				for (const day of dates('2026-04-01', '2026-06-30')) {
+				for (const day of dates('2025-12-01', '2026-06-30')) {
 					for (let i = 0; i < 4; i++) {
 						put(day, `https://x.example/old/${i}`, day < START ? pois(8) : 0);
 						put(day, `https://x.example/new/${i}`, day < START ? 0 : pois(8));
@@ -238,7 +238,7 @@ describe('SEO tests', () => {
 		const site = await load({
 			tMean: 0, tAfter: 1, cMean: 10, cAfter: 1,
 			extra: (put) => {
-				for (const day of dates('2026-04-01', '2026-06-30')) for (let i = 0; i < 4; i++) {
+				for (const day of dates('2025-12-01', '2026-06-30')) for (let i = 0; i < 4; i++) {
 					put(day, `https://x.example/old/${i}`, day < START ? pois(8) : 0);
 					put(day, `https://x.example/new/${i}`, day < START ? 0 : pois(2));
 				}
@@ -352,7 +352,7 @@ describe('on-page fetching is confined to the site', () => {
 		expect(f).not.toHaveBeenCalled();
 		const redirecting = vi.fn(async (u: string) => (u.includes('greenleaf') ? new Response(null, { status: 302, headers: { location: 'http://169.254.169.254/' } }) : html()));
 		const r = await fetchPage('https://greenleaf.example/a', SITE, redirecting as never);
-		expect(r.error).toMatch(/another site/);
+		expect(r.error).toMatch(/not part of this site/);
 		expect(redirecting).toHaveBeenCalledTimes(1);
 	});
 

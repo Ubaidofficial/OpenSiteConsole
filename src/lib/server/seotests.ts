@@ -2,7 +2,10 @@ import { db } from './db';
 import type { SiteRow } from './clients';
 import { addDays, daysBetween, eachDay } from './dates';
 import { siteEnd } from './queries';
-import { emptyScope, indexSeries, isEmptyScope, liftTest, pickControl, scopeMatcher, type LiftResult, type Scope } from '../experiments';
+import { emptyScope, indexSeries, isEmptyScope, liftTestCalibrated, pickControl, placebosFrom, scopeMatcher, type LiftResult, type Scope } from '../experiments';
+
+/** YYYY-MM-DD that is an actual calendar day (rejects 2026-02-31 and 9999-99-99, which a hand-made request could send). */
+export const isRealDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d + 'T00:00:00Z')) && new Date(d + 'T00:00:00Z').toISOString().slice(0, 10) === d;
 
 export type TestKind = 'before_after' | 'split' | 'switch';
 export interface SeoTest {
@@ -43,7 +46,7 @@ export interface NewTest {
 export function createTest(siteId: number, t: NewTest): number {
 	const name = t.name.trim().slice(0, 120);
 	if (!name) throw new Error('Give the test a name.');
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(t.startDate)) throw new Error('Enter the date the change went live (YYYY-MM-DD).');
+	if (!isRealDate(t.startDate)) throw new Error('Enter the date the change went live as a real date (YYYY-MM-DD).');
 	const windowDays = Math.min(90, Math.max(7, Math.round(t.windowDays ?? 28)));
 	let treatment = t.treatment;
 	const meta: SeoTest['meta'] = {};
@@ -82,45 +85,71 @@ export interface TestOutcome {
 	startDate: string;
 }
 
+/** How many earlier windows (beyond the real "before" window) are fetched to calibrate noise. */
+const PLACEBO_MAX = 4;
+
 /** Evaluate one test against the stored data. The change day itself counts as "after". */
-export function evaluateTest(site: Pick<SiteRow, 'id' | 'synced_through'>, test: SeoTest): TestOutcome {
+export function evaluateTest(site: Pick<SiteRow, 'id' | 'synced_through' | 'backfill_done' | 'backfilled_to'>, test: SeoTest): TestOutcome {
 	const end = siteEnd(site);
 	const n = test.window_days;
 	const preStart = addDays(test.start_date, -n);
 	const preEnd = addDays(test.start_date, -1);
 	const postEnd = [addDays(test.start_date, n - 1), end].sort()[0];
 	const postDays = Math.max(0, daysBetween(test.start_date, postEnd) + 1);
+	// Earlier windows for the noise calibration: only as far back as history is actually stored.
+	const firstStored = (db().prepare('SELECT MIN(date) d FROM sa_rows WHERE site_id = ?').get(site.id) as { d: string | null }).d ?? preStart;
+	const extStart = addDays(test.start_date, -(PLACEBO_MAX + 1) * n) < firstStored ? firstStored : addDays(test.start_date, -(PLACEBO_MAX + 1) * n);
 	const rows = db()
 		.prepare('SELECT date, page, SUM(clicks) clicks, SUM(impressions) impressions, SUM(position * impressions) pw FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY date, page')
-		.all(site.id, preStart, postDays ? postEnd : preEnd) as DayPage[];
+		.all(site.id, extStart, postDays ? postEnd : preEnd) as DayPage[];
 	const inT = scopeMatcher(test.treatment);
-	const inC = isRest(test.control) ? (p: string) => !inT(p) : ((m) => (p: string) => !inT(p) && m(p))(scopeMatcher(test.control));
+	const inCRaw = isRest(test.control) ? null : scopeMatcher(test.control);
 	const oldM = test.meta.old ? scopeMatcher(test.meta.old) : null;
-	const days = [...eachDay(preStart, preEnd), ...(postDays ? eachDay(test.start_date, postEnd) : [])];
+	const preDaysList = eachDay(extStart, preEnd);
+	const days = [...preDaysList, ...(postDays ? eachDay(test.start_date, postEnd) : [])];
+	const S = preDaysList.length; // index of the change day
 	const idx = new Map(days.map((d, i) => [d, i]));
 	const zero = () => days.map(() => 0);
 	const tC = zero(), tI = zero(), cC = zero(), cI = zero();
 	const tPages = new Set<string>(), cPages = new Set<string>();
+	// Each page is classified once: the same page repeats on every day, and URL parsing per row is the slow part.
+	const arm = new Map<string, 0 | 1 | 2>(); // 0 = neither, 1 = test, 2 = control
+	const armOf = (page: string) => {
+		let a = arm.get(page);
+		if (a === undefined) (a = inT(page) ? 1 : !inCRaw || inCRaw(page) ? 2 : 0), arm.set(page, a);
+		return a;
+	};
 	let pwPre = 0, impPre = 0, pwPost = 0, impPost = 0;
 	const parts = { oldPre: 0, oldPost: 0, newPre: 0, newPost: 0 };
 	for (const r of rows) {
 		const i = idx.get(r.date);
 		if (i === undefined) continue;
-		const pre = r.date < test.start_date;
-		if (inT(r.page)) {
+		const a = armOf(r.page);
+		if (a === 1) {
 			tC[i] += r.clicks; tI[i] += r.impressions; tPages.add(r.page);
-			if (pre) (pwPre += r.pw, (impPre += r.impressions)); else (pwPost += r.pw, (impPost += r.impressions));
-			if (oldM) {
-				const key = oldM(r.page) ? (pre ? 'oldPre' : 'oldPost') : pre ? 'newPre' : 'newPost';
-				parts[key] += r.clicks;
+			const pre = r.date < test.start_date;
+			if (r.date >= preStart) {
+				if (pre) (pwPre += r.pw, (impPre += r.impressions)); else (pwPost += r.pw, (impPost += r.impressions));
+				if (oldM) parts[oldM(r.page) ? (pre ? 'oldPre' : 'oldPost') : pre ? 'newPre' : 'newPost'] += r.clicks;
 			}
-		} else if (inC(r.page)) {
+		} else if (a === 2) {
 			cC[i] += r.clicks; cI[i] += r.impressions; cPages.add(r.page);
 		}
 	}
-	const split = (xs: number[]) => ({ pre: xs.slice(0, n), post: xs.slice(n) });
-	const mk = (t: number[], c: number[]) => liftTest(split(t), split(c));
-	const series = (xs: number[]) => indexSeries(days.map((d, i) => ({ date: d, value: xs[i] })), n);
+	const realPre = (xs: number[]) => xs.slice(S - n, S);
+	const realPost = (xs: number[]) => xs.slice(S);
+	// The "before" window must be fully downloaded: a half-empty "before" would turn any normal traffic into a huge "lift".
+	const preCovered = !!site.backfill_done || (!!site.backfilled_to && site.backfilled_to <= preStart);
+	const mk = (t: number[], c: number[]): LiftResult => {
+		const r = liftTestCalibrated({ pre: realPre(t), post: realPost(t) }, { pre: realPre(c), post: realPost(c) }, placebosFrom(t, c, S, n, postDays, PLACEBO_MAX));
+		if (!preCovered) return { ...r, lift: null, ciLow: null, ciHigh: null, p: null, verdict: 'too-little-data', note: `The history before the change is still downloading (stored back to ${site.backfilled_to ?? 'nothing yet'}), so there is no complete "before" to compare with. Try again when the backfill finishes.` };
+		if (r.verdict === 'too-little-data' && cPages.size === 0 && postDays >= 7 && r.totals.tPre >= 30) {
+			return { ...r, note: isRest(test.control) ? 'There are no pages outside the test pages to use as a control (the test covers the whole site). Use a split test with named control pages, or narrow the test pages.' : 'None of the control pages had any traffic in the window. Check the control URLs.' };
+		}
+		return r;
+	};
+	const shown = days.slice(S - n);
+	const series = (xs: number[]) => indexSeries(shown.map((d, i) => ({ date: d, value: xs[S - n + i] })), n);
 	const st = series(tC), sc = series(cC);
 	return {
 		preDays: n,

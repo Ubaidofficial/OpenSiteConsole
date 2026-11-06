@@ -265,6 +265,7 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('ga4_periods_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_periods_on TEXT');
 	if (!cols('sites').includes('crux_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN crux_pulled_on TEXT');
 	if (!cols('sites').includes('index_monitor')) db.exec('ALTER TABLE sites ADD COLUMN index_monitor INTEGER NOT NULL DEFAULT 0');
+	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.

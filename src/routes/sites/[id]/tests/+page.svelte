@@ -11,13 +11,14 @@
 		positive: ['Likely a real gain', 'text-good'],
 		negative: ['Likely a real loss', 'text-bad'],
 		inconclusive: ['No clear effect', 'text-muted-foreground'],
-		'too-little-data': ['Not enough data yet', 'text-warn']
+		'too-little-data': ['Not enough data yet', 'text-warn'],
+		'estimate-only': ['Estimate only: no verdict', 'text-warn']
 	};
 </script>
 
 <p class="mb-3 max-w-3xl text-sm text-muted-foreground">
 	Did a change move the pages it touched? Each test compares the <b>test pages</b> before and after the change date against <b>control pages</b> over the same days, so a site-wide rise, a season or a Google update does not get credited to your change.
-	It is observational, not randomised: a significant result means “unlikely to be noise given the control”, not proof that the change caused it.
+	It is observational, not randomised: a significant result means “unlikely to be noise given the control”, not proof that the change caused it. Traffic drifts on its own, so the noise level is measured on this site's own earlier windows of the same length; that takes at least four windows of history before the change (112 days for 28-day windows, 56 for 14-day ones). With less, you get an estimate and no verdict. Real changes of around 40% are detectable on steady sites; on very drifty traffic only larger ones are.
 </p>
 
 <section class="card mb-5 p-4">
@@ -28,7 +29,7 @@
 		<label class="flex items-center gap-2"><span class="w-40 text-xs text-muted-foreground">Change went live on</span><input class="input" type="date" name="startDate" max={data.today} required /></label>
 		<label class="flex items-center gap-2"><span class="w-40 text-xs text-muted-foreground">Compare windows of</span><select class="input" name="windowDays"><option value="14">14 days</option><option value="28" selected>28 days</option><option value="56">56 days</option></select></label>
 		{#if kind !== 'switch'}
-			<label class="md:col-span-2"><span class="mb-1 block text-xs text-muted-foreground">Test pages: a path such as <code>/guides/</code>, or full URLs, one per line</span><textarea class="input h-20 w-full" name="treatment" required></textarea></label>
+			<label class="md:col-span-2"><span class="mb-1 block text-xs text-muted-foreground">Test pages: a path such as <code>/guides/</code> (matches every host of the property), a full URL ending in <code>/</code> (that page and everything below it), or exact URLs, one per line</span><textarea class="input h-20 w-full" name="treatment" required></textarea></label>
 		{:else}
 			<label><span class="mb-1 block text-xs text-muted-foreground">Old URLs (path prefix or URLs)</span><textarea class="input h-20 w-full" name="old" required></textarea></label>
 			<label><span class="mb-1 block text-xs text-muted-foreground">New URLs (path prefix or URLs)</span><textarea class="input h-20 w-full" name="new" required></textarea></label>
@@ -49,6 +50,10 @@
 </section>
 
 {#each data.tests as t (t.id)}
+	{#if !t.outcome}
+		<article class="card mb-4 p-4"><div class="flex items-center gap-2"><h3 class="font-medium">{t.name}</h3><span class="text-xs text-bad">Could not be evaluated: {t.error}</span>
+			<form method="POST" action="?/remove" use:enhance class="ml-auto"><input type="hidden" name="id" value={t.id} /><ConfirmButton title="Delete this test?" description="Only the test definition is removed; your Search Console data is untouched." confirmLabel="Delete test">Delete</ConfirmButton></form></div></article>
+	{:else}
 	{@const o = t.outcome}
 	{@const v = verdictText[o.clicks.verdict]}
 	<article class="card mb-4 p-4">
@@ -61,7 +66,8 @@
 		<div class="mb-3 grid grid-cols-1 gap-3 md:grid-cols-3">
 			<div class="rounded-lg border p-3"><div class="text-xs text-muted-foreground">Clicks, test vs control</div><div class="tnum text-xl font-semibold {v[1]}">{pct(o.clicks.lift)}</div>
 				<div class="text-xs {v[1]}">{v[0]}</div>
-				{#if o.clicks.ciLow != null}<div class="text-[11px] text-muted-foreground">95% range {pct(o.clicks.ciLow)} to {pct(o.clicks.ciHigh)} · p = {o.clicks.p!.toFixed(3)}</div>{/if}</div>
+				{#if o.clicks.ciLow != null}<div class="text-[11px] text-muted-foreground">95% range {pct(o.clicks.ciLow)} to {pct(o.clicks.ciHigh)} · p = {o.clicks.p!.toFixed(3)}</div>{/if}
+				{#if o.clicks.calibration.placebos}<div class="text-[11px] text-muted-foreground">normal drift measured on {o.clicks.calibration.placebos} earlier windows</div>{/if}</div>
 			<div class="rounded-lg border p-3"><div class="text-xs text-muted-foreground">Impressions, test vs control</div><div class="tnum text-xl font-semibold">{pct(o.impressions.lift)}</div>
 				<div class="text-xs {verdictText[o.impressions.verdict][1]}">{verdictText[o.impressions.verdict][0]}</div></div>
 			<div class="rounded-lg border p-3"><div class="text-xs text-muted-foreground">Average position of test pages</div>
@@ -73,6 +79,7 @@
 		<LineChart xs={o.series.map((s) => s.date)} baseline={100} zero={false} marker={{ x: o.startDate, label: 'change' }} height={200} format={(n) => String(Math.round(n))}
 			series={[{ label: 'Test pages (clicks, 100 = average before)', color: 'var(--c-clicks)', values: o.series.map((s) => s.treatment) }, { label: 'Control pages', color: 'var(--muted-foreground)', values: o.series.map((s) => s.control) }]} />
 	</article>
+	{/if}
 {:else}
 	<div class="card p-6 text-center text-sm text-muted-foreground">No tests yet. Save one above after you change a group of pages, then come back once a couple of weeks have passed.</div>
 {/each}

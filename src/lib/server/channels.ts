@@ -100,12 +100,13 @@ export async function pullGa4Periods(siteId: number, property: string, src: Ga4S
 	const insU = d.prepare('INSERT OR REPLACE INTO ga4_period_users VALUES (?,?,?,?,?)');
 	const insL = d.prepare('INSERT OR REPLACE INTO ga4_landing VALUES (?,?,?,?,?,?,?)');
 	const insA = d.prepare('INSERT OR REPLACE INTO ga4_ai VALUES (?,?,?,?,?,?,?,?)');
+	let aiFailed = false;
 	try {
 		for (const days of PERIODS) {
 			let start = addDays(today, -(days - 1));
 			if (start < horizon) start = horizon;
 			// The AI-assistant report is an extra: if it fails, users and landing pages are still stored.
-			const [users, landing, ai] = await Promise.all([src.usersByChannel(property, start, today), src.landing(property, start, today), src.aiTraffic(property, start, today).catch(() => null)]);
+			const [users, landing, ai] = await Promise.all([src.usersByChannel(property, start, today), src.landing(property, start, today), src.aiTraffic(property, start, today).catch(() => (aiFailed = true, null))]);
 			d.transaction(() => {
 				d.prepare('DELETE FROM ga4_period_users WHERE site_id = ? AND days = ?').run(siteId, days);
 				d.prepare('DELETE FROM ga4_landing WHERE site_id = ? AND days = ?').run(siteId, days);
@@ -117,7 +118,7 @@ export async function pullGa4Periods(siteId: number, property: string, src: Ga4S
 				}
 			})();
 		}
-		d.prepare('UPDATE sites SET ga4_periods_on = ? WHERE id = ?').run(today, siteId);
+		d.prepare('UPDATE sites SET ga4_periods_on = ?, ga4_ai_on = ? WHERE id = ?').run(today, aiFailed ? null : today, siteId);
 		return { ok: true };
 	} catch {
 		return { ok: false };

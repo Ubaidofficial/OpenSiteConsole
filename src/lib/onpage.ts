@@ -15,6 +15,7 @@ export interface Parsed {
 	ogTitle: string | null;
 }
 
+const codePoint = (n: number) => (n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : '�');
 const decode = (s: string) =>
 	s
 		.replace(/&nbsp;/g, ' ')
@@ -23,10 +24,94 @@ const decode = (s: string) =>
 		.replace(/&gt;/g, '>')
 		.replace(/&quot;/g, '"')
 		.replace(/&#39;|&apos;/g, "'")
-		.replace(/&#(\d+);/g, (_m, n) => String.fromCodePoint(Number(n)))
+		.replace(/&#(\d{1,8});/g, (_m, n) => codePoint(Number(n)))
+		.replace(/&#x([0-9a-f]{1,6});/gi, (_m, n) => codePoint(parseInt(n, 16)))
 		.replace(/\s+/g, ' ')
 		.trim();
-const stripTags = (s: string) => decode(s.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/gi, ' '));
+
+/** ASCII-only lower-casing keeps every index aligned with the original string (toLowerCase can change its length). */
+const asciiLower = (s: string) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+
+const MAX_TAG = 20_000;
+
+/**
+ * Everything below scans with indexOf, never with a regex that can backtrack: a page made of thousands of unterminated
+ * "<!--", "<h1>" or "<meta" must cost time proportional to its size, not its size squared. Where something is unterminated
+ * the scan simply stops.
+ */
+function stripInert(html: string): string {
+	const lower = asciiLower(html);
+	const next: Record<'c' | 's' | 'y', number> = { c: -2, s: -2, y: -2 }; // -2 unknown, -1 none left
+	const nextOf = (k: 'c' | 's' | 'y', needle: string, from: number) => {
+		let p = next[k];
+		if (p === -2 || (p !== -1 && p < from)) p = next[k] = lower.indexOf(needle, from);
+		return p;
+	};
+	let out = '';
+	let pos = 0;
+	for (;;) {
+		const c = nextOf('c', '<!--', pos);
+		const s = nextOf('s', '<script', pos);
+		const y = nextOf('y', '<style', pos);
+		const found = [c, s, y].filter((x) => x >= 0);
+		if (!found.length) return out + html.slice(pos);
+		const at = Math.min(...found);
+		out += html.slice(pos, at);
+		if (at === c) {
+			const e = lower.indexOf('-->', at + 4);
+			if (e < 0) return out;
+			pos = e + 3;
+		} else {
+			const e = lower.indexOf(at === s ? '</script' : '</style', at);
+			const gt = e < 0 ? -1 : lower.indexOf('>', e);
+			if (gt < 0) return out;
+			pos = gt + 1;
+		}
+	}
+}
+
+/** End index of the tag starting at `i`, honouring quoted attribute values (a ">" inside quotes does not end it). -1 if unterminated. */
+function tagEnd(html: string, i: number): number {
+	let quote = '';
+	const stop = Math.min(html.length, i + MAX_TAG);
+	for (let k = i + 1; k < stop; k++) {
+		const ch = html[k];
+		if (quote) {
+			if (ch === quote) quote = '';
+		} else if (ch === '"' || ch === "'") quote = ch;
+		else if (ch === '>') return k;
+	}
+	return -1;
+}
+
+/** Opening tags named `name`, as strings, in document order. */
+function* openTags(html: string, lower: string, name: string): Generator<{ tag: string; start: number; end: number }> {
+	const needle = '<' + name;
+	let from = 0;
+	for (;;) {
+		const i = lower.indexOf(needle, from);
+		if (i < 0) return;
+		const after = lower.charCodeAt(i + needle.length);
+		const e = tagEnd(html, i);
+		if (e < 0) return;
+		if (after === 62 || after === 47 || after === 32 || after === 9 || after === 10 || after === 13) yield { tag: html.slice(i, e + 1), start: i, end: e };
+		from = e + 1;
+	}
+}
+
+/** Inner text of every <name>...</name> element; an element with no closing tag ends the scan. */
+function elementTexts(html: string, lower: string, name: string, max = 20): string[] {
+	const out: string[] = [];
+	for (const t of openTags(html, lower, name)) {
+		const close = lower.indexOf('</' + name, t.end + 1);
+		if (close < 0) break;
+		out.push(html.slice(t.end + 1, close));
+		if (out.length >= max) break;
+	}
+	return out;
+}
+
+const stripTags = (s: string) => decode(s.replace(/<[^>]*>/g, ' '));
 
 /** Attribute value of a tag, whichever order the attributes are in. */
 function attr(tag: string, name: string): string | null {
@@ -34,28 +119,28 @@ function attr(tag: string, name: string): string | null {
 	return m ? decode(m[2] ?? m[3] ?? m[4] ?? '') : null;
 }
 
-function metaContent(html: string, key: 'name' | 'property', value: string): string | null {
-	for (const m of html.matchAll(/<meta\b[^>]*>/gi)) if (attr(m[0], key)?.toLowerCase() === value) return attr(m[0], 'content');
+function metaContent(html: string, lower: string, key: 'name' | 'property', value: string): string | null {
+	for (const t of openTags(html, lower, 'meta')) if (attr(t.tag, key)?.toLowerCase() === value) return attr(t.tag, 'content');
 	return null;
 }
 
-/** Scripts, styles and comments hold text that looks like markup but is not part of the page. */
-const stripInert = (html: string) => html.replace(/<script\b[\s\S]*?<\/script>|<style\b[\s\S]*?<\/style>|<!--[\s\S]*?-->/gi, '');
-
 export function parseOnPage(rawHtml: string): Parsed {
 	const html = stripInert(rawHtml.slice(0, 1_500_000));
+	const lower = asciiLower(html);
 	const head = html.slice(0, 400_000);
-	const title = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(head);
-	const canon = [...head.matchAll(/<link\b[^>]*>/gi)].find((m) => attr(m[0], 'rel')?.toLowerCase().split(/\s+/).includes('canonical'));
-	const lang = /<html\b[^>]*>/i.exec(head);
+	const headLower = lower.slice(0, 400_000);
+	const title = elementTexts(head, headLower, 'title', 1)[0];
+	let canonical: string | null = null;
+	for (const t of openTags(head, headLower, 'link')) if (attr(t.tag, 'rel')?.toLowerCase().split(/\s+/).includes('canonical')) { canonical = attr(t.tag, 'href'); break; }
+	const htmlTag = openTags(head, headLower, 'html').next().value;
 	return {
-		title: title ? stripTags(title[1]) || null : null,
-		description: metaContent(head, 'name', 'description'),
-		h1: [...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map((m) => stripTags(m[1])).filter(Boolean),
-		canonical: canon ? attr(canon[0], 'href') : null,
-		robots: metaContent(head, 'name', 'robots'),
-		lang: lang ? attr(lang[0], 'lang') : null,
-		ogTitle: metaContent(head, 'property', 'og:title')
+		title: title !== undefined ? stripTags(title) || null : null,
+		description: metaContent(head, headLower, 'name', 'description'),
+		h1: elementTexts(html, lower, 'h1').map(stripTags).filter(Boolean),
+		canonical,
+		robots: metaContent(head, headLower, 'name', 'robots'),
+		lang: htmlTag ? attr(htmlTag.tag, 'lang') : null,
+		ogTitle: metaContent(head, headLower, 'property', 'og:title')
 	};
 }
 

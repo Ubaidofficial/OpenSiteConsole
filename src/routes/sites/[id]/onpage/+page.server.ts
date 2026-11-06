@@ -1,11 +1,14 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { checkUrls, pagesToCheck, storedChecks } from '$lib/server/onpage';
+import { getSite } from '$lib/server/clients';
+import { brandTerms } from '$lib/server/queries';
 
 export const load: PageServerLoad = ({ params }) => {
 	const rows = storedChecks(Number(params.id));
 	const scored = rows.filter((r) => r.score != null);
 	return {
+		brandTerms: brandTerms(getSite(Number(params.id))!),
 		rows,
 		avgScore: scored.length ? Math.round(scored.reduce((a, r) => a + r.score!, 0) / scored.length) : null,
 		failed: rows.filter((r) => r.score == null).length

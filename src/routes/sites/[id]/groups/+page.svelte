@@ -1,6 +1,7 @@
 <script lang="ts">
 	import DataTable from '$lib/components/DataTable.svelte';
 	import { fmtInt, fmtSigned } from '$lib/format';
+	import { isBranded } from '$lib/analytics';
 	let { data } = $props();
 	const views = [['folders', 'URL folders'], ['topics', 'Topic clusters'], ['heatmap', 'Decay heatmap'], ['locales', 'Locales & countries']] as const;
 	const href = (o: Record<string, string | number>) => `?${new URLSearchParams({ days: String(data.days), view: data.view, depth: String(data.depth), by: data.by, ...Object.fromEntries(Object.entries(o).map(([k, v]) => [k, String(v)])) })}`;
@@ -18,13 +19,14 @@
 
 {#if data.view === 'folders' && data.groups}
 	<p class="mb-3 text-xs text-muted-foreground">Pages grouped by the folder they live in (<code>/blog/post</code> → <code>/blog/</code>); pages directly under the root share “/”. Compared with the previous {data.days} days. Use it to see which section of the site is growing or shrinking, rather than reading page by page.</p>
-	<DataTable rows={data.groups} cols={[{ key: 'key', label: 'Folder', type: 'text' }, { key: 'pages', label: 'Pages', type: 'int' }, { key: 'clicks', label: 'Clicks', type: 'int', bar: true }, { key: 'deltaPct', label: 'Δ clicks', type: 'delta' }, { key: 'impressions', label: 'Impressions', type: 'int' }, { key: 'position', label: 'Position', type: 'pos' }]} sortKey="clicks" />
+	{#if data.comparable === false}<p class="mb-2 text-xs text-warn">Change against the previous period is hidden: {data.reason}</p>{/if}
+	<DataTable rows={data.groups} cols={[{ key: 'key', label: 'Folder', type: 'text', pii: true }, { key: 'pages', label: 'Pages', type: 'int' }, { key: 'clicks', label: 'Clicks', type: 'int', bar: true }, { key: 'deltaPct', label: 'Δ clicks', type: 'delta' }, { key: 'impressions', label: 'Impressions', type: 'int' }, { key: 'position', label: 'Position', type: 'pos' }]} sortKey="clicks" />
 {:else if data.view === 'topics' && data.topics}
 	<p class="mb-3 text-xs text-muted-foreground">
 		Queries grouped by their most telling shared word (brand terms and words in nearly every query are skipped). It is a transparent word match, not a semantic model, so queries that mean the same with different words are not merged.
 		{(data.topics.unclusteredShare * 100).toFixed(0)}% of impressions sit in queries outside any cluster.
 	</p>
-	<DataTable rows={data.topics.clusters.map((c) => ({ ...c, examples: c.top.join(' · ') }))} cols={[{ key: 'topic', label: 'Topic word', type: 'text' }, { key: 'queries', label: 'Queries', type: 'int' }, { key: 'clicks', label: 'Clicks', type: 'int', bar: true }, { key: 'impressions', label: 'Impressions', type: 'int' }, { key: 'position', label: 'Position', type: 'pos' }, { key: 'examples', label: 'Top queries', type: 'text' }]} sortKey="clicks" empty="Not enough queries to form clusters yet." />
+	<DataTable rows={data.topics.clusters.map((c) => ({ ...c, examples: c.top.join(' · ') }))} cols={[{ key: 'topic', label: 'Topic word', type: 'text' }, { key: 'queries', label: 'Queries', type: 'int' }, { key: 'clicks', label: 'Clicks', type: 'int', bar: true }, { key: 'impressions', label: 'Impressions', type: 'int' }, { key: 'position', label: 'Position', type: 'pos' }, { key: 'examples', label: 'Top queries', type: 'text', pii: (r: { top: string[] }) => r.top.some((q) => isBranded(q, data.brandTerms ?? [])) }]} sortKey="clicks" empty="Not enough queries to form clusters yet." />
 {:else if data.view === 'heatmap' && data.heatmap}
 	<div class="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 		<span>Rows:</span>
@@ -55,8 +57,8 @@
 {:else if data.view === 'locales' && data.locales}
 	<h2 class="mb-1 font-medium">Locale folders</h2>
 	<p class="mb-2 text-xs text-muted-foreground">Folders such as <code>/en-gb/</code> or <code>/de/</code> and where their clicks really come from. A region folder (like <code>/en-gb/</code>) that earns under 40% of its clicks from its own country is flagged: check its hreflang tags and which page Google shows to whom. Only common countries are mapped.</p>
-	<DataTable rows={data.locales.map((l) => ({ ...l, top: l.topCountries.map((c) => `${c.country.toUpperCase()} ${(c.share * 100).toFixed(0)}%`).join(' · '), flag: l.mismatch ? '⚠ check hreflang' : '' }))} cols={[{ key: 'folder', label: 'Folder', type: 'text' }, { key: 'clicks', label: 'Clicks', type: 'int', bar: true }, { key: 'impressions', label: 'Impressions', type: 'int' }, { key: 'homeShare', label: 'From own country', type: 'pct' }, { key: 'top', label: 'Top countries', type: 'text' }, { key: 'flag', label: '', type: 'text' }]} sortKey="clicks" filterable={false} empty="No locale folders found in this site's URLs." />
+	<DataTable rows={data.locales.map((l) => ({ ...l, top: l.topCountries.map((c) => `${c.country.toUpperCase()} ${(c.share * 100).toFixed(0)}%`).join(' · '), flag: l.mismatch ? '⚠ check hreflang' : '' }))} cols={[{ key: 'folder', label: 'Folder', type: 'text', pii: true }, { key: 'clicks', label: 'Clicks', type: 'int', bar: true }, { key: 'impressions', label: 'Impressions', type: 'int' }, { key: 'homeShare', label: 'From own country', type: 'pct' }, { key: 'top', label: 'Top countries', type: 'text' }, { key: 'flag', label: '', type: 'text' }]} sortKey="clicks" filterable={false} empty="No locale folders found in this site's URLs." />
 	<h2 class="mt-6 mb-1 font-medium">Cannibalization within a country</h2>
 	<p class="mb-2 text-xs text-muted-foreground">Queries where two or more pages compete for the same people in the <i>same</i> country. The same query answered by different pages in different countries is normal for a localised site and is not listed.</p>
-	<DataTable rows={data.cannibal.map((g) => ({ country: g.country.toUpperCase(), query: g.query, severity: g.severity, clicksAtStake: Math.round(g.potentialClicks), pages: g.pages.length, winner: g.winner, totalClicks: g.totalClicks }))} cols={[{ key: 'country', label: 'Country', type: 'text' }, { key: 'query', label: 'Query', type: 'text' }, { key: 'severity', label: 'Severity', type: 'text' }, { key: 'clicksAtStake', label: 'Clicks at stake', type: 'int' }, { key: 'pages', label: 'Pages', type: 'int' }, { key: 'winner', label: 'Winning page', type: 'link' }]} sortKey="clicksAtStake" empty="No page competes with another inside one country." />
+	<DataTable rows={data.cannibal.map((g) => ({ country: g.country.toUpperCase(), query: g.query, severity: g.severity, clicksAtStake: Math.round(g.potentialClicks), pages: g.pages.length, winner: g.winner, totalClicks: g.totalClicks }))} cols={[{ key: 'country', label: 'Country', type: 'text' }, { key: 'query', label: 'Query', type: 'text', pii: (r: { query: string }) => isBranded(r.query, data.brandTerms ?? []) }, { key: 'severity', label: 'Severity', type: 'text' }, { key: 'clicksAtStake', label: 'Clicks at stake', type: 'int' }, { key: 'pages', label: 'Pages', type: 'int' }, { key: 'winner', label: 'Winning page', type: 'link' }]} sortKey="clicksAtStake" empty="No page competes with another inside one country." />
 {/if}

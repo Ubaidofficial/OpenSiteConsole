@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { ago } from '$lib/format';
+	import { isBranded } from '$lib/analytics';
 	let { data, form } = $props();
 	let busy = $state<string | null>(null);
 	const submit = (n: string) => () => {
@@ -47,7 +48,7 @@
 				{#if (r.issues ?? []).length}<ul class="mb-3 space-y-1 text-xs">{#each r.issues ?? [] as i}<li class={sevTone[i.severity]}>{i.severity === 'bad' ? '✕' : i.severity === 'warn' ? '⚠' : 'ℹ'} {i.message}</li>{/each}</ul>{/if}
 				{#if (r.queries ?? []).length}
 					<table class="w-full text-xs"><thead><tr><th class="th">Query this page earns clicks for</th><th class="th text-right">Clicks</th><th class="th">In title</th><th class="th">In description</th><th class="th">In H1</th></tr></thead><tbody>
-						{#each r.queries ?? [] as q}<tr><td class="td">{q.query}</td><td class="td tnum text-right">{q.clicks}</td>{#each [q.title, q.description, q.h1] as x}<td class="td {m[x][1]}">{m[x][0]}</td>{/each}</tr>{/each}
+						{#each r.queries ?? [] as q}<tr><td class="td" class:pii={isBranded(q.query, data.brandTerms)}>{q.query}</td><td class="td tnum text-right">{q.clicks}</td>{#each [q.title, q.description, q.h1] as x}<td class="td {m[x][1]}">{m[x][0]}</td>{/each}</tr>{/each}
 					</tbody></table>
 				{:else}<p class="text-xs text-muted-foreground">No stored queries for this exact URL yet.</p>{/if}
 			</div>

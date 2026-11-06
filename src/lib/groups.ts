@@ -9,16 +9,34 @@ import { computeCannibalization, sumMetrics, type CannibalGroup, type CtrCurve, 
  * The folder a page lives in: "/blog/post" -> "/blog/", "/shop/shoes/red" at depth 2 -> "/shop/shoes/".
  * Pages directly under the root ("/", "/about") share the group "/", so every top-level page is not its own group.
  */
-export function urlSection(page: string, depth = 1): string {
+export function urlSection(page: string, depth = 1, withHost = false): string {
 	let path: string;
+	let host = '';
 	try {
-		path = new URL(page).pathname;
+		const u = new URL(page);
+		path = u.pathname;
+		host = u.hostname.toLowerCase().replace(/^www\./, '');
 	} catch {
 		path = page.startsWith('/') ? page : '/' + page;
 	}
 	const segs = path.split('/').filter(Boolean);
 	const folders = path.endsWith('/') ? segs : segs.slice(0, -1);
-	return folders.length ? '/' + folders.slice(0, depth).join('/') + '/' : '/';
+	const section = folders.length ? '/' + folders.slice(0, depth).join('/') + '/' : '/';
+	return withHost && host ? host + section : section;
+}
+
+/** True when the pages span more than one host (a domain property with www, blog, shop...), where folders must carry the host or they merge. */
+export function spansHosts(pages: string[]): boolean {
+	const hosts = new Set<string>();
+	for (const p of pages) {
+		try {
+			hosts.add(new URL(p).hostname.toLowerCase().replace(/^www\./, ''));
+		} catch {
+			/* ignore */
+		}
+		if (hosts.size > 1) return true;
+	}
+	return false;
 }
 
 export interface Group extends Metrics {
@@ -32,10 +50,11 @@ export interface Group extends Metrics {
 
 /** Merge page rows into URL-folder groups, with the previous period alongside. */
 export function groupPages(now: PRow[], prev: PRow[], depth = 1): Group[] {
+	const withHost = spansHosts([...now, ...prev].map((r) => r.page));
 	const groups = new Map<string, { now: PRow[]; prev: PRow[] }>();
 	const slot = (k: string) => groups.get(k) ?? (groups.set(k, { now: [], prev: [] }), groups.get(k)!);
-	for (const r of now) slot(urlSection(r.page, depth)).now.push(r);
-	for (const r of prev) slot(urlSection(r.page, depth)).prev.push(r);
+	for (const r of now) slot(urlSection(r.page, depth, withHost)).now.push(r);
+	for (const r of prev) slot(urlSection(r.page, depth, withHost)).prev.push(r);
 	return [...groups]
 		.map(([key, g]) => {
 			const n = sumMetrics(g.now);
@@ -84,17 +103,18 @@ export function topicClusters(rows: (Metrics & { query: string })[], o: { minQue
 	const buckets = new Map<string, number[]>();
 	rows.forEach((_r, i) => {
 		const best = toks[i].filter(ok).sort((a, b) => (weight.get(b) ?? 0) - (weight.get(a) ?? 0) || a.localeCompare(b))[0];
-		if (best) buckets.set(best, [...(buckets.get(best) ?? []), i]);
+		if (best) (buckets.get(best) ?? buckets.set(best, []).get(best)!).push(i);
 	});
-	const clusters: TopicCluster[] = [...buckets]
+	const all: TopicCluster[] = [...buckets]
 		.filter(([, idx]) => idx.length >= minQueries)
 		.map(([topic, idx]) => {
 			const items = idx.map((i) => rows[i]);
 			return { topic, queries: items.length, ...sumMetrics(items), top: [...items].sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions).slice(0, 3).map((x) => x.query) };
 		})
-		.sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions)
-		.slice(0, limit);
-	const clusteredImp = clusters.reduce((a, c) => a + c.impressions, 0);
+		.sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions);
+	// Share outside ANY cluster is measured before the display limit, so clusters cut off by `limit` still count as clustered.
+	const clusteredImp = all.reduce((a, c) => a + c.impressions, 0);
+	const clusters = all.slice(0, limit);
 	const totalImp = rows.reduce((a, r) => a + r.impressions, 0);
 	return { clusters, unclusteredShare: totalImp ? 1 - clusteredImp / totalImp : 0 };
 }
@@ -237,7 +257,7 @@ export type CountryCannibal = CannibalGroup & { country: string };
 export function countryCannibalization(rows: (QPRow & { country: string })[], curve: CtrCurve, o: { limit?: number; minQueryImpressions?: number } = {}): CountryCannibal[] {
 	const { limit = 100, minQueryImpressions = 40 } = o;
 	const byCountry = new Map<string, QPRow[]>();
-	for (const r of rows) byCountry.set(r.country, [...(byCountry.get(r.country) ?? []), r]);
+	for (const r of rows) (byCountry.get(r.country) ?? byCountry.set(r.country, []).get(r.country)!).push(r);
 	const out: CountryCannibal[] = [];
 	for (const [country, list] of byCountry) for (const g of computeCannibalization(list, curve, { limit, minQueryImpressions })) out.push({ ...g, country });
 	return out.sort((a, b) => b.potentialClicks - a.potentialClicks).slice(0, limit);

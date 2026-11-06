@@ -13,7 +13,15 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	return {
 		days,
 		today: pacificToday(),
-		tests: listTests(site.id).map((t) => ({ id: t.id, name: t.name, kind: t.kind, startDate: t.start_date, windowDays: t.window_days, note: t.note, restControl: 'restOfSite' in t.control, outcome: evaluateTest(site, t) }))
+		// One test that cannot be evaluated (corrupt date, say) must not take the whole page, and its Delete button, down.
+		tests: listTests(site.id).map((t) => {
+			const head = { id: t.id, name: t.name, kind: t.kind, startDate: t.start_date, windowDays: t.window_days, note: t.note, restControl: 'restOfSite' in t.control };
+			try {
+				return { ...head, error: null as string | null, outcome: evaluateTest(site, t) };
+			} catch (e) {
+				return { ...head, error: e instanceof Error ? e.message : 'This test could not be evaluated.', outcome: null };
+			}
+		})
 	};
 };
 

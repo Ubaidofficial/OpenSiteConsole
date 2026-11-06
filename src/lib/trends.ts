@@ -96,13 +96,15 @@ export interface WeekPoint { weekEnd: string; clicks: number; impressions: numbe
 
 /**
  * Whole 7-day blocks counted back from `end` (block 0 ends on `end`). Only complete blocks are returned, oldest first,
- * so a part-week never looks like a collapse. Position is impression-weighted.
+ * so a part-week never looks like a collapse; pass `firstDate` (the oldest stored day) to drop blocks that reach before it. Position is impression-weighted.
  */
-export function weeklyTotals(days: { date: string; clicks: number; impressions: number; position?: number }[], end: string, weeks: number): WeekPoint[] {
+export function weeklyTotals(days: { date: string; clicks: number; impressions: number; position?: number }[], end: string, weeks: number, firstDate?: string): WeekPoint[] {
 	const out: WeekPoint[] = [];
 	const byDate = new Map(days.map((d) => [d.date, d]));
 	for (let k = weeks - 1; k >= 0; k--) {
 		const weekEnd = shiftDay(end, -7 * k);
+		// A block that starts before the first stored day is partly (or wholly) missing data, not a week of zero clicks.
+		if (firstDate && shiftDay(weekEnd, -6) < firstDate) continue;
 		let clicks = 0;
 		let impressions = 0;
 		let posWeight = 0;

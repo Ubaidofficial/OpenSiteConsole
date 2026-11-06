@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		perRun: config.indexMonitorUrls,
 		summary: indexSummary(site.id),
 		events: recentEvents(site.id, 60).map((e) => ({ ...e, severity: EVENT_SEVERITY[e.kind as keyof typeof EVENT_SEVERITY] ?? 'warn' })),
-		classes: { counts: u.counts, lost: u.lostClicks, rows: u.rows.slice(0, 500) }
+		classes: { comparable: u.comparable, reason: u.reason, counts: u.counts, lost: u.lostClicks, rows: u.rows.slice(0, 500) }
 	};
 };
 
