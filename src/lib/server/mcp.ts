@@ -1,9 +1,12 @@
 import { db } from './db';
-import { allSites, brandTerms, fittedCurve, periodFor, queryPageRows, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
+import { allSites, brandTerms, fittedCurve, historyCoversPrevious, performanceBy, periodFor, queryPageRows, siteEnd, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
 import { ALL_TYPES } from '../searchTypes';
 import { cruxIntegration, cruxLatest } from './crux';
 import { rate, VITALS } from '../vitals';
-import { displayName } from './clients';
+import { clientForSite, displayName } from './clients';
+import { inspectUrls, storedInspection, type InspectOutcome } from './inspect';
+import { inProperty } from '../property';
+import { joinWindows, resolveWindows, sortRows, type Joined, type SortBy } from '../performance';
 import { addDays } from './dates';
 import { computeCannibalization, computeCtrGaps, computeDecay, computeStriking, ctrOf, detectAnomalies, isBranded, pctChange } from '../analytics';
 import { linksFor } from './links';
@@ -473,8 +476,157 @@ const TOOLS: Tool[] = [
 			const l = linksFor(site.id).openseo;
 			return l ? { projectId: l.external_id, name: l.label, url: openSeoProjectUrl(l.integration_id, l.external_id), domain: displayName(site.site_url) } : { linked: false, hint: 'No OpenSEO project is linked to this site. Connect OpenSEO on the Connect page.' };
 		}
+	},
+	{
+		name: 'get_performance',
+		description: 'Search performance (Google web search) for one site, grouped by ONE dimension (query, page, country, device or date), for any date range, optionally compared with another range, and filtered by country, device, or text in the query or page. Use it for questions such as "how did mobile do in the US last month against the month before". Dates are YYYY-MM-DD; a window past the newest stored day is cut back and said so. Comparison: "previous" = the equally long window just before, "custom" = compare_start/compare_end. A comparison is only made when the stored history reaches back over it; otherwise `comparison.available` is false and no change is claimed. Rows come from query-level data, which leaves out anonymised queries, so they do not add up to the site totals; `totals` (exact) is given when there is no filter. Country codes are ISO alpha-3 in lower case as Search Console reports them (usa, gbr, deu).',
+		schema: {
+			...siteArg,
+			dimension: { type: 'string', enum: ['query', 'page', 'country', 'device', 'date'], description: 'default query' },
+			start: { type: 'string', description: 'YYYY-MM-DD (with end)' },
+			end: { type: 'string', description: 'YYYY-MM-DD' },
+			days: { type: 'integer', description: 'Instead of start/end: the last N days stored (1-500, default 28)' },
+			compare: { type: 'string', enum: ['none', 'previous', 'custom'] },
+			compare_start: { type: 'string' },
+			compare_end: { type: 'string' },
+			country: { type: 'string', description: 'ISO alpha-3, e.g. usa' },
+			device: { type: 'string', enum: ['mobile', 'desktop', 'tablet'] },
+			query_contains: { type: 'string' },
+			page_contains: { type: 'string' },
+			sort: { type: 'string', enum: ['clicks', 'impressions', 'ctr', 'position', 'clicks_change'], description: 'default clicks (dates: chronological)' },
+			limit: { type: 'integer' }
+		},
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const dim = String(a.dimension ?? 'query');
+			if (!['query', 'page', 'country', 'device', 'date'].includes(dim)) throw new Error('`dimension` must be query, page, country, device or date.');
+			const w = resolveWindows({ start: a.start, end: a.end, days: a.days, compare: a.compare, compareStart: a.compare_start, compareEnd: a.compare_end }, siteEnd(site));
+			if ('error' in w) throw new Error(w.error);
+			const f: { country?: string; device?: string; queryContains?: string; pageContains?: string } = {};
+			if (a.country != null && a.country !== '') {
+				const c = String(a.country).trim().toLowerCase();
+				if (!/^[a-z]{3}$/.test(c)) throw new Error('`country` is a 3-letter ISO code such as usa, gbr or deu.');
+				f.country = c;
+			}
+			if (a.device != null && a.device !== '') {
+				const dv = String(a.device).trim().toUpperCase();
+				if (!['MOBILE', 'DESKTOP', 'TABLET'].includes(dv)) throw new Error('`device` must be mobile, desktop or tablet.');
+				f.device = dv;
+			}
+			if (a.query_contains) f.queryContains = String(a.query_contains).slice(0, 200);
+			if (a.page_contains) f.pageContains = String(a.page_contains).slice(0, 500);
+			const filtered = Object.keys(f).length > 0;
+			const notes = [...w.notes];
+			if (!site.backfill_done && site.backfilled_to && w.main.start < site.backfilled_to) notes.push(`History before ${site.backfilled_to} is still downloading, so the start of this window is incomplete.`);
+			const dimKey = dim as 'query' | 'page' | 'country' | 'device' | 'date';
+			const now = performanceBy(site.id, w.main.start, w.main.end, dimKey, f);
+			let comparison: { available: boolean; start: string; end: string; reason?: string } | null = null;
+			let rows: Joined[] | null = null;
+			if (w.compare) {
+				const covers = historyCoversPrevious(site, w.compare.start);
+				comparison = covers ? { available: true, ...w.compare } : { available: false, ...w.compare, reason: `Stored history does not yet reach back to ${w.compare.start} (it is still downloading), so no change is claimed.` };
+				if (covers) rows = joinWindows(now, performanceBy(site.id, w.compare.start, w.compare.end, dimKey, f));
+			}
+			const base: Joined[] = rows ?? now.map((r) => ({ ...r, prev: null, clicksChange: null, impressionsChange: null, positionChange: null }));
+			const requested = String(a.sort ?? (dim === 'date' ? 'key' : 'clicks'));
+			if (!['clicks', 'impressions', 'ctr', 'position', 'clicks_change', 'key'].includes(requested)) throw new Error('`sort` must be clicks, impressions, ctr, position or clicks_change.');
+			if (requested === 'clicks_change' && !rows) notes.push('sort=clicks_change needs a comparison that is available; sorted by clicks instead.');
+			const by = (requested === 'clicks_change' && !rows ? 'clicks' : requested) as SortBy;
+			const out = sortRows(base, by).slice(0, limit(a, dim === 'date' ? 100 : 25));
+			const pct = (x: number | null) => (x == null ? null : r2(x * 100) + '%');
+			const total = !filtered ? summary(site.id, w.main.start, w.main.end) : null;
+			const totalPrev = !filtered && comparison?.available ? summary(site.id, w.compare!.start, w.compare!.end) : null;
+			if (!filtered && dim !== 'date') notes.push('Rows are query-level data and leave out anonymised queries, so they add up to less than `totals`.');
+			return {
+				site: displayName(site.site_url),
+				dimension: dim,
+				window: { start: w.main.start, end: w.main.end, days: Math.round((Date.parse(w.main.end) - Date.parse(w.main.start)) / 86_400_000) + 1 },
+				comparison,
+				filters: f,
+				notes,
+				totals: total && { clicks: total.clicks, impressions: total.impressions, ctr: r2(ctrOf(total) * 100) + '%', position: r2(total.position), ...(totalPrev ? { previous: { clicks: totalPrev.clicks, impressions: totalPrev.impressions, ctr: r2(ctrOf(totalPrev) * 100) + '%', position: r2(totalPrev.position) }, clicksChange: pct(pctChange(total.clicks, totalPrev.clicks)) } : {}) },
+				rowsInWindow: now.length,
+				rows: out.map((r) => ({
+					[dim]: r.key, clicks: r.clicks, impressions: r.impressions, ctr: r2(ctrOf(r) * 100) + '%', position: r.position ? r2(r.position) : null,
+					...(rows ? { previous: r.prev && { clicks: r.prev.clicks, impressions: r.prev.impressions, position: r.prev.position ? r2(r.prev.position) : null }, clicksChange: pct(r.clicksChange), positionChange: r.positionChange == null ? null : r2(r.positionChange) } : {})
+				}))
+			};
+		}
+	},
+	{
+		name: 'inspect_url',
+		description: 'Google URL Inspection for up to 5 URLs of one site: whether the page is indexed and why not, the canonical Google chose against the one declared, last crawl, robots.txt and fetch state, the sitemaps and pages that refer to it, and mobile usability / rich results when Google returns them. Answers are reused for 12 hours; `refresh: true` asks Google again and spends URL Inspection quota (about 2,000 a day per property, shared with the indexing monitor). Only URLs inside the property can be inspected.',
+		schema: { ...siteArg, urls: { type: 'array', items: { type: 'string' }, description: 'Full URLs (max 5)' }, refresh: { type: 'boolean', description: 'Ignore the 12-hour cache' } },
+		run: async (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const list = (Array.isArray(a.urls) ? a.urls : a.url ? [a.url] : []).map((u) => String(u).trim()).filter(Boolean);
+			if (!list.length) throw new Error('`urls` is required: one to five full URLs of this site.');
+			if (list.length > 5) throw new Error('At most 5 URLs per call.');
+			for (const u of list) {
+				if (!/^https?:\/\/\S+$/.test(u)) throw new Error(`"${u}" is not a full http(s) URL.`);
+				if (!inProperty(u, site.site_url)) throw new Error(`"${u}" is outside the property ${site.site_url}; Google only inspects URLs inside it.`);
+			}
+			const { outcomes } = await inspectUrls(site.id, list, a.refresh === true);
+			const how = new Map<string, InspectOutcome>(outcomes.map((o) => [o.url, o]));
+			const norm = (u?: string) => (u ? u.replace(/^https?:\/\/(www\.)?/i, '').replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase() : '');
+			return {
+				site: displayName(site.site_url),
+				results: [...new Set(list)].map((url) => {
+					const s = storedInspection(site.id, url);
+					if (!s) return { url, error: 'No answer was stored.' };
+					const base = { url, checkedAt: new Date(s.at).toISOString(), fromCache: how.get(url)?.fromCache ?? true };
+					if (s.r.error) return { ...base, error: s.r.error };
+					const ix = s.r.indexStatusResult ?? {};
+					return {
+						...base,
+						verdict: ix.verdict ?? null,
+						coverage: ix.coverageState ?? null,
+						indexingState: ix.indexingState ?? null,
+						robotsTxt: ix.robotsTxtState ?? null,
+						pageFetch: ix.pageFetchState ?? null,
+						lastCrawl: ix.lastCrawlTime ?? null,
+						crawledAs: ix.crawledAs ?? null,
+						googleCanonical: ix.googleCanonical ?? null,
+						declaredCanonical: ix.userCanonical ?? null,
+						canonicalDiffers: !!(ix.googleCanonical && ix.userCanonical && norm(ix.googleCanonical) !== norm(ix.userCanonical)),
+						sitemaps: ix.sitemap ?? [],
+						referringUrls: (ix.referringUrls ?? []).slice(0, 5),
+						mobileUsability: s.r.mobileUsabilityResult ? { verdict: s.r.mobileUsabilityResult.verdict ?? null, issues: (s.r.mobileUsabilityResult.issues ?? []).map((i) => i.message ?? i.issueType ?? '') } : null,
+						richResults: s.r.richResultsResult?.verdict ?? null,
+						openInSearchConsole: s.r.inspectionResultLink ?? null
+					};
+				})
+			};
+		}
+	},
+	{
+		name: 'get_sitemaps',
+		description: 'The sitemaps submitted to Search Console for one site, as Google reports them right now (a live call): type, when each was submitted and last read, whether Google still marks it pending, warning and error counts, and submitted vs indexed URL counts per content type. `indexed` is whatever Google returns and may be missing or zero. For which sitemap URLs never appeared in search, use get_sitemap_coverage.',
+		schema: { ...siteArg },
+		run: async (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			let list;
+			try {
+				list = await clientForSite(site.id).client.listSitemaps(site.site_url);
+			} catch (e) {
+				throw new Error(`Search Console could not list the sitemaps: ${e instanceof Error ? e.message : 'unknown error'}`);
+			}
+			return {
+				site: displayName(site.site_url),
+				count: list.length,
+				note: 'pending = Google accepted the submission and has not processed it yet; the last-read date stays old until it does. Resubmitting does not speed it up.',
+				sitemaps: list.map((s) => ({
+					path: s.path, type: s.isSitemapsIndex ? 'sitemap index' : (s.type ?? null), submitted: s.lastSubmitted ?? null, lastRead: s.lastDownloaded ?? null, pending: !!s.isPending,
+					warnings: Number(s.warnings ?? 0), errors: Number(s.errors ?? 0),
+					contents: (s.contents ?? []).map((c) => ({ type: c.type, submitted: c.submitted != null ? Number(c.submitted) : null, indexed: c.indexed != null ? Number(c.indexed) : null }))
+				}))
+			};
+		}
 	}
 ];
+
+/** Every tool name, for the Agents page (so the list shown there cannot go stale). */
+export const MCP_TOOL_NAMES: string[] = TOOLS.map((t) => t.name);
 
 const rpc = (id: unknown, result: unknown) => ({ jsonrpc: '2.0', id, result });
 const rpcErr = (id: unknown, code: number, message: string) => ({ jsonrpc: '2.0', id, error: { code, message } });
