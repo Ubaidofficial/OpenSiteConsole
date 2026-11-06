@@ -42,7 +42,7 @@ const gate: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	if (config.adminPassword) {
+	if (config.hasPassword) {
 		event.locals.authed = validSession(event.cookies.get(SESSION_COOKIE));
 		if (!event.locals.authed && path !== '/login') {
 			return new Response(null, { status: 303, headers: { location: '/login' } });

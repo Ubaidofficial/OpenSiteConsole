@@ -13,7 +13,10 @@ services:
     environment:
       # Required: the app refuses to start the deploy without them rather than run open or with a guessable key.
       - ORIGIN=${ORIGIN:?Set ORIGIN to the public https address, e.g. https://seo.example.com}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD (the login password)}
+      # One of these two is required. With neither the app refuses every remote request, so it can never run open.
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH:-}
+      - OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI:-}
       - APP_SECRET=${APP_SECRET:?Set APP_SECRET to 32+ random characters (it encrypts the Google tokens)}
       - DB_PATH=/data/opensiteconsole.db
       # One trusted proxy (Coolify's) is in front: read the visitor's address from X-Forwarded-For so the login attempt limit

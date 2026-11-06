@@ -11,6 +11,10 @@
 		"serve": "vite build && node scripts/start.mjs",
 		"get-latest": "git fetch origin && git checkout main && git pull --ff-only && pnpm install",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"hash-password": "node scripts/hash-password.mjs",
+		"cloud:build": "vite build --config cloud/vite.config.ts",
+		"cloud:start": "node cloud/dist/main.js",
+		"cloud:check": "tsc -p cloud/tsconfig.json",
 		"test": "vitest run --passWithNoTests"
 	},
 	"devDependencies": {

@@ -3,3 +3,6 @@ node_modules
 build
 data/*.db*
 .env
+
+cloud/dist
+cloud-data

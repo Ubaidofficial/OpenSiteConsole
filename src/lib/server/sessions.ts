@@ -8,7 +8,7 @@ const TTL = SESSION_DAYS * 86_400_000;
 
 const digest = (s: string) => createHash('sha256').update(s).digest('base64url');
 /** Ties every session to the current password: changing ADMIN_PASSWORD signs everyone out. */
-const passwordFingerprint = () => digest('osc-session-v2\n' + (config.adminPassword ?? ''));
+const passwordFingerprint = () => digest('osc-session-v2\n' + (config.adminPasswordHash || config.adminPassword || ''));
 
 /**
  * Sessions are random 256-bit ids kept (hashed) in the database with an expiry. The cookie holds nothing but the id, so a copy

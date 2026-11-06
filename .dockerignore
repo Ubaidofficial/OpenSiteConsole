@@ -6,3 +6,5 @@ data
 .env
 .git
 spike
+cloud/dist
+cloud-data
