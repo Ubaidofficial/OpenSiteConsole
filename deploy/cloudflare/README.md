@@ -5,7 +5,7 @@ A Worker sits in front of a **Cloudflare Container** that runs the app exactly a
 > **Status: written from Cloudflare's and Litestream's documentation, not run on a real Cloudflare account.** The Worker type-checks against the real `@cloudflare/containers` package, `wrangler deploy --dry-run` accepts the configuration and bundles the Worker, and the start script is tested against a stand-in for Litestream. The Docker image has **not** been built, and Litestream has not been run. Expect to debug first contact, and tell me what breaks. See "What is not verified" below.
 
 ## Why a container
-The app is a Node server with a SQLite file and its own background scheduler (syncs, digests, alerts, indexing checks). Plain Workers cannot load that native database module or keep a disk. A native Workers version (D1 instead of SQLite, Cron Triggers instead of the built-in scheduler) is a much larger port and is being evaluated separately.
+The app is a Node server with a SQLite file and its own background scheduler (syncs, digests, alerts, indexing checks). Plain Workers cannot load that native database module or keep a disk. A native Workers version (D1 instead of SQLite, Cron Triggers instead of the built-in scheduler) is a much larger port: see [spike/workers/REPORT.md](../../spike/workers/REPORT.md) for the measured size (374 functions and 818 calls become async) and a working D1 proof. Verdict there: staged go, not a quick change.
 
 ## What you need
 - A Cloudflare account on the **Workers Paid** plan (Containers are not on the free plan).
