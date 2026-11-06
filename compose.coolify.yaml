@@ -1,0 +1,45 @@
+# For Coolify (or any Docker host behind a reverse proxy). Written from Coolify's and adapter-node's documentation; NOT built or
+# run in the environment where it was written (no Docker there). Steps: deploy/coolify/README.md
+services:
+  opensiteconsole:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # No `ports:` on purpose. Coolify's proxy reaches the container on 3000 through the domain you give it
+    # (enter the domain as https://seo.example.com:3000 in Coolify), and a published port would bypass that proxy.
+    expose:
+      - "3000"
+    environment:
+      # Required: the app refuses to start the deploy without them rather than run open or with a guessable key.
+      - ORIGIN=${ORIGIN:?Set ORIGIN to the public https address, e.g. https://seo.example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD (the login password)}
+      - APP_SECRET=${APP_SECRET:?Set APP_SECRET to 32+ random characters (it encrypts the Google tokens)}
+      - DB_PATH=/data/opensiteconsole.db
+      # One trusted proxy (Coolify's) is in front: read the visitor's address from X-Forwarded-For so the login attempt limit
+      # counts visitors separately. Use 2 if another proxy (for example Cloudflare) also sits in front of Coolify's.
+      - ADDRESS_HEADER=${ADDRESS_HEADER:-X-Forwarded-For}
+      - XFF_DEPTH=${XFF_DEPTH:-1}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - BING_CLIENT_ID=${BING_CLIENT_ID:-}
+      - BING_CLIENT_SECRET=${BING_CLIENT_SECRET:-}
+      - DIGEST_WEBHOOK_URL=${DIGEST_WEBHOOK_URL:-}
+      - DIGEST_WEBHOOK_FORMAT=${DIGEST_WEBHOOK_FORMAT:-slack}
+      - DIGEST_DAY=${DIGEST_DAY:-1}
+      - INDEX_MONITOR_URLS=${INDEX_MONITOR_URLS:-40}
+      - MCP_INSPECT_PER_KEY_DAY=${MCP_INSPECT_PER_KEY_DAY:-100}
+    volumes:
+      # The SQLite database. Use a named volume (not a bind mount): the image's /data belongs to the app's unprivileged user and
+      # a new named volume inherits that; a bind-mounted host folder owned by root would make the app unable to write.
+      - osc-data:/data
+    healthcheck:
+      # /login answers 200 without a session; the check runs inside the container, so it never touches the proxy.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  osc-data:

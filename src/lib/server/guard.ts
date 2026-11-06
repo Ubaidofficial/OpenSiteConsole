@@ -47,3 +47,16 @@ export function safeBack(referer: string | null, origin: string, fallback: strin
 	}
 	return fallback;
 }
+
+/**
+ * The visitor's address for counting login attempts. If the server is told to read it from a proxy header
+ * (ADDRESS_HEADER) and a request arrives without that header, SvelteKit throws; a request that bypassed the proxy must not become
+ * a 500 on the login page, so it is counted in one shared "unknown" bucket instead.
+ */
+export function clientKey(getClientAddress: () => string): string {
+	try {
+		return getClientAddress() || 'unknown';
+	} catch {
+		return 'unknown';
+	}
+}
