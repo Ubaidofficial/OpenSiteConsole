@@ -1,6 +1,8 @@
 import type { Handle, ServerInit } from '@sveltejs/kit';
 import { config } from '$lib/server/config';
-import { verifySigned } from '$lib/server/crypto';
+import { validSession, SESSION_COOKIE } from '$lib/server/sessions';
+import { isLocalRequest } from '$lib/server/guard';
+import { securityHeaders } from '$lib/server/headers';
 import { ensureDemoAccounts } from '$lib/server/accounts';
 import { startScheduler } from '$lib/server/jobs';
 import { db } from '$lib/server/db';
@@ -19,8 +21,6 @@ export const init: ServerInit = async () => {
 	await boot();
 };
 
-const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
-
 export const handle: Handle = async ({ event, resolve }) => {
 	await boot();
 	const path = event.url.pathname;
@@ -32,13 +32,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	if (config.adminPassword) {
-		event.locals.authed = verifySigned(event.cookies.get('osc_session')) === 'ok';
+		event.locals.authed = validSession(event.cookies.get(SESSION_COOKIE));
 		if (!event.locals.authed && path !== '/login') {
 			return new Response(null, { status: 303, headers: { location: '/login' } });
 		}
 	} else {
 		// No password configured: only serve to this machine (or in demo mode). Never expose an open instance.
-		const local = LOOPBACK.has(event.url.hostname);
+		let peer: string | null = null;
+		try {
+			peer = event.getClientAddress();
+		} catch {
+			/* unknown peer: treated as not local */
+		}
+		const local = isLocalRequest(event.url.hostname, peer, event.request.headers);
 		if (!local && !config.demo) {
 			return new Response('OpenSiteConsole refuses remote requests until ADMIN_PASSWORD is set. See .env.example.', { status: 503 });
 		}
@@ -46,8 +52,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const res = await resolve(event);
-	res.headers.set('x-frame-options', 'DENY');
-	res.headers.set('referrer-policy', 'same-origin');
-	res.headers.set('x-content-type-options', 'nosniff');
+	for (const [k, v] of Object.entries(securityHeaders({ https: event.url.protocol === 'https:', hasCacheControl: res.headers.has('cache-control') }))) res.headers.set(k, v);
 	return res;
 };

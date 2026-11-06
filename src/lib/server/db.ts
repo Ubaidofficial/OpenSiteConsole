@@ -227,6 +227,12 @@ CREATE TABLE IF NOT EXISTS seo_tests (
 	note TEXT,
 	created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS sessions (
+	id_hash TEXT PRIMARY KEY,           -- sha256 of the random session id; the id itself is only in the browser's cookie
+	pw_fp TEXT NOT NULL,                -- fingerprint of ADMIN_PASSWORD when it was created: a password change ends every session
+	created_at INTEGER NOT NULL,
+	expires_at INTEGER NOT NULL
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS kv (
 	key TEXT PRIMARY KEY,
 	value TEXT NOT NULL
