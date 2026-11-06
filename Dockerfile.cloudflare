@@ -1,0 +1,23 @@
+# The app as a Cloudflare Container (linux/amd64 is required). Written from the documentation of Cloudflare Containers and
+# Litestream; NOT built or run in the environment where it was written (no Docker there). See deploy/cloudflare/README.md.
+FROM --platform=linux/amd64 node:22-slim AS build
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm build && pnpm prune --prod
+
+FROM --platform=linux/amd64 node:22-slim
+WORKDIR /app
+# Litestream copies the SQLite database to R2 and restores it when the container starts on a fresh disk.
+COPY --from=litestream/litestream:0.5 /usr/local/bin/litestream /usr/local/bin/litestream
+COPY --from=build /app/build ./build
+COPY --from=build /app/node_modules ./node_modules
+COPY package.json ./
+COPY deploy/cloudflare/litestream.yml /etc/litestream.yml
+COPY deploy/cloudflare/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && mkdir -p /data
+ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 DB_PATH=/data/opensiteconsole.db
+EXPOSE 3000
+ENTRYPOINT ["/entrypoint.sh"]

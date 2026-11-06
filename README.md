@@ -32,7 +32,9 @@ milliseconds instead of the hundreds `pnpm dev` takes, because dev compiles on d
 for you. Do not run `node build` directly on localhost: without `ORIGIN` in the process environment, SvelteKit assumes https and rejects
 every form submit as cross-site. `pnpm get-latest` pulls the latest `main` and installs packages (not `pnpm update`, which is pnpm's own command for upgrading dependencies).
 
-Production: `pnpm serve` (or `pnpm start` after `pnpm build`; or the untested Dockerfile). **Set `ADMIN_PASSWORD`** before exposing it beyond localhost —
+Production: `pnpm serve` (or `pnpm start` after `pnpm build`; or the untested Dockerfile).
+
+**On Cloudflare:** `deploy/cloudflare/` runs the app in a Cloudflare Container behind a Worker, with the database replicated to R2 (Litestream) and a cron trigger that wakes it. Steps and caveats are in [deploy/cloudflare/README.md](deploy/cloudflare/README.md). It is written from the documentation and **has not been run on a real Cloudflare account**. **Set `ADMIN_PASSWORD`** before exposing it beyond localhost —
 without it the app refuses non-loopback requests. Put it behind HTTPS.
 
 ## Getting credentials

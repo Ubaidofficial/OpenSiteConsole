@@ -1,0 +1,12 @@
+# Replicates the app's SQLite database to a Cloudflare R2 bucket. R2 needs the account endpoint and region "auto".
+# The values come from the Worker's variables and secrets (the Worker passes them to the container).
+dbs:
+  - path: ${DB_PATH}
+    replica:
+      type: s3
+      bucket: ${R2_BUCKET}
+      path: opensiteconsole
+      endpoint: ${R2_ACCOUNT_ID}.r2.cloudflarestorage.com
+      region: auto
+      access-key-id: ${R2_ACCESS_KEY_ID}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY}

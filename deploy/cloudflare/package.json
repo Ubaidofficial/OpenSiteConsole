@@ -1,0 +1,13 @@
+{
+	"name": "opensiteconsole-cloudflare",
+	"private": true,
+	"type": "module",
+	"description": "Cloudflare Worker that runs OpenSiteConsole in a Cloudflare Container. Not part of the app's own build.",
+	"scripts": {
+		"check": "tsc --noEmit",
+		"deploy": "wrangler deploy -c ../../wrangler.jsonc",
+		"logs": "wrangler tail -c ../../wrangler.jsonc"
+	},
+	"dependencies": { "@cloudflare/containers": "^0.3.7" },
+	"devDependencies": { "@cloudflare/workers-types": "^5.20261104.1", "typescript": "^5.9.0", "wrangler": "^4.158.0" }
+}
