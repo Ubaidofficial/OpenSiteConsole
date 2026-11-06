@@ -18,7 +18,7 @@
 	const baseCols = [
 		{ key: 'page', label: 'Page', type: 'link' as const },
 		{ key: 'clicks', label: 'Clicks', type: 'int' as const, bar: true },
-		{ key: 'clicksDelta', label: 'Change vs previous', title: 'Change in clicks compared with the previous period of the same length (for example +9.5% = 9.5% more clicks than before). Blank = there were no clicks before, so no percentage.', type: 'delta' as const },
+		{ key: 'clicksDelta', label: 'Δ %', title: 'Change in clicks compared with the previous period of the same length (for example +9.5% = 9.5% more clicks than before). A dash means there were no clicks before, so there is no percentage.', type: 'delta' as const },
 		{ key: 'impressions', label: 'Impressions', type: 'int' as const },
 		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
 		{ key: 'position', label: 'Position', type: 'pos' as const }
