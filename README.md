@@ -1,8 +1,12 @@
 # OpenSiteConsole
 
-A self-hosted dashboard for **all your Google Search Console properties across many Google accounts**.
-It syncs your data into a local SQLite warehouse (so history is kept beyond Google's 16 months), analyses it,
-and lets you do the day-to-day Search Console chores — sitemaps, URL inspection, property management — from one place.
+A self-hosted SEO dashboard for **all your Google Search Console properties across many Google accounts**.
+It syncs your data into a local SQLite warehouse (so history is kept beyond Google's 16 months), joins it with GA4, Tag Manager,
+Bing and Clarity, and turns it into a **ranked to-do list** (what to fix first and why), a weekly digest, calibrated SEO tests,
+an indexing monitor, sitemap coverage and IndexNow submission. It also does the day-to-day Search Console chores (sitemaps,
+URL inspection, property management) from one place, and exposes everything read-only to AI agents over MCP.
+
+> **Status.** Everything is verified against demo data, unit tests and a headless-browser pass, but **nothing has been run against live Google data or on a real Cloudflare account**. Expect to debug first contact with the real APIs. Details are under *Known limits*.
 
 ## Quick start
 
@@ -32,10 +36,37 @@ milliseconds instead of the hundreds `pnpm dev` takes, because dev compiles on d
 for you. Do not run `node build` directly on localhost: without `ORIGIN` in the process environment, SvelteKit assumes https and rejects
 every form submit as cross-site. `pnpm get-latest` pulls the latest `main` and installs packages (not `pnpm update`, which is pnpm's own command for upgrading dependencies).
 
-Production: `pnpm serve` (or `pnpm start` after `pnpm build`; or the untested Dockerfile).
+## Deploying
 
-**On Cloudflare:** `deploy/cloudflare/` runs the app in a Cloudflare Container behind a Worker, with the database replicated to R2 (Litestream) and a cron trigger that wakes it. Steps and caveats are in [deploy/cloudflare/README.md](deploy/cloudflare/README.md). It is written from the documentation and **has not been run on a real Cloudflare account**. A native Workers + D1 port is sized in [spike/workers/REPORT.md](spike/workers/REPORT.md) (a spike with a working proof, not a supported deploy). **Set `ADMIN_PASSWORD`** before exposing it beyond localhost —
-without it the app refuses non-loopback requests. Put it behind HTTPS.
+**Set `ADMIN_PASSWORD`** before exposing the app beyond localhost: without it the app refuses non-loopback requests. Put it behind HTTPS.
+
+| Where | How | Status |
+|---|---|---|
+| **Your computer / a server** | `pnpm serve` (or `pnpm start` after `pnpm build`) | The tested route. |
+| **Docker** | `Dockerfile` and `compose.yaml` (data in a volume) | Written, **never built**. |
+| **Cloudflare** | [`deploy/cloudflare/`](deploy/cloudflare/README.md): a Worker in front of a Cloudflare Container running the app, the database replicated to an R2 bucket with Litestream, and a cron trigger that wakes it. Needs the Workers Paid plan and Docker on the computer you deploy from. | Written from the documentation. The Worker type-checks, `wrangler deploy --dry-run` accepts it and the start script is tested against a stand-in, but the image was **never built and nothing was deployed**. |
+| **Native Cloudflare Workers + D1** | Not supported. [`spike/workers/REPORT.md`](spike/workers/REPORT.md) sizes the port (374 functions and 818 calls become async; D1's 10 GB cap) and includes a working proof. | A feasibility spike: staged go, not a quick change. |
+
+## Environment variables
+
+All are optional except where noted; copy `.env.example` to `.env`. On Cloudflare they are Worker secrets or variables instead.
+
+| Variable | Meaning |
+|---|---|
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth client (not needed in demo mode). |
+| `ORIGIN` | Public address of the app; builds the OAuth redirect URI. |
+| `APP_SECRET` | 32+ random characters; encrypts OAuth tokens at rest. If unset, a key is generated next to the database. **Required on Cloudflare**, where the disk is wiped. |
+| `ADMIN_PASSWORD` | Password for the whole app. Required before any non-local access. |
+| `DEMO_MODE=1` | Synthetic data, no Google credentials. |
+| `DB_PATH` | SQLite file (default `./data/opensiteconsole.db`). |
+| `GOOGLE_INCLUDE_GA4`, `GOOGLE_INCLUDE_GTM` | Ask for GA4 / read-only Tag Manager access in the same consent (default 1). |
+| `BING_CLIENT_ID`, `BING_CLIENT_SECRET` | One-click Bing sign-in; otherwise paste a Bing API key. |
+| `INDEX_MONITOR_URLS` | URLs the indexing monitor inspects per run (default 40, max 200). |
+| `ONPAGE_ALLOW_PRIVATE=1` | Let on-page checks reach private addresses (only if your site lives on your own network). |
+| `READ_ONLY=1` | Read-only Google scope and write actions disabled. |
+| `MAX_ROWS_PER_DAY` | Per-day row cap in the warehouse (default 100,000). |
+| `DIGEST_WEBHOOK_URL`, `DIGEST_WEBHOOK_FORMAT`, `DIGEST_DAY` | Weekly digest and urgent alerts: https webhook, `slack` (default) / `discord` / `json`, weekday 0-6 (default 1 = Monday). No email. |
+| `INDEXNOW_ENDPOINT`, `INDEXNOW_MAX_PER_DAY` | IndexNow endpoint (https) and URLs per site per day (default 1000). |
 
 ## Getting credentials
 
@@ -106,7 +137,7 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 - **Anonymised queries**: Google hides some queries, so query tables never sum to the totals. The share is shown per site.
 - **Per-day row cap** (`MAX_ROWS_PER_DAY`, default 100k): very large sites lose long-tail detail beyond it. Totals stay exact. Large sites may want Google's bulk BigQuery export instead.
 - **Not yet built**: Yandex, email delivery of digests (webhook only), multi-user roles, i18n, PDF/client reports, SERP/rank tracking, the Indexing API, a REST API and monthly / white-label client reports (planned, not built), **writing** to Tag Manager / GA4 through MCP (creating tags, key events or custom dimensions, publishing containers): everything is read-only by design for now.
-- **Verified**: unit/integration tests (`pnpm test`), type-check, production build, and a headless-browser crawl of every page against **demo data**.
+- **Verified**: unit/integration tests (`pnpm test`, 318 passing), type-check (`pnpm check`), production build, and a headless-browser crawl of the pages against **demo data**, including privacy-mode and phone-width checks.
   **Not verified**: a live Google OAuth round-trip and real Search Console / GA4 / Tag Manager / Clarity / Chrome UX Report responses (search types, search appearance, GA4 landing pages and Core Web Vitals are tested against documented response shapes and demo data only), the Bing OAuth flow, and the OpenSEO connection against a real instance — no credentials were available. Bing's API-key endpoint and its error format *were* confirmed against the live service (a deliberately invalid key returned Bing's documented `InvalidApiKey`). The MCP server was checked with the official MCP SDK client. Expect to debug first contact with the real APIs.
 - **Motion** is short and subtle (page settle, staggered cards, charts drawing left to right, small bars growing, press feedback), and is switched off entirely for people whose system asks for reduced motion.
 - **Comparisons wait for history.** Trends, Groups, Indexing classes and SEO tests compare against the previous period; while that period is still downloading, or has no data, they say so instead of showing every query as a winner.
@@ -118,16 +149,17 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 ## Layout
 
 ```
-src/lib/analytics.ts     pure analysis functions (unit-tested)
-src/lib/tracking.ts      pure Search Console + GA4 + Tag Manager audit rules (unit-tested)
-src/lib/trends.ts        movers, new/lost queries, position bands, trajectories, questions, projection
-src/lib/groups.ts        URL folders, topic clusters, decay heatmap, locale and country analysis
-src/lib/experiments.ts   SEO test statistics (lift, interval, control selection)
-src/lib/indexing.ts      URL Inspection diffs and URL classes
-src/lib/onpage.ts        HTML head parsing and on-page checks
-src/lib/server/          db, crypto, google client, sync engine, job queue, SQL queries, demo data source
-src/routes/              dashboard, portfolio, sitemaps, accounts, sites/[id]/* tabs, auth
-tests/                   vitest
+src/lib/*.ts             pure, unit-tested logic: analytics, tracking, trends, groups, experiments (SEO test statistics),
+                         indexing, onpage, actions (queue ranking), digest, sitemap (parser), indexnow
+src/lib/server/          db, crypto, Google/Bing/Clarity clients, sync engine, job queue and scheduler, SQL queries, MCP server,
+                         and the DB-backed halves of the features: actions, digest, seotests, ga4tests, sitemapcov,
+                         indexmon, indexnow, gupdates; demo data source
+src/lib/components/      shared Svelte components (charts, action cards, ...)
+src/routes/              dashboard, portfolio, actions, digest, updates, accounts, sites/[id]/* tabs, auth, /api/mcp
+tests/                   vitest (and real-shaped fixtures in tests/fixtures)
+deploy/cloudflare/       Worker, entrypoint and Litestream config for the Cloudflare Container deploy
+spike/workers/           feasibility spike and proof for a native Workers + D1 port (not part of the app)
+Dockerfile, compose.yaml, Dockerfile.cloudflare, wrangler.jsonc   container and Cloudflare deploy files
 ```
 
 ## License
