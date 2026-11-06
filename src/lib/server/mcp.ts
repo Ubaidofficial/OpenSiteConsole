@@ -6,6 +6,7 @@ import { rate, VITALS } from '../vitals';
 import { clientForSite, displayName } from './clients';
 import { inspectUrls, storedInspection, type InspectOutcome } from './inspect';
 import { inProperty } from '../property';
+import { pageInsights } from './pageinsights';
 import { joinWindows, resolveWindows, sortRows, type Joined, type SortBy } from '../performance';
 import { addDays } from './dates';
 import { computeCannibalization, computeCtrGaps, computeDecay, computeStriking, ctrOf, detectAnomalies, isBranded, pctChange } from '../analytics';
@@ -178,6 +179,43 @@ const TOOLS: Tool[] = [
 				.filter((r) => (a.questions ? isQuestionQuery(r.query) : true))
 				.slice(0, limit(a))
 				.map((r) => ({ query: r.query, clicks: r.clicks, impressions: r.impressions, ctr: r2(ctrOf(r) * 100) + '%', position: r2(r.position), clicksChange: pctChange(r.clicks, prev.get(r.query)?.clicks ?? 0) }));
+		}
+	},
+	{
+		name: 'get_page_insights',
+		description: 'Every page across Google Search, Bing, GA4 and Clarity side by side, joined on the URL path (www, http and https variants are one page), with each source\'s change against the previous period of the same length. google = clicks, impressions, CTR, average position; bing = clicks, impressions, average impression position; ga4 = sessions that landed there from Google organic search, engaged share, key events; clarity = sessions, sessions with rage clicks and with dead clicks in the LATEST 24-HOUR snapshot only (not the window). A source that has nothing for a page is null, not zero. A change is null when that source\'s previous period is not stored (see `sources`). GA4 sessions and Google clicks are different measurements and are not expected to match.',
+		schema: { ...siteArg, ...daysArg, path_contains: { type: 'string', description: 'Only paths containing this text (case-insensitive)' }, sort: { type: 'string', enum: ['google_clicks', 'bing_clicks', 'ga4_sessions', 'ga4_key_events', 'google_clicks_change'], description: 'default google_clicks' }, limit: { type: 'integer' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const r = pageInsights(site, days(a), 5000);
+			const needle = typeof a.path_contains === 'string' ? a.path_contains.trim().toLowerCase().slice(0, 200) : '';
+			const sort = String(a.sort ?? 'google_clicks');
+			const keys: Record<string, (x: (typeof r.rows)[number]) => number | null> = {
+				google_clicks: (x) => x.gClicks, bing_clicks: (x) => x.bClicks, ga4_sessions: (x) => x.aSessions, ga4_key_events: (x) => x.aKeyEvents, google_clicks_change: (x) => x.gClicksD
+			};
+			if (!keys[sort]) throw new Error('`sort` must be google_clicks, bing_clicks, ga4_sessions, ga4_key_events or google_clicks_change.');
+			const pct = (x: number | null) => (x == null ? null : r2(x * 100) + '%');
+			const rows = r.rows
+				.filter((x) => !needle || x.path.toLowerCase().includes(needle))
+				.sort((x, y) => (keys[sort](y) ?? -Infinity) - (keys[sort](x) ?? -Infinity) || (x.path < y.path ? -1 : 1))
+				.slice(0, limit(a));
+			return {
+				site: displayName(site.site_url),
+				window: { start: r.period.start, end: r.period.end, previous: { start: r.period.prevStart, end: r.period.prevEnd } },
+				sources: {
+					google: { comparable: r.google.comparable },
+					bing: { linked: r.bing.linked, hasData: r.bing.hasData, comparable: r.bing.comparable },
+					ga4: { linked: r.ga4.linked, hasData: r.ga4.hasData, comparable: r.ga4.comparable },
+					clarity: { linked: r.clarity.linked, hasData: r.clarity.hasData, snapshotDay: r.clarity.day, covers: 'last 24 hours only' }
+				},
+				rows: rows.map((x) => ({
+					path: x.path,
+					google: x.gClicks == null ? null : { clicks: x.gClicks, clicksChange: pct(x.gClicksD), impressions: x.gImpr, impressionsChange: pct(x.gImprD), ctr: x.gImpr ? r2((x.gClicks / x.gImpr) * 100) + '%' : null, position: x.gPos == null ? null : r2(x.gPos) },
+					bing: x.bClicks == null ? null : { clicks: x.bClicks, clicksChange: pct(x.bClicksD), impressions: x.bImpr, impressionsChange: pct(x.bImprD), position: x.bPos == null ? null : r2(x.bPos) },
+					ga4: x.aSessions == null ? null : { sessions: x.aSessions, sessionsChange: pct(x.aSessionsD), engagedShare: x.aEngaged == null ? null : r2(x.aEngaged * 100) + '%', keyEvents: x.aKeyEvents, keyEventsChange: pct(x.aKeyEventsD) },
+					clarity: x.cSessions == null && x.cRage == null && x.cDead == null ? null : { sessions: x.cSessions, sessionsWithRageClicks: x.cRage, sessionsWithDeadClicks: x.cDead }
+				}))
+			};
 		}
 	},
 	{

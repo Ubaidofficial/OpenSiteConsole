@@ -14,6 +14,14 @@
 		pii?: boolean | ((row: Row) => boolean);
 		/** Draw a faint in-cell bar proportional to the column maximum (for volume columns like clicks). */
 		bar?: boolean;
+		/** Columns with the same group name share a labelled header band and a faint tint (for example one band per data source). */
+		group?: string;
+		/** A CSS colour for the group's tint, such as "var(--c-google)". */
+		groupColor?: string;
+		/** Row key holding this metric's change as a fraction: shown as a small coloured arrow and percent next to the value. */
+		deltaKey?: string;
+		/** Text to show for a link column instead of the address (the link still goes to the address). */
+		display?: (row: Row) => string;
 	}
 
 	let {
@@ -77,6 +85,26 @@
 	}
 	/** Native tooltips would reveal blurred text on hover, so they are dropped in privacy mode. */
 	const tip = (c: Col, row: Row, text: string) => (privacy.on && isPii(c, row) ? undefined : text);
+	/** Header bands: consecutive columns with the same group name, in order. */
+	const bands = $derived.by(() => {
+		const out: { label: string; span: number; color?: string }[] = [];
+		for (const c of cols) {
+			const last = out[out.length - 1];
+			if (last && last.label === (c.group ?? '')) last.span++;
+			else out.push({ label: c.group ?? '', span: 1, color: c.groupColor });
+		}
+		return out;
+	});
+	const grouped = $derived(cols.some((c) => c.group));
+	const startsGroup = (i: number) => grouped && i > 0 && (cols[i].group ?? '') !== (cols[i - 1].group ?? '');
+	const tint = (c: Col) => (c.groupColor ? `background-color:color-mix(in oklab, ${c.groupColor} 7%, transparent);` : '');
+	const edge = (i: number) => (startsGroup(i) ? 'border-left:1px solid var(--border);' : '');
+	/** "▲ 7%" for a rise, "▼ 4%" for a fall; nothing for no change or no baseline. */
+	const deltaText = (v: unknown) => {
+		if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) < 0.005) return '';
+		const n = Math.abs(v) * 100;
+		return `${v > 0 ? '▲' : '▼'} ${n > 999 ? '>999' : n < 10 ? n.toFixed(1).replace(/\.0$/, '') : Math.round(n)}%`;
+	};
 	const barStyle = (c: Col, row: Row) => {
 		const pct = Math.min(100, ((Number(row[c.key]) || 0) / maxOf[c.key]) * 100);
 		return `background-image:linear-gradient(to left, color-mix(in oklab, var(--chart-1) 16%, transparent) ${pct}%, transparent ${pct}%)`;
@@ -95,9 +123,16 @@
 <div class="overflow-x-auto rounded-xl border bg-card shadow-xs">
 	<table class="w-full border-collapse">
 		<thead class="bg-muted/40">
+			{#if grouped}
+				<tr>
+					{#each bands as b}
+						<th colspan={b.span} class="px-3 pt-2.5 pb-1 text-left text-xs font-semibold tracking-wide" style="{b.color ? `background-color:color-mix(in oklab, ${b.color} 12%, transparent);color:color-mix(in oklab, ${b.color} 70%, var(--foreground));` : ''}{b.label ? 'border-left:1px solid var(--border);' : ''}">{b.label}</th>
+					{/each}
+				</tr>
+			{/if}
 			<tr>
-				{#each cols as c}
-					<th class="th" class:text-right={numeric(c)} aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+				{#each cols as c, ci}
+					<th class="th" class:text-right={numeric(c)} style="{tint(c)}{edge(ci)}" aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
 						<button class="inline-flex items-center gap-1 rounded-sm font-medium transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 {sortKey === c.key ? 'text-foreground' : ''}" title={c.title} onclick={() => sortBy(c.key)}>
 							{c.label}
 							{#if sortKey === c.key}
@@ -113,12 +148,17 @@
 		<tbody>
 			{#each view as row, ri}
 				<tr class="fade-in transition-colors hover:bg-muted/50" style="--i:{Math.min(ri, 12)}" class:cursor-pointer={!!onRowClick} onclick={() => onRowClick?.(row)}>
-					{#each cols as c}
-						<td class="td" class:pii={isPii(c, row)} class:text-right={numeric(c)} class:tnum={numeric(c)} style="{c.bar ? barStyle(c, row) : ''}{c.width ? `;max-width:${c.width}` : ''}">
+					{#each cols as c, ci}
+						<td class="td" class:pii={isPii(c, row)} class:text-right={numeric(c)} class:tnum={numeric(c)} style="{tint(c)}{edge(ci)}{c.bar ? barStyle(c, row) : ''}{c.width ? `;max-width:${c.width}` : ''}">
 							{#if c.type === 'link'}
-								<a class="block max-w-[34rem] truncate text-link hover:underline" href={c.href ? c.href(row) : String(row[c.key])} target="_blank" rel="noreferrer noopener" title={tip(c, row, String(row[c.key]))}>{String(row[c.key]).replace(/^https?:\/\/(www\.)?/, '')}</a>
+								<a class="block max-w-[34rem] truncate text-link hover:underline" href={c.href ? c.href(row) : String(row[c.key])} target="_blank" rel="noreferrer noopener" title={tip(c, row, String(row[c.key]))}>{c.display ? c.display(row) : String(row[c.key]).replace(/^https?:\/\/(www\.)?/, '')}</a>
 							{:else if c.type === 'delta'}
 								<span class:text-good={(row[c.key] ?? 0) > 0.005} class:text-bad={(row[c.key] ?? 0) < -0.005}>{cell(c, row[c.key])}</span>
+							{:else if c.deltaKey}
+								<span class="inline-flex items-baseline justify-end gap-1.5 whitespace-nowrap">
+									<span>{cell(c, row[c.key])}</span>
+									<span class="w-12 text-left text-[11px]" class:text-good={(row[c.deltaKey] ?? 0) > 0.005} class:text-bad={(row[c.deltaKey] ?? 0) < -0.005} class:text-muted-foreground={Math.abs(row[c.deltaKey] ?? 0) <= 0.005}>{deltaText(row[c.deltaKey])}</span>
+								</span>
 							{:else}
 								<span class="block max-w-[34rem] truncate" title={tip(c, row, String(row[c.key] ?? ''))}>{cell(c, row[c.key])}</span>
 							{/if}
