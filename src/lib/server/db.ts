@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
+import { chmodSync, closeSync, mkdirSync, openSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { config } from './config';
 
@@ -412,7 +412,17 @@ function migrate(db: Database.Database) {
 }
 
 export function openDb(path: string): Database.Database {
-	if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
+	if (path !== ':memory:') {
+		mkdirSync(dirname(path), { recursive: true });
+		// The database holds encrypted tokens and the owner's data: create it readable by the owner only (SQLite gives the -wal
+		// and -shm files the same mode as the main file). An existing file is tightened too.
+		try {
+			closeSync(openSync(path, 'a', 0o600));
+			chmodSync(path, 0o600);
+		} catch {
+			/* a read-only mount or a non-POSIX file system: carry on */
+		}
+	}
 	const db = new Database(path);
 	db.pragma('journal_mode = WAL');
 	db.pragma('foreign_keys = ON');

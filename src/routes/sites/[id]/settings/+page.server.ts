@@ -5,6 +5,7 @@ import { bareName } from '$lib/property';
 import { config } from '$lib/server/config';
 import { audit, db } from '$lib/server/db';
 import { enqueueSiteSync } from '$lib/server/jobs';
+import { forgetSite } from '$lib/server/apikeys';
 
 export const load: PageServerLoad = ({ params }) => {
 	const id = Number(params.id);
@@ -56,6 +57,7 @@ export const actions: Actions = {
 			return fail(502, { error: e instanceof Error ? e.message : 'Google refused the removal.' });
 		}
 		audit('site.removed_from_google', { accountId: site.account_id, detail: site.site_url });
+		forgetSite(site.id);
 		db().prepare('DELETE FROM sites WHERE id = ?').run(site.id);
 		redirect(303, '/');
 	}

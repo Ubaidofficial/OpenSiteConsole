@@ -171,10 +171,32 @@ export async function connectClarity(siteId: number, token: string) {
 	return { id };
 }
 
+/**
+ * A URL the server will call with a stored key. A self-hosted OpenSEO can legitimately sit on a private network, so private
+ * addresses are allowed; what is refused is anything that could carry credentials in the address, and the link-local range and
+ * names that cloud providers use for instance metadata (the usual target of this kind of request).
+ */
+export function integrationUrlProblem(raw: string): string | null {
+	let u: URL;
+	try {
+		u = new URL(raw);
+	} catch {
+		return 'That is not a valid URL.';
+	}
+	if (u.protocol !== 'http:' && u.protocol !== 'https:') return 'Only http and https addresses are allowed.';
+	if (u.username || u.password) return 'Do not put a user name or password in the address; the API key is sent separately.';
+	const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+	if (h === 'metadata' || h === 'metadata.google.internal' || h.endsWith('.internal') && h.startsWith('metadata')) return 'That address is a cloud metadata service, not an OpenSEO server.';
+	if (/^169\.254\./.test(h) || /^fe[89ab][0-9a-f]:/.test(h) || h === 'fd00:ec2::254') return 'Link-local addresses (including cloud metadata) are not allowed.';
+	return null;
+}
+
 // ── OpenSEO ──────────────────────────────────────────────────────────────────
 export async function connectOpenSeo(baseUrl: string, apiKey: string) {
 	const base = baseUrl.trim().replace(/\/+$/, '');
 	if (!/^https?:\/\/\S+$/.test(base)) throw new Error('Enter your OpenSEO URL, e.g. https://openseo.example.com');
+	const bad = integrationUrlProblem(base);
+	if (bad) throw new Error(bad);
 	const demo = config.demo && apiKey.trim() === 'demo';
 	const projects = demo ? demoOpenSeoProjects() : await listOpenSeoProjects(base, apiKey.trim());
 	const id = saveIntegration('openseo', new URL(base).host, { apiKey: apiKey.trim() }, { baseUrl: base }, demo);

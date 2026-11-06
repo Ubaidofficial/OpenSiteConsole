@@ -111,7 +111,22 @@ function elementTexts(html: string, lower: string, name: string, max = 20): stri
 	return out;
 }
 
-const stripTags = (s: string) => decode(s.replace(/<[^>]*>/g, ' '));
+/**
+ * Replace every <...> with a space, in one pass. (The regex /<[^>]*>/g does the same but takes quadratic time on a page that is
+ * mostly "<" with no ">": 80,000 of them took 4.5 seconds, and a 1.4 MB page would block the whole server for minutes.)
+ */
+export function stripTags(s: string): string {
+	let out = '';
+	let i = 0;
+	for (;;) {
+		const lt = s.indexOf('<', i);
+		if (lt < 0) return decode(out + s.slice(i));
+		const gt = s.indexOf('>', lt + 1);
+		if (gt < 0) return decode(out + s.slice(i)); // no ">" anywhere after: the rest is plain text
+		out += s.slice(i, lt) + ' ';
+		i = gt + 1;
+	}
+}
 
 /** Attribute value of a tag, whichever order the attributes are in. */
 function attr(tag: string, name: string): string | null {

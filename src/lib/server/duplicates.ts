@@ -1,4 +1,5 @@
 import { db } from './db';
+import { forgetSite } from './apikeys';
 import { allSites } from './queries';
 import { coverageMap, isRootPrefix } from '../property';
 
@@ -24,6 +25,7 @@ export function hideCoveredDuplicates(): number {
 export function purgeRemovedSite(id: number): boolean {
 	const row = db().prepare('SELECT permission FROM sites WHERE id = ?').get(id) as { permission: string } | undefined;
 	if (!row || row.permission !== 'none') return false;
+	forgetSite(id);
 	db().prepare('DELETE FROM sites WHERE id = ?').run(id); // child tables cascade
 	return true;
 }

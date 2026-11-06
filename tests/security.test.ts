@@ -91,7 +91,7 @@ describe('the request gate (hooks)', () => {
 		const url = new URL(`http://${o.host ?? 'localhost'}:5173${path}`);
 		const jar = new Map<string, string>(o.cookie ? [['osc_session', o.cookie]] : []);
 		return {
-			url, request: new Request(url, { headers: o.headers }), locals: {} as Record<string, unknown>,
+			url, request: new Request(url, { headers: { host: `${o.host ?? 'localhost'}:5173`, ...(o.headers ?? {}) } }), locals: {} as Record<string, unknown>,
 			cookies: { get: (k: string) => jar.get(k) },
 			getClientAddress: () => { if (o.peer === null) throw new Error('no address'); return o.peer ?? '127.0.0.1'; }
 		};

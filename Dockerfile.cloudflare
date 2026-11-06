@@ -17,7 +17,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY package.json ./
 COPY deploy/cloudflare/litestream.yml /etc/litestream.yml
 COPY deploy/cloudflare/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && mkdir -p /data
+RUN chmod +x /entrypoint.sh && mkdir -p /data && chown node:node /data
+USER node
 ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 DB_PATH=/data/opensiteconsole.db
 EXPOSE 3000
 ENTRYPOINT ["/entrypoint.sh"]
