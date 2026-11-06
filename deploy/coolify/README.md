@@ -18,10 +18,10 @@ This is the simplest way to run the app permanently, and the one I recommend ove
 3. **Domain.** On the service, set the domain to `https://seo.example.com:3000`. The `:3000` tells Coolify's proxy which container port to send traffic to. The compose file deliberately publishes no host port: a published port would bypass the proxy.
 4. **Environment variables** (Coolify shows them after loading the compose file):
    - `ORIGIN` = `https://seo.example.com` (the public address, no trailing slash). It builds the Google redirect address and the cookie's `Secure` flag.
-   - `ADMIN_PASSWORD` = the login password you choose.
+   - `ADMIN_PASSWORD` = the login password you choose (or, instead, `ADMIN_PASSWORD_HASH`: a hash made with `pnpm hash-password`, so the password itself is never stored).
    - `APP_SECRET` = 32 or more random characters, for example from `openssl rand -base64 32`. It encrypts the Google tokens; keep a copy somewhere safe, because losing it means reconnecting every Google account.
    - Optional: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DIGEST_WEBHOOK_URL`, `MCP_INSPECT_PER_KEY_DAY` and the rest from `.env.example`.
-   The deploy stops with a message if `ORIGIN`, `ADMIN_PASSWORD` or `APP_SECRET` is missing, instead of starting open.
+   The deploy stops with a message if `ORIGIN` or `APP_SECRET` is missing. If you set neither `ADMIN_PASSWORD` nor `ADMIN_PASSWORD_HASH`, the app starts but refuses every remote request (it can never run open), so you would see an error page, not a login.
 5. **Deploy.** The healthcheck calls `/login` from inside the container.
 6. **Google sign-in.** In the Google Cloud console add `https://seo.example.com/auth/callback` to the OAuth client's authorised redirect URIs (and `.../auth/bing/callback` if you use Bing sign-in). Then open the site, sign in, and connect your Google accounts.
 

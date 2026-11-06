@@ -34,6 +34,21 @@ export const config = {
 	get adminPassword() {
 		return env('ADMIN_PASSWORD');
 	},
+	/** scrypt$... hash of the login password (see password.ts). Takes precedence over ADMIN_PASSWORD. */
+	get adminPasswordHash() {
+		return env('ADMIN_PASSWORD_HASH');
+	},
+	/** True when any login password is configured: without one the app only answers this machine. */
+	get hasPassword() {
+		return !!(env('ADMIN_PASSWORD_HASH') || env('ADMIN_PASSWORD'));
+	},
+	/**
+	 * Hosted plan: the one OAuth redirect address shared by all customer instances (the control app's /oauth/callback). Unset
+	 * for a normal install, where the redirect is this app's own /auth/callback.
+	 */
+	get oauthRedirectUri() {
+		return env('OAUTH_REDIRECT_URI');
+	},
 	get demo() {
 		return env('DEMO_MODE') === '1';
 	},

@@ -103,7 +103,7 @@ export function scopes(): string {
 }
 
 export function redirectUri(): string {
-	return `${config.origin}/auth/callback`;
+	return config.oauthRedirectUri || `${config.origin}/auth/callback`;
 }
 
 export function buildAuthUrl(state: string): string {

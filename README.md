@@ -46,6 +46,7 @@ every form submit as cross-site. `pnpm get-latest` pulls the latest `main` and i
 | **Coolify / a Docker server behind a proxy** (recommended for always-on use) | [`compose.coolify.yaml`](compose.coolify.yaml) and [`deploy/coolify/`](deploy/coolify/README.md): the app plus a named volume for the database, healthcheck, proxy-header settings, backup and data-move steps. Works the same on Railway (volume at `/data`). | The compose file parses and the healthcheck and proxy-header settings were tested against a running server; the image was **never built** and nothing was deployed. |
 | **Docker (plain)** | `Dockerfile` and `compose.yaml` (data in a volume) | Written, **never built**. |
 | **Cloudflare** | [`deploy/cloudflare/`](deploy/cloudflare/README.md): a Worker in front of a Cloudflare Container running the app, the database replicated to an R2 bucket with Litestream, and a cron trigger that wakes it. Needs the Workers Paid plan and Docker on the computer you deploy from. | Written from the documentation. The Worker type-checks, `wrangler deploy --dry-run` accepts it and the start script is tested against a stand-in, but the image was **never built and nothing was deployed**. |
+| **Hosted plan (control app)** | [`cloud/`](cloud/README.md): a separate small program that sells a **$10/month hosted instance**: sign-up, Stripe Checkout, and automatic creation of one private instance per customer through the Coolify API, with grace period, suspension and retention rules. The app itself stays free to self-host. | Built and tested against fakes (45 tests); **never run against real Stripe, Coolify or Google review**. Needs your Stripe, Coolify and domain details, and Google OAuth verification before public use. |
 | **Native Cloudflare Workers + D1** | Not supported. [`spike/workers/REPORT.md`](spike/workers/REPORT.md) sizes the port (374 functions and 818 calls become async; D1's 10 GB cap) and includes a working proof. | A feasibility spike: staged go, not a quick change. |
 
 ## Environment variables
@@ -58,6 +59,8 @@ All are optional except where noted; copy `.env.example` to `.env`. On Cloudflar
 | `ORIGIN` | Public address of the app; builds the OAuth redirect URI. |
 | `APP_SECRET` | 32+ random characters; encrypts OAuth tokens at rest. If unset, a key is generated next to the database. **Required on Cloudflare**, where the disk is wiped. |
 | `ADMIN_PASSWORD` | Password for the whole app. Required before any non-local access. |
+| `ADMIN_PASSWORD_HASH` | Instead of `ADMIN_PASSWORD`: a scrypt hash (`pnpm hash-password`), so the password itself is never stored. Wins if both are set. |
+| `OAUTH_REDIRECT_URI` | Hosted plan only: the one shared Google redirect address (the control app's `/oauth/callback`). Leave empty for a normal install. |
 | `DEMO_MODE=1` | Synthetic data, no Google credentials. |
 | `DB_PATH` | SQLite file (default `./data/opensiteconsole.db`). |
 | `GOOGLE_INCLUDE_GA4`, `GOOGLE_INCLUDE_GTM` | Ask for GA4 / read-only Tag Manager access in the same consent (default 1). |
@@ -166,6 +169,7 @@ src/lib/components/      shared Svelte components (charts, action cards, ...)
 src/routes/              dashboard, portfolio, actions, digest, updates, accounts, sites/[id]/* tabs, auth, /api/mcp
 tests/                   vitest (and real-shaped fixtures in tests/fixtures)
 deploy/cloudflare/       Worker, entrypoint and Litestream config for the Cloudflare Container deploy
+cloud/                   hosted-plan control app (sign-up, Stripe, Coolify provisioning, OAuth relay); its own build and tests
 spike/workers/           feasibility spike and proof for a native Workers + D1 port (not part of the app)
 Dockerfile, compose.yaml, Dockerfile.cloudflare, wrangler.jsonc   container and Cloudflare deploy files
 ```

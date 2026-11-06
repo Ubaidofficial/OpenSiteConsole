@@ -284,7 +284,10 @@ describe('the Coolify compose file', () => {
 	it('publishes no host port, keeps the data in a named volume, and refuses to deploy open', () => {
 		expect(f).not.toMatch(/^\s*ports:/m); // a published port would bypass the proxy
 		expect(f).toMatch(/osc-data:\/data/);
-		for (const v of ['ORIGIN', 'ADMIN_PASSWORD', 'APP_SECRET']) expect(f, v).toMatch(new RegExp(`\\$\\{${v}:\\?`));
+		for (const v of ['ORIGIN', 'APP_SECRET']) expect(f, v).toMatch(new RegExp(`\\$\\{${v}:\\?`));
+		// the login password may be given plain or as a hash; with neither the app itself refuses remote requests
+		expect(f).toMatch(/ADMIN_PASSWORD=\$\{ADMIN_PASSWORD:-\}/);
+		expect(f).toMatch(/ADMIN_PASSWORD_HASH=\$\{ADMIN_PASSWORD_HASH:-\}/);
 		expect(f).toMatch(/ADDRESS_HEADER=\$\{ADDRESS_HEADER:-X-Forwarded-For\}/);
 		expect(f).toMatch(/XFF_DEPTH=\$\{XFF_DEPTH:-1\}/);
 		expect(f).toMatch(/healthcheck:/);
