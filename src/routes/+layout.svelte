@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { Toaster, toast } from 'svelte-sonner';
-	import { Bot, LayoutDashboard, Layers, Map as MapIcon, Plug, RefreshCw, Users } from '@lucide/svelte';
+	import { Bot, LayoutDashboard, Layers, ListChecks, Map as MapIcon, Newspaper, Plug, RefreshCw, Users } from '@lucide/svelte';
 	import PrivacyToggle from '$lib/components/privacy-toggle.svelte';
 	import { privacy } from '$lib/privacy.svelte';
 	import { onMount } from 'svelte';
@@ -12,6 +12,8 @@
 	let { data, children } = $props();
 	const links = [
 		['/', 'Dashboard', LayoutDashboard],
+		['/actions', 'Actions', ListChecks],
+		['/digest', 'Digest', Newspaper],
 		['/portfolio', 'Portfolio', Layers],
 		['/sitemaps', 'Sitemaps', MapIcon],
 		['/connect', 'Connect', Plug],

@@ -3,6 +3,8 @@ import type { SiteRow } from './clients';
 import { addDays, daysBetween, eachDay } from './dates';
 import { siteEnd } from './queries';
 import { urlSection, spansHosts } from '../groups';
+import { updatesBetween } from './gupdates';
+import { conversionsFor, ga4Fingerprint, type ConversionOutcome } from './ga4tests';
 import { emptyScope, indexSeries, isEmptyScope, liftTestCalibrated, matchSections, pickControl, placebosFrom, scopeMatcher, type LiftResult, type Scope } from '../experiments';
 
 /** YYYY-MM-DD that is an actual calendar day (rejects 2026-02-31 and 9999-99-99, which a hand-made request could send). */
@@ -18,7 +20,7 @@ export interface SeoTest {
 	window_days: number;
 	treatment: Scope;
 	control: Scope | { restOfSite: true };
-	meta: { old?: Scope; new?: Scope; controlNote?: string; controlMethod?: 'sections' | 'traffic' | 'rest' | 'named' };
+	meta: { old?: Scope; new?: Scope; controlNote?: string; controlMethod?: 'sections' | 'traffic' | 'rest' | 'named'; annotationId?: number };
 	note: string | null;
 	created_at: number;
 }
@@ -41,6 +43,8 @@ export interface NewTest {
 	/** how the control was chosen, shown on the test */
 	controlNote?: string;
 	controlMethod?: 'sections' | 'traffic' | 'rest' | 'named';
+	/** the change-log entry this test was created from */
+	annotationId?: number;
 	/** switch only */
 	old?: Scope;
 	new?: Scope;
@@ -53,7 +57,7 @@ export function createTest(siteId: number, t: NewTest): number {
 	if (!isRealDate(t.startDate)) throw new Error('Enter the date the change went live as a real date (YYYY-MM-DD).');
 	const windowDays = Math.min(90, Math.max(7, Math.round(t.windowDays ?? 28)));
 	let treatment = t.treatment;
-	const meta: SeoTest['meta'] = { controlNote: t.controlNote, controlMethod: t.controlMethod };
+	const meta: SeoTest['meta'] = { controlNote: t.controlNote, controlMethod: t.controlMethod, annotationId: t.annotationId };
 	if (t.kind === 'switch') {
 		if (!t.old || isEmptyScope(t.old) || !t.new || isEmptyScope(t.new)) throw new Error('A redirect test needs the old URLs and the new URLs.');
 		// Old and new are measured together: traffic that moves from one to the other must not count as a loss.
@@ -84,6 +88,10 @@ export interface TestOutcome {
 	position: { before: number; after: number } | null;
 	/** switch tests: old and new URL clicks before and after */
 	parts: { oldPre: number; oldPost: number; newPre: number; newPost: number } | null;
+	/** Google ranking updates that overlap the before or after window: an update can move one section of a site and not another, so the control may not absorb it */
+	updates: { name: string; kind: string; begin: string; end: string | null; window: 'before' | 'after' | 'both' }[];
+	/** the same comparison on GA4 Google-organic sessions and key events; null status 'no-ga4' etc. says why there is none */
+	conversions: ConversionOutcome;
 	/** 100 = the pre-change average, 7-day smoothed */
 	series: { date: string; treatment: number; control: number }[];
 	startDate: string;
@@ -168,13 +176,26 @@ export function evaluateTest(site: Pick<SiteRow, 'id' | 'synced_through' | 'back
 		controlPages: cPages.size,
 		position: postDays && impPre && impPost ? { before: pwPre / impPre, after: pwPost / impPost } : null,
 		parts: oldM ? parts : null,
+		conversions: conversionsFor(site.id, test, postEnd),
+		updates: updatesBetween(preStart, postDays ? postEnd : preEnd).map((u) => {
+			const inBefore = u.begin <= preEnd && (u.end ?? postEnd) >= preStart;
+			const inAfter = postDays > 0 && u.begin <= postEnd && (u.end ?? postEnd) >= test.start_date;
+			return { name: u.name, kind: u.kind, begin: u.begin, end: u.end, window: inBefore && inAfter ? ('both' as const) : inAfter ? ('after' as const) : ('before' as const) };
+		}),
 		series: st.map((p, i) => ({ date: p.date, treatment: Math.round(p.value * 10) / 10, control: Math.round(sc[i].value * 10) / 10 })),
 		startDate: test.start_date
 	};
 }
 
+/** Tests created from change-log entries, by annotation id. */
+export function testsByAnnotation(siteId: number): Map<number, SeoTest> {
+	const m = new Map<number, SeoTest>();
+	for (const t of listTests(siteId)) if (t.meta.annotationId) m.set(t.meta.annotationId, t);
+	return m;
+}
+
 /** Bump when the maths in evaluateTest / experiments.ts changes, so stored results are recomputed. */
-const ALGORITHM = 'v4-detectable';
+const ALGORITHM = 'v6-conversions';
 
 type CacheSite = Pick<SiteRow, 'id' | 'synced_through' | 'backfill_done' | 'backfilled_to' | 'last_sync_at'>;
 
@@ -185,7 +206,9 @@ type CacheSite = Pick<SiteRow, 'id' | 'synced_through' | 'backfill_done' | 'back
  * Failures are never stored. Tests are also computed ahead of time after each sync (warmTests).
  */
 export function evaluateTestCached(site: CacheSite, test: SeoTest): TestOutcome {
-	const key = JSON.stringify([ALGORITHM, site.synced_through, site.last_sync_at, site.backfill_done, site.backfilled_to, test.start_date, test.window_days, test.treatment, test.control, test.meta]);
+	// The list of Google updates is part of the answer, so a change to it (an import, a hand-added entry) must recompute.
+	const upd = db().prepare('SELECT COUNT(*) n, MAX(updated_at) m FROM google_updates').get() as { n: number; m: number | null };
+	const key = JSON.stringify([ALGORITHM, ga4Fingerprint(site.id), upd.n, upd.m, site.synced_through, site.last_sync_at, site.backfill_done, site.backfilled_to, test.start_date, test.window_days, test.treatment, test.control, test.meta]);
 	const d = db();
 	const hit = d.prepare('SELECT cache_key, outcome FROM seo_test_results WHERE test_id = ?').get(test.id) as { cache_key: string; outcome: string } | undefined;
 	if (hit && hit.cache_key === key) return JSON.parse(hit.outcome) as TestOutcome;

@@ -7,7 +7,7 @@
 	let {
 		xs,
 		series,
-		marker = null,
+		markers = [],
 		height = 240,
 		zero = true,
 		baseline = null,
@@ -15,7 +15,8 @@
 	}: {
 		xs: string[];
 		series: S[];
-		marker?: { x: string; label: string } | null;
+		/** vertical reference lines; a marker whose date is outside the chart is not drawn */
+		markers?: { x: string; label: string; color?: string }[];
 		height?: number;
 		/** start the y axis at 0 */
 		zero?: boolean;
@@ -60,7 +61,7 @@
 	const yTicks = $derived([0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: range.lo + (range.hi - range.lo) * t, y: y(range.lo + (range.hi - range.lo) * t) })));
 	const xTicks = $derived(xs.length ? [...new Set([0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(t * (xs.length - 1))))] : []);
 	const fmtDay = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : d);
-	const mIdx = $derived(marker ? xs.indexOf(marker.x) : -1);
+	const marks = $derived(markers.map((m, k) => ({ ...m, i: xs.indexOf(m.x), row: k % 3 })).filter((m) => m.i >= 0));
 	function move(e: PointerEvent) {
 		const r = (e.currentTarget as SVGElement).getBoundingClientRect();
 		hover = Math.min(xs.length - 1, Math.max(0, Math.round(((e.clientX - r.left - pad.l) / innerW) * (xs.length - 1))));
@@ -85,10 +86,10 @@
 			{#if baseline != null}<line x1={pad.l} x2={width - pad.r} y1={y(baseline)} y2={y(baseline)} stroke="var(--muted-foreground)" stroke-dasharray="2 4" stroke-width="1" />{/if}
 			{#each series as s}{#if band(s)}<path d={band(s)} fill={s.color} opacity="0.14" />{/if}{/each}
 			{#each series as s}<path d={path(s.values)} fill="none" stroke={s.color} stroke-width="2" stroke-dasharray={s.dashed ? '5 4' : undefined} stroke-linejoin="round" />{/each}
-			{#if mIdx >= 0 && marker}
-				<line x1={x(mIdx)} x2={x(mIdx)} y1={pad.t} y2={pad.t + innerH} stroke="var(--warn)" stroke-dasharray="3 3" />
-				<text x={x(mIdx) + 4} y={pad.t + 10} font-size="10" fill="var(--warn)">{marker.label}</text>
-			{/if}
+			{#each marks as m}
+				<line x1={x(m.i)} x2={x(m.i)} y1={pad.t} y2={pad.t + innerH} stroke={m.color ?? 'var(--warn)'} stroke-dasharray="3 3" />
+				<text x={x(m.i) + 4} y={pad.t + 10 + m.row * 11} font-size="10" fill={m.color ?? 'var(--warn)'}>{m.label}</text>
+			{/each}
 			{#if hover !== null}
 				<line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={pad.t + innerH} stroke="var(--muted-foreground)" stroke-opacity="0.4" />
 				{#each series as s}{#if s.values[hover] != null}<circle cx={x(hover)} cy={y(s.values[hover]!)} r="3.5" fill={s.color} />{/if}{/each}

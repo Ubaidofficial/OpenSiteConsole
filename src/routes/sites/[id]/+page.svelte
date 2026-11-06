@@ -1,12 +1,17 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { LoaderCircle, Plus, Trash2, TrendingDown, TrendingUp } from '@lucide/svelte';
 	import Chart from '$lib/components/Chart.svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { fmtInt, fmtPct, fmtPos, fmtSigned } from '$lib/format';
 
 	let { data, form } = $props();
-	const markers = $derived(data.annotations.map((a) => ({ date: a.date, label: `${a.title}`, color: a.kind === 'experiment' ? 'var(--c-impr)' : 'var(--warn)' })));
+	const markers = $derived([
+		...data.annotations.map((a) => ({ date: a.date, label: `${a.title}`, color: a.kind === 'experiment' ? 'var(--c-impr)' : 'var(--warn)' })),
+		// Google's ranking updates: the day each one started rolling out
+		...data.googleUpdates.map((u) => ({ date: u.begin, label: `Google: ${u.name}`, color: 'var(--c-pos)' }))
+	]);
 	const today = new Date().toISOString().slice(0, 10);
 
 	// Controlled fields so the date survives a submit (a plain form reset would blank it).
@@ -86,6 +91,7 @@
 
 		<div class="space-y-2.5">
 			{#each data.annotations as a (a.id)}
+				{@const lt = data.annotationTests[a.id]}
 				<article class="rounded-xl border bg-card p-4 text-sm shadow-xs">
 					<div class="flex items-center gap-2">
 						<span class="size-2 rounded-full" style="background:{dot(a.kind)}"></span>
@@ -98,6 +104,16 @@
 					</div>
 					<div class="mt-1 font-medium">{a.title}</div>
 					{#if a.page_prefix}<div class="pii truncate text-xs text-muted-foreground">scope: {a.page_prefix}</div>{/if}
+					{#if lt}
+						<div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs">
+							<span class="font-medium">Tested:</span>
+							<span class="{lt.verdict === 'positive' ? 'text-good' : lt.verdict === 'negative' ? 'text-bad' : 'text-muted-foreground'}">{lt.verdict === 'positive' ? 'likely a real gain' : lt.verdict === 'negative' ? 'likely a real loss' : lt.verdict === 'inconclusive' ? 'no clear effect' : lt.verdict === 'estimate-only' ? 'estimate only' : 'not enough data yet'}{lt.lift != null ? ` (${fmtSigned(lt.lift)} vs control)` : ''}</span>
+							{#if lt.verdict === 'inconclusive' && lt.detectable != null && lt.detectable > 0.25}<span class="text-warn">weak evidence: could not detect a change under ±{Math.round(lt.detectable * 100)}%</span>{/if}
+							<a class="ml-auto underline" href="/sites/{page.params.id}/tests">details</a>
+						</div>
+					{:else if a.page_prefix}
+						<form method="POST" action="?/makeTest" use:enhance class="mt-2"><input type="hidden" name="id" value={a.id} /><button class="btn !h-7 text-xs">Test this change properly</button></form>
+					{/if}
 					{#if a.result.tooEarly}
 						<div class="mt-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Too early to judge: {a.result.afterDays} day(s) of data since the change (7+ needed).</div>
 					{:else}
@@ -106,7 +122,7 @@
 							<div><div class="text-muted-foreground">vs site trend</div><div class="font-semibold {(a.result.lift ?? 0) >= 0 ? 'text-good' : 'text-bad'}">{fmtSigned(a.result.lift)}</div><div class="text-muted-foreground">{fmtSigned(a.result.rawChange)} raw</div></div>
 							<div><div class="text-muted-foreground">Position</div><div class="font-medium">{fmtPos(a.result.posBefore)} → {fmtPos(a.result.posAfter)}</div></div>
 						</div>
-						<div class="mt-1.5 text-[11px] text-muted-foreground">{a.result.afterDays}d after vs 28d before</div>
+						<div class="mt-1.5 text-[11px] text-muted-foreground">{a.result.afterDays}d after vs 28d before. A rough readout with no significance test{lt ? '; see the verdict above' : a.page_prefix ? '; use “Test this change properly” for a verdict' : ''}.</div>
 					{/if}
 				</article>
 			{:else}

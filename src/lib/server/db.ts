@@ -227,6 +227,115 @@ CREATE TABLE IF NOT EXISTS seo_tests (
 	note TEXT,
 	created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS kv (
+	key TEXT PRIMARY KEY,
+	value TEXT NOT NULL
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS google_updates (
+	id TEXT PRIMARY KEY,                -- g:<incident id> from Google's Search Status Dashboard, or m:<n> for a manual entry
+	name TEXT NOT NULL,                 -- e.g. "May 2026 core update"
+	kind TEXT NOT NULL,                 -- core | spam | discover | other
+	begin_date TEXT NOT NULL,           -- YYYY-MM-DD (UTC date of the dashboard timestamp)
+	end_date TEXT,                      -- NULL while still rolling out
+	source TEXT NOT NULL,               -- google | manual
+	updated_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS sitemap_urls (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	norm TEXT NOT NULL,                 -- host (no www) + path (no trailing slash), for matching against Search Console pages
+	lastmod TEXT,                       -- YYYY-MM-DD if the sitemap gave one
+	sitemap TEXT NOT NULL,              -- which sitemap file listed it
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS sitemap_urls_norm ON sitemap_urls(site_id, norm);
+CREATE TABLE IF NOT EXISTS sitemap_sync (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	fetched_at INTEGER NOT NULL,
+	sitemaps INTEGER NOT NULL,          -- files read
+	urls INTEGER NOT NULL,
+	truncated INTEGER NOT NULL DEFAULT 0,
+	error TEXT                          -- first problem, if any
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS action_cache (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,
+	cache_key TEXT NOT NULL,
+	payload TEXT NOT NULL,              -- JSON ActionItem[], ranked
+	computed_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, days)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS action_state (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	key TEXT NOT NULL,
+	state TEXT NOT NULL,                -- done | snoozed
+	until INTEGER NOT NULL,             -- ms; the item returns after this if it is still detected
+	updated_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, key)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_page_daily (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	date TEXT NOT NULL,
+	page TEXT NOT NULL,                 -- landing path, no query string
+	sessions INTEGER NOT NULL,          -- Google-organic sessions that landed there
+	key_events REAL NOT NULL,
+	PRIMARY KEY (site_id, date, page)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_page_meta (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	from_date TEXT,                     -- earliest day stored
+	through_date TEXT,                  -- latest day stored
+	pulled_at INTEGER NOT NULL,
+	error TEXT
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS digests (
+	id INTEGER PRIMARY KEY,
+	kind TEXT NOT NULL,                 -- weekly | urgent
+	week_key TEXT,                      -- the digest day this weekly digest is for; NULL for one made by hand or an urgent alert
+	created_at INTEGER NOT NULL,
+	payload TEXT NOT NULL,              -- JSON Digest (weekly) or {items} (urgent)
+	delivery TEXT NOT NULL DEFAULT 'none',   -- none (no webhook configured) | sent | failed
+	delivered_at INTEGER,
+	delivery_message TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS digests_week ON digests(kind, week_key) WHERE week_key IS NOT NULL;
+CREATE TABLE IF NOT EXISTS alerts_sent (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	key TEXT NOT NULL,
+	sent_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, key)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS indexnow_keys (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	key TEXT NOT NULL,                  -- 8-128 chars of a-z A-Z 0-9 and "-"; must also be hosted as /<key>.txt on each host
+	created_at INTEGER NOT NULL,
+	auto INTEGER NOT NULL DEFAULT 0     -- submit new and changed sitemap URLs automatically
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS indexnow_hosts (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	host TEXT NOT NULL,
+	verified_at INTEGER NOT NULL,
+	ok INTEGER NOT NULL,                -- the key file was found on the host and holds the key
+	message TEXT,
+	PRIMARY KEY (site_id, host)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS indexnow_urls (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	submitted_at INTEGER NOT NULL,      -- last accepted submission, for the per-URL cooldown
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS indexnow_log (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	at INTEGER NOT NULL,
+	host TEXT NOT NULL,
+	urls INTEGER NOT NULL,
+	status INTEGER NOT NULL,            -- HTTP status, 0 if there was no answer
+	message TEXT,
+	source TEXT NOT NULL                -- manual | auto
+);
+CREATE INDEX IF NOT EXISTS indexnow_log_site ON indexnow_log(site_id, at);
 CREATE TABLE IF NOT EXISTS seo_test_results (
 	test_id INTEGER PRIMARY KEY REFERENCES seo_tests(id) ON DELETE CASCADE,
 	cache_key TEXT NOT NULL,            -- changes whenever the data, the test or the algorithm changes

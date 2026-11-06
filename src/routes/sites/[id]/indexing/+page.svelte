@@ -74,6 +74,32 @@
 	{/if}
 </section>
 
+<section class="mb-5">
+	<div class="mb-1 flex flex-wrap items-center gap-3">
+		<h2 class="font-medium">Sitemap coverage</h2>
+		<span class="text-xs text-muted-foreground">{data.coverage.fetchedAt ? 'sitemaps read ' + ago(data.coverage.fetchedAt) : 'not read yet'}</span>
+		<form method="POST" action="?/sitemapRefresh" use:enhance class="ml-auto"><button class="btn">Read sitemaps now</button></form>
+	</div>
+	<p class="mb-2 max-w-3xl text-xs text-muted-foreground">Compares the URLs in your submitted sitemaps with the pages Search Console has shown in the last {data.coverage.window.days} days. A sitemap URL that never got a single impression is where indexing problems hide: Google may not have indexed it, or indexed it and found it useless. The first group is checked first by the indexing monitor.</p>
+	{#if data.coverage.error}<p class="mb-2 text-xs text-warn">{data.coverage.error}</p>{/if}
+	{#if !data.coverage.synced}
+		<div class="card p-4 text-sm text-muted-foreground">No sitemap has been read yet. Submit one in Search Console (see the Sitemaps tab) and click “Read sitemaps now”.</div>
+	{:else}
+		{#if !data.coverage.window.complete}<p class="mb-2 text-xs text-warn">Search Console history for this window is still downloading, so “never shown” may overstate.</p>{/if}
+		<div class="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+			<div class="card px-3 py-2"><div class="text-xs text-muted-foreground">URLs in sitemaps</div><div class="tnum text-xl font-semibold">{data.coverage.totalUrls.toLocaleString('en-US')}</div>{#if data.coverage.truncated}<div class="text-[11px] text-warn">cut off at the limit</div>{/if}</div>
+			<div class="card px-3 py-2"><div class="text-xs text-muted-foreground">Shown in Search</div><div class="tnum text-xl font-semibold text-good">{data.coverage.shown.toLocaleString('en-US')}</div><div class="text-[11px] text-muted-foreground">{data.coverage.totalUrls ? Math.round((data.coverage.shown / data.coverage.totalUrls) * 100) : 0}% of the sitemap</div></div>
+			<div class="card px-3 py-2"><div class="text-xs text-muted-foreground">Never shown</div><div class="tnum text-xl font-semibold {data.coverage.neverShown.count ? 'text-bad' : ''}">{data.coverage.neverShown.count.toLocaleString('en-US')}</div>{#if data.coverage.neverShown.tooNew}<div class="text-[11px] text-muted-foreground">+{data.coverage.neverShown.tooNew} too new to judge</div>{/if}</div>
+			<div class="card px-3 py-2"><div class="text-xs text-muted-foreground">Earn clicks, not in sitemap</div><div class="tnum text-xl font-semibold {data.coverage.notInSitemap.count ? 'text-warn' : ''}">{data.coverage.notInSitemap.count.toLocaleString('en-US')}</div><div class="text-[11px] text-muted-foreground">{data.coverage.notInSitemap.clicks.toLocaleString('en-US')} clicks</div></div>
+		</div>
+		<div class="grid grid-cols-1 gap-4 2xl:grid-cols-2">
+			<div><h3 class="mb-1 text-sm font-medium">Never shown (newest first)</h3><DataTable rows={data.coverage.neverShown.sample} cols={[{ key: 'url', label: 'URL', type: 'link' }, { key: 'lastmod', label: 'Sitemap date', type: 'text' }, { key: 'index', label: 'Indexed?', type: 'text' }]} sortKey="lastmod" filterable={false} pageSize={10} empty="Every sitemap URL has been shown at least once." /></div>
+			<div><h3 class="mb-1 text-sm font-medium">Earning clicks but missing from every sitemap</h3><DataTable rows={data.coverage.notInSitemap.sample} cols={[{ key: 'url', label: 'URL', type: 'link' }, { key: 'clicks', label: 'Clicks', type: 'int' }, { key: 'impressions', label: 'Impressions', type: 'int' }]} sortKey="clicks" filterable={false} pageSize={10} empty="Every page that earns clicks is in a sitemap." /></div>
+		</div>
+		<p class="mt-2 text-[11px] text-muted-foreground">URLs are compared without scheme, www, query string or trailing slash. A page missing from the sitemap may be a parameter or canonical variant rather than a real omission.</p>
+	{/if}
+</section>
+
 <section>
 	<h2 class="mb-1 font-medium">Weak and dead URLs</h2>
 	<p class="mb-2 max-w-3xl text-xs text-muted-foreground">Every page Search Console has shown, classed by how it is doing against the previous {data.days} days (cut-offs are my own, chosen to be conservative). A page that never got an impression is invisible to Search Console; compare with your sitemap to find those.</p>

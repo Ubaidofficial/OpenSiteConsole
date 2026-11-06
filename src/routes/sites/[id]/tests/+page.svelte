@@ -56,9 +56,10 @@
 	{:else}
 	{@const o = t.outcome}
 	{@const v = verdictText[o.clicks.verdict]}
+	{@const cv = o.conversions}
 	<article class="rise card mb-4 p-4">
 		<div class="mb-2 flex flex-wrap items-center gap-2">
-			<h3 class="font-medium">{t.name}</h3><span class="chip">{kinds[t.kind]}</span>
+			<h3 class="font-medium">{t.name}</h3><span class="chip">{kinds[t.kind]}</span>{#if t.fromChangeLog}<span class="chip">from change log</span>{/if}
 			<span class="text-xs text-muted-foreground">change on {t.startDate} · {o.postDays} day{o.postDays === 1 ? '' : 's'} of data after it · {o.treatmentPages} test pages vs {o.controlPages} control pages{t.restControl ? ' (rest of site)' : t.controlMethod === 'sections' ? ' (matched sections)' : t.controlMethod === 'traffic' ? ' (matched on traffic)' : ''}</span>
 			<form method="POST" action="?/remove" use:enhance class="ml-auto"><input type="hidden" name="id" value={t.id} /><ConfirmButton title="Delete this test?" description="Only the test definition is removed; your Search Console data is untouched." confirmLabel="Delete test">Delete</ConfirmButton></form>
 		</div>
@@ -75,10 +76,29 @@
 				<div class="tnum text-xl font-semibold">{o.position ? `${fmtPos(o.position.before)} → ${fmtPos(o.position.after)}` : '–'}</div><div class="text-[11px] text-muted-foreground">lower is better; descriptive, not tested</div></div>
 		</div>
 		{#if o.clicks.note}<p class="mb-2 text-xs text-warn">{o.clicks.note}</p>{/if}
-		{#if t.controlNote}<p class="mb-2 text-xs text-muted-foreground">{t.controlNote}</p>{/if}
+		<div class="mb-3 rounded-lg border p-3">
+			<div class="text-xs text-muted-foreground">Conversions (GA4 key events from Google organic), test vs control</div>
+			{#if cv.status === 'ok' && cv.keyEvents && cv.sessions}
+				{@const kv = verdictText[cv.keyEvents.verdict]}
+				<div class="mt-1 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+					<div><span class="tnum text-xl font-semibold {kv[1]}">{pct(cv.keyEvents.lift)}</span> <span class="text-xs {kv[1]}">key events · {kv[0]}</span>{#if cv.keyEvents.ciLow != null}<div class="text-[11px] text-muted-foreground">95% range {pct(cv.keyEvents.ciLow)} to {pct(cv.keyEvents.ciHigh)}</div>{/if}</div>
+					<div><span class="tnum text-base font-semibold">{pct(cv.sessions.lift)}</span> <span class="text-xs text-muted-foreground">organic sessions · {verdictText[cv.sessions.verdict][0].toLowerCase()}</span></div>
+					{#if cv.rate && cv.rate.before != null && cv.rate.after != null}<div class="text-xs text-muted-foreground">key events per session on the test pages: {(cv.rate.before * 100).toFixed(2)}% → {(cv.rate.after * 100).toFixed(2)}% (not tested)</div>{/if}
+				</div>
+				{#if cv.keyEvents.note}<p class="mt-1 text-[11px] text-warn">{cv.keyEvents.note}</p>{/if}
+				{#if o.clicks.verdict === 'positive' && cv.keyEvents.verdict === 'negative'}<p class="mt-2 rounded-md border border-[color:var(--bad)] p-2 text-xs text-bad">More clicks but fewer conversions. The change may be attracting the wrong audience (a broader or off-intent title or content). Do not roll it out on clicks alone.</p>{/if}
+				{#if o.clicks.verdict === 'positive' && cv.keyEvents.verdict === 'inconclusive'}<p class="mt-2 text-[11px] text-muted-foreground">Clicks rose; key events show no clear change (they are rare, so this is often just too few to tell). Watch the key-event rate before rolling out.</p>{/if}
+			{:else}
+				<p class="mt-1 text-xs text-muted-foreground">{cv.note}</p>
+			{/if}
+		</div>
+		{#each o.updates.filter((u) => u.window !== 'before' && (u.kind === 'core' || u.kind === 'spam')) as u}
+			<p class="mb-2 rounded-md border border-[color:var(--warn)] p-2 text-xs text-warn">Google's <b>{u.name}</b> ({u.begin}{u.end ? ' to ' + u.end : ', still rolling out'}) overlaps this test's after-period. The control absorbs what hits the whole site, but an update can move one section and not another, so read this result with extra caution.</p>
+		{/each}
+		{#if t.controlNote}<p class="pii mb-2 text-xs text-muted-foreground">{t.controlNote}</p>{/if}
 		<div class="mb-2 text-xs text-muted-foreground">Clicks: test {fmtInt(o.clicks.totals.tPre)} → {fmtInt(o.clicks.totals.tPost)} · control {fmtInt(o.clicks.totals.cPre)} → {fmtInt(o.clicks.totals.cPost)} (before → after)
 			{#if o.parts} · old URLs {fmtInt(o.parts.oldPre)} → {fmtInt(o.parts.oldPost)}, new URLs {fmtInt(o.parts.newPre)} → {fmtInt(o.parts.newPost)}{/if}</div>
-		<LineChart xs={o.series.map((s) => s.date)} baseline={100} zero={false} marker={{ x: o.startDate, label: 'change' }} height={200} format={(n) => String(Math.round(n))}
+		<LineChart xs={o.series.map((s) => s.date)} baseline={100} zero={false} markers={[{ x: o.startDate, label: 'change' }, ...o.updates.map((u) => ({ x: u.begin, label: u.name, color: 'var(--c-pos)' }))]} height={200} format={(n) => String(Math.round(n))}
 			series={[{ label: 'Test pages (clicks, 100 = average before)', color: 'var(--c-clicks)', values: o.series.map((s) => s.treatment) }, { label: 'Control pages', color: 'var(--muted-foreground)', values: o.series.map((s) => s.control) }]} />
 	</article>
 	{/if}

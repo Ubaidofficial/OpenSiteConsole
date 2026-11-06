@@ -18,6 +18,12 @@ import { aiTrafficReport, countryCannibalReport, forecastReport, groupsReport, h
 import { evaluateTestCached, listTests } from './seotests';
 import { indexHistory, indexSummary, recentEvents, watchList } from './indexmon';
 import { storedChecks } from './onpage';
+import { sitemapCoverage } from './sitemapcov';
+import { portfolioQueue, queueFor } from './actions';
+import { buildDigest } from './digest';
+import { indexNowStatus } from './indexnow';
+import { scoreOf } from '../actions';
+import { listUpdates } from './gupdates';
 import { isQuestionQuery } from '../trends';
 import { EVENT_SEVERITY } from '../indexing';
 
@@ -364,7 +370,7 @@ const TOOLS: Tool[] = [
 					return { id: t.id, name: t.name, error: 'This test could not be evaluated: ' + (e instanceof Error ? e.message : 'unknown error') };
 				}
 				const fmt = (r: typeof o.clicks) => ({ verdict: r.verdict, noiseCalibratedOnEarlierWindows: r.calibration.placebos, smallestDetectableChange: r.calibration.detectable == null ? null : '±' + r2(r.calibration.detectable * 100) + '%', lift: r.lift == null ? null : r2(r.lift * 100) + '%', interval95: r.ciLow == null ? null : `${r2(r.ciLow! * 100)}% to ${r2(r.ciHigh! * 100)}%`, p: r.p == null ? null : r2(r.p), totals: r.totals, note: r.note });
-				return { id: t.id, name: t.name, kind: t.kind, control: t.meta.controlNote ?? ('restOfSite' in t.control ? 'the rest of the site' : 'named pages'), changeDate: t.start_date, windowDays: t.window_days, daysSinceChange: o.postDays, testPages: o.treatmentPages, controlPages: o.controlPages, clicks: fmt(o.clicks), impressions: fmt(o.impressions), averagePosition: o.position ? { before: r2(o.position.before), after: r2(o.position.after) } : null, redirectParts: o.parts };
+				return { id: t.id, name: t.name, kind: t.kind, control: t.meta.controlNote ?? ('restOfSite' in t.control ? 'the rest of the site' : 'named pages'), changeDate: t.start_date, windowDays: t.window_days, daysSinceChange: o.postDays, testPages: o.treatmentPages, controlPages: o.controlPages, clicks: fmt(o.clicks), impressions: fmt(o.impressions), averagePosition: o.position ? { before: r2(o.position.before), after: r2(o.position.after) } : null, redirectParts: o.parts, conversions: o.conversions.status !== 'ok' || !o.conversions.keyEvents ? { available: false, reason: o.conversions.note } : { keyEvents: fmt(o.conversions.keyEvents), organicSessions: fmt(o.conversions.sessions!), keyEventsPerSession: o.conversions.rate ? { before: o.conversions.rate.before == null ? null : r2(o.conversions.rate.before * 100) + '%', after: o.conversions.rate.after == null ? null : r2(o.conversions.rate.after * 100) + '%' } : null, throughDate: o.conversions.coverage?.through }, googleUpdatesInWindow: o.updates.map((u) => `${u.name} (${u.window})`) };
 			});
 		}
 	},
@@ -383,6 +389,57 @@ const TOOLS: Tool[] = [
 			const s = indexSummary(site.id);
 			return { monitoring: !!site.index_monitor, ...(site.index_message ? { status: site.index_message } : {}), checkedUrls: s.checked, ...s.counts, indexedShareOfInspected: s.indexedShare == null ? null : r2(s.indexedShare * 100) + '%', lastCheck: s.lastCheck ? new Date(s.lastCheck).toISOString() : null, whyNotIndexed: s.reasons, indexedShareHistory: indexHistory(site.id, 30).map((h) => ({ day: h.day, indexed: h.indexed, notIndexed: h.notIndexed })), watchList: watchList(site.id), notIndexed: s.notIndexed.slice(0, limit(a, 25)), note: 'The inspected set is a rotating sample, not the whole site.' };
 		}
+	},
+	{
+		name: 'get_action_queue',
+		description: 'THE prioritised to-do list: every finding (measurement problems, pages blocked or de-indexed, traffic collapses, dead pages, cannibalization, CTR gaps, decay, striking distance, on-page and sitemap problems, finished tests) in the order to do it. Blocking items come first, then estimated clicks per 28 days weighted by confidence. Estimates are model figures from the site\'s own CTR curve, not promises, and are not additive. Omit `site` for the top items across all sites. Items marked done or snoozed in the app are left out.',
+		schema: { site: { type: 'string', description: 'Optional: site id, domain or property URL. Omit for all visible sites.' }, limit: { type: 'integer' } },
+		run: (a, sites) => {
+			const lim = limit(a, 15);
+			const shape = (i: { key: string; type: string; title: string; why: string; how: string; impact: number | null; confidence: string; effort: string; blocking: boolean; href: string; evidence: string[]; siteId: number }, site?: string) => ({ ...(site ? { site } : {}), type: i.type, blocking: i.blocking, title: i.title, why: i.why, whatToDo: i.how, estimatedClicksPer28Days: i.impact == null ? null : Math.round(i.impact), confidence: i.confidence, effort: i.effort, evidence: i.evidence, openInApp: i.href });
+			if (a.site) {
+				const site = resolveSite(sites, a.site);
+				const q = queueFor(site);
+				return { site: displayName(site.site_url), openItems: q.open.length, blocking: q.open.filter((x) => x.blocking).length, items: q.open.slice(0, lim).map((x) => shape(x)) };
+			}
+			return portfolioQueue(lim, 28, sites as never).map((x) => shape(x, x.site));
+		}
+	},
+	{
+		name: 'get_digest',
+		description: 'This week\'s SEO digest for the sites this key can see, computed now: a short headline (blocking issues, real changes in clicks, Google updates, de-indexed pages, decided tests), the top actions across the sites, and each site\'s week (last 7 days against the 7 before, with the biggest query and page movers). A change is only called real if it is beyond normal wobble; a site whose previous week is not downloaded yet is not compared.',
+		schema: {},
+		run: (_a, sites) => {
+			const d = buildDigest(sites as never);
+			return { weekEnding: d.weekEnd, headline: d.headline, doThisFirst: d.top.map((t) => ({ site: t.site, blocking: t.blocking, title: t.title, estimatedClicksPer28Days: t.impact == null ? null : Math.round(t.impact), confidence: t.confidence, openInApp: t.href })), sites: d.sites.map((s) => ({ site: s.name, compared: s.comparable, clicks: { thisWeek: s.clicks.now, previousWeek: s.clicks.prev, change: s.clicks.change == null ? null : r2(s.clicks.change * 100) + '%', beyondNormalWobble: s.clicks.significant }, queriesUp: s.queryWinners, queriesDown: s.queryLosers, pagesUp: s.pageWinners, pagesDown: s.pageLosers, indexingEvents: s.events, googleUpdates: s.updates, decidedTests: s.decidedTests, openActions: s.openActions, blockingActions: s.blockingActions })) };
+		}
+	},
+	{
+		name: 'get_indexnow_status',
+		description: 'IndexNow state for a site: whether a key exists, which hosts have their key file verified, whether automatic submission of new and changed sitemap URLs is on, how many URLs were sent in the last 24 hours against the daily cap, the recent submissions with the engines\' answers, and how many clicks Bing sends compared with Google (IndexNow reaches Bing, Yandex, Naver, Seznam, Yep and others, NOT Google). Read-only: submitting is done in the app.',
+		schema: siteArg,
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const s = indexNowStatus(site);
+			return { setUp: s.hasKey && s.hosts.some((h) => h.ok), keyCreated: s.hasKey, automaticSubmission: s.auto, hosts: s.hosts.map((h) => ({ host: h.host, keyFileVerified: h.ok, note: h.message })), sentLast24h: s.usedToday, dailyLimit: s.dailyCap, pausedUntil: s.backoffUntil ? new Date(s.backoffUntil).toISOString() : null, clicksLast28Days: { google: s.clicks28d.google, bing: s.clicks28d.bing, bingShare: s.clicks28d.bingShare == null ? null : r2(s.clicks28d.bingShare * 100) + '%' }, recentSubmissions: s.recent.map((x) => ({ at: new Date(x.at).toISOString(), host: x.host, urls: x.urls, httpStatus: x.status, result: x.message, source: x.source })), note: 'Accepted means the engines received the list, not that the pages are indexed. Google does not take part in IndexNow.' };
+		}
+	},
+	{
+		name: 'get_sitemap_coverage',
+		description: 'Sitemap URLs against the pages Search Console has shown in the last 90 days: how many sitemap URLs exist, how many were shown, which were never shown (where indexing problems hide; each with its stored index state), which are too new to judge, and which pages earn clicks but are missing from every sitemap. Reads the sitemaps the app stored; it does not fetch anything.',
+		schema: { ...siteArg, limit: { type: 'integer' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const c = sitemapCoverage(site, 90, limit(a, 50));
+			if (!c.synced) return { connected: false, hint: 'No sitemap has been read for this site yet. Submit one in Search Console and use "Read sitemaps now" on the Indexing tab.' };
+			return { sitemapFilesRead: c.sitemapFiles, readAt: c.fetchedAt ? new Date(c.fetchedAt).toISOString() : null, problem: c.error, window: c.window, sitemapUrls: c.totalUrls, shown: c.shown, neverShown: { count: c.neverShown.count, tooNewToJudge: c.neverShown.tooNew, examples: c.neverShown.sample }, earnClicksButNotInSitemap: { count: c.notInSitemap.count, clicks: c.notInSitemap.clicks, examples: c.notInSitemap.sample }, note: 'Never shown is not the same as not indexed: check each URL\'s index state. URLs are compared without scheme, www, query or trailing slash.' };
+		}
+	},
+	{
+		name: 'get_google_updates',
+		description: 'Google ranking updates (core, spam, Discover) read from Google\'s Search Status Dashboard, with start and end dates (UTC dates). Use them to explain a traffic change that lines up with an update, and to treat SEO test results that overlap an update with extra caution.',
+		schema: {},
+		run: () => listUpdates().map((u) => ({ name: u.name, type: u.kind, started: u.begin, finished: u.end ?? 'still rolling out', source: u.source })).slice(0, 40)
 	},
 	{
 		name: 'get_onpage_check',

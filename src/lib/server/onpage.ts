@@ -86,30 +86,32 @@ export const guardedFetch = ((input: RequestInfo | URL, init: RequestInit = {}) 
 		req.end();
 	})) as typeof fetch;
 
-export interface Fetched { status: number; finalUrl: string; html: string | null; error?: string }
+export interface FetchedBytes { status: number; finalUrl: string; body: Buffer | null; contentType: string; error?: string }
 
 /**
- * Fetch one page for checking: only the site's own host (see hostAllowed, checked again on every redirect hop; redirects are
- * followed by hand), a 10 s timeout, a 1.5 MB cap, HTML only. Nothing from the response other than the parsed tags is kept.
- * Never throws: every failure becomes an `error`.
+ * The one hardened fetch used for pages AND sitemaps: only the site's own host (see hostAllowed, checked again on every
+ * redirect hop; redirects are followed by hand), a 10 s timeout, a byte cap, optionally HTML only. Never throws: every
+ * failure becomes an `error`, and unread bodies are released.
  */
-export async function fetchPage(url: string, siteUrl: string, fetchImpl: typeof fetch = guardedFetch): Promise<Fetched> {
+export async function fetchBytes(url: string, siteUrl: string, o: { fetchImpl?: typeof fetch; max?: number; htmlOnly?: boolean; accept?: string } = {}): Promise<FetchedBytes> {
+	const { fetchImpl = guardedFetch, max = MAX_BYTES, htmlOnly = false, accept = 'text/html,application/xhtml+xml' } = o;
+	const fail = (status: number, finalUrl: string, error: string): FetchedBytes => ({ status, finalUrl, body: null, contentType: '', error });
 	let current = url;
 	for (let hop = 0; hop <= MAX_HOPS; hop++) {
 		let u: URL;
 		try {
 			u = new URL(current);
 		} catch {
-			return { status: 0, finalUrl: current, html: null, error: 'Not a valid URL.' };
+			return fail(0, current, 'Not a valid URL.');
 		}
-		if (u.protocol !== 'http:' && u.protocol !== 'https:') return { status: 0, finalUrl: current, html: null, error: 'Only http and https URLs can be checked.' };
-		if (!hostAllowed(current, siteUrl)) return { status: 0, finalUrl: current, html: null, error: hop ? `Redirects to ${u.host}, which is not part of this site; not followed.` : 'That URL is not on this site.' };
+		if (u.protocol !== 'http:' && u.protocol !== 'https:') return fail(0, current, 'Only http and https URLs can be fetched.');
+		if (!hostAllowed(current, siteUrl)) return fail(0, current, hop ? `Redirects to ${u.host}, which is not part of this site; not followed.` : 'That URL is not on this site.');
 		let res: Response;
 		try {
-			res = await fetchImpl(current, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': 'OpenSiteConsole-OnPageCheck/1.0 (+self-hosted)', accept: 'text/html,application/xhtml+xml' } });
+			res = await fetchImpl(current, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': 'OpenSiteConsole/1.0 (+self-hosted)', accept } });
 		} catch (e) {
 			const code = (e as { code?: string; cause?: { code?: string } }).code ?? (e as { cause?: { code?: string } }).cause?.code;
-			return { status: 0, finalUrl: current, html: null, error: e instanceof Error && e.name === 'TimeoutError' ? 'Timed out after 10 seconds.' : code === 'EPRIVATE' || (e instanceof Error && /Private address/.test(e.message)) ? 'That address is private, so it is not fetched (set ONPAGE_ALLOW_PRIVATE=1 if this site really lives on your own network).' : 'Could not fetch the page.' };
+			return fail(0, current, e instanceof Error && e.name === 'TimeoutError' ? 'Timed out after 10 seconds.' : code === 'EPRIVATE' || (e instanceof Error && /Private address/.test(e.message)) ? 'That address is private, so it is not fetched (set ONPAGE_ALLOW_PRIVATE=1 if this site really lives on your own network).' : 'Could not fetch it.');
 		}
 		const drop = () => void res.body?.cancel().catch(() => {});
 		if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
@@ -117,15 +119,16 @@ export async function fetchPage(url: string, siteUrl: string, fetchImpl: typeof 
 			try {
 				current = new URL(res.headers.get('location')!, current).href;
 			} catch {
-				return { status: res.status, finalUrl: current, html: null, error: 'Bad redirect.' };
+				return fail(res.status, current, 'Bad redirect.');
 			}
 			continue;
 		}
-		if (!res.ok) { drop(); return { status: res.status, finalUrl: current, html: null, error: `The page answered ${res.status}.` }; }
-		if (!/html|xml/i.test(res.headers.get('content-type') ?? 'text/html')) { drop(); return { status: res.status, finalUrl: current, html: null, error: 'Not an HTML page.' }; }
+		if (!res.ok) { drop(); return fail(res.status, current, `It answered ${res.status}.`); }
+		const contentType = res.headers.get('content-type') ?? '';
+		if (htmlOnly && !/html|xml/i.test(contentType || 'text/html')) { drop(); return fail(res.status, current, 'Not an HTML page.'); }
 		try {
 			const reader = res.body?.getReader();
-			if (!reader) return { status: res.status, finalUrl: current, html: (await res.text()).slice(0, MAX_BYTES) };
+			if (!reader) return { status: res.status, finalUrl: current, contentType, body: Buffer.from(await res.arrayBuffer()).subarray(0, max) };
 			const chunks: Uint8Array[] = [];
 			let size = 0;
 			for (;;) {
@@ -133,17 +136,25 @@ export async function fetchPage(url: string, siteUrl: string, fetchImpl: typeof 
 				if (done) break;
 				size += value.length;
 				chunks.push(value);
-				if (size >= MAX_BYTES) {
+				if (size >= max) {
 					await reader.cancel();
 					break;
 				}
 			}
-			return { status: res.status, finalUrl: current, html: Buffer.concat(chunks).subarray(0, MAX_BYTES).toString('utf8') };
+			return { status: res.status, finalUrl: current, contentType, body: Buffer.concat(chunks).subarray(0, max) };
 		} catch (e) {
-			return { status: res.status, finalUrl: current, html: null, error: e instanceof Error && e.name === 'TimeoutError' ? 'Timed out reading the page.' : 'The connection broke while reading the page.' };
+			return fail(res.status, current, e instanceof Error && e.name === 'TimeoutError' ? 'Timed out reading it.' : 'The connection broke while reading it.');
 		}
 	}
-	return { status: 0, finalUrl: current, html: null, error: 'Too many redirects.' };
+	return fail(0, current, 'Too many redirects.');
+}
+
+export interface Fetched { status: number; finalUrl: string; html: string | null; error?: string }
+
+/** One HTML page, as text (1.5 MB cap). */
+export async function fetchPage(url: string, siteUrl: string, fetchImpl: typeof fetch = guardedFetch): Promise<Fetched> {
+	const r = await fetchBytes(url, siteUrl, { fetchImpl, htmlOnly: true });
+	return { status: r.status, finalUrl: r.finalUrl, html: r.body ? r.body.toString('utf8') : null, ...(r.error ? { error: r.error.replace('Could not fetch it.', 'Could not fetch the page.').replace('It answered', 'The page answered').replace('Timed out reading it.', 'Timed out reading the page.').replace('while reading it.', 'while reading the page.').replace('Only http and https URLs can be fetched.', 'Only http and https URLs can be checked.') } : {}) };
 }
 
 export interface StoredCheck extends Partial<PageCheck> { status: number; finalUrl: string; error?: string; score: number | null }

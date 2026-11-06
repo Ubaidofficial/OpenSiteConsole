@@ -98,10 +98,11 @@ type Internal = LiftResult & { _logLift?: number; _se?: number };
 function liftInternal(t: Arm, c: Arm): Internal {
 	const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 	const totals = { tPre: sum(t.pre), tPost: sum(t.post), cPre: sum(c.pre), cPost: sum(c.post) };
+	const n1 = (x: number) => String(Math.round(x * 10) / 10); // totals can be fractional (key events), and must not print as 46.50000000000001
 	const empty = (note: string): LiftResult => ({ lift: null, ciLow: null, ciHigh: null, p: null, verdict: 'too-little-data', totals, note, calibration: { placebos: 0, noiseSd: null, detectable: null } });
 	if (t.post.length < MIN_POST_DAYS) return empty(`Only ${t.post.length} day(s) of data since the change; wait for at least ${MIN_POST_DAYS}, ideally 14 or more.`);
-	if (totals.tPre < MIN_TREATMENT_PRE) return empty(`The test pages had only ${totals.tPre} before the change; ${MIN_TREATMENT_PRE} are needed for a result worth reading.`);
-	if (totals.cPre < MIN_CONTROL_PRE) return empty(`The control pages had only ${totals.cPre} before the change; ${MIN_CONTROL_PRE} are needed. Add more control pages.`);
+	if (totals.tPre < MIN_TREATMENT_PRE) return empty(`The test pages had only ${n1(totals.tPre)} before the change; ${MIN_TREATMENT_PRE} are needed for a result worth reading.`);
+	if (totals.cPre < MIN_CONTROL_PRE) return empty(`The control pages had only ${n1(totals.cPre)} before the change; ${MIN_CONTROL_PRE} are needed. Add more control pages.`);
 	const h = 0.5;
 	const logLift = Math.log((totals.tPost + h) / (totals.tPre + h)) - Math.log((totals.cPost + h) / (totals.cPre + h));
 	const se = Math.sqrt(dispersion(t.pre) * (1 / (totals.tPre + h) + 1 / (totals.tPost + h)) + dispersion(c.pre) * (1 / (totals.cPre + h) + 1 / (totals.cPost + h)));

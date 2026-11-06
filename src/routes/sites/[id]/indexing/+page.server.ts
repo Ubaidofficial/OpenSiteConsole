@@ -5,6 +5,8 @@ import { db } from '$lib/server/db';
 import { config } from '$lib/server/config';
 import { addWatch, indexHistory, indexSummary, recentEvents, removeWatch, watchList } from '$lib/server/indexmon';
 import { hostAllowed } from '$lib/server/onpage';
+import { sitemapCoverage, syncSitemapUrls } from '$lib/server/sitemapcov';
+import { autoSubmit } from '$lib/server/indexnow';
 import { urlClassesReport } from '$lib/server/insights';
 import { enqueueIndexMonitor } from '$lib/server/jobs';
 import { EVENT_SEVERITY } from '$lib/indexing';
@@ -21,6 +23,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		nextAt: site.index_next_at,
 		watch: watchList(site.id),
 		history: indexHistory(site.id),
+		coverage: sitemapCoverage(site),
 		perRun: config.indexMonitorUrls,
 		summary: indexSummary(site.id),
 		events: recentEvents(site.id, 60).map((e) => ({ ...e, severity: EVENT_SEVERITY[e.kind as keyof typeof EVENT_SEVERITY] ?? 'warn' })),
@@ -29,6 +32,13 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 };
 
 export const actions: Actions = {
+	sitemapRefresh: async ({ params }) => {
+		const r = await syncSitemapUrls(Number(params.id));
+		const s = getSite(Number(params.id));
+		if (s) await autoSubmit(s, r.changes).catch(() => {});
+		if (r.urls === 0) return fail(502, { error: r.error ?? 'No sitemap URLs were found. Submit a sitemap in Search Console first (Sitemaps tab).' });
+		return { ok: `Read ${r.sitemaps} sitemap file${r.sitemaps === 1 ? '' : 's'}: ${r.urls.toLocaleString('en-US')} URLs${r.truncated ? ' (cut off at the limit)' : ''}${r.error ? `. A problem: ${r.error}` : ''}.` };
+	},
 	watchAdd: async ({ params, request }) => {
 		const site = getSite(Number(params.id))!;
 		const all = String((await request.formData()).get('urls') ?? '').split(/\s+/).filter((u) => /^https?:\/\/\S+$/.test(u));

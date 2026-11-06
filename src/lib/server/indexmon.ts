@@ -5,6 +5,7 @@ import { GoogleApiError, type GscClient, type InspectionResult } from './google'
 import { pacificToday } from './dates';
 import { periodFor, topPages } from './queries';
 import { comparability } from './insights';
+import { neverShownUrls } from './sitemapcov';
 import { diffInspection, indexState, type IndexEvent, type Inspected, type IndexState } from '../indexing';
 
 /** The nested API shape -> the flat one the diff works on. */
@@ -15,7 +16,7 @@ const AUTH_BACKOFF_MS = 6 * 3600_000;
 const FAIL_BACKOFF_MS = 2 * 3600_000;
 
 export type MonitorOutcome = 'done' | 'quota' | 'auth' | 'failed';
-export interface MonitorRun { checked: number; events: number; errors: number; stoppedEarly: string | null; outcome: MonitorOutcome; candidates: Record<'pinned' | 'new' | 'lost' | 'top', number> }
+export interface MonitorRun { checked: number; events: number; errors: number; stoppedEarly: string | null; outcome: MonitorOutcome; candidates: Record<'pinned' | 'new' | 'gap' | 'lost' | 'top', number> }
 
 // ── watch list: URLs that must always be checked first ───────────────────────
 export const watchList = (siteId: number) => (db().prepare('SELECT url FROM index_watch WHERE site_id = ? ORDER BY added_at').all(siteId) as { url: string }[]).map((r) => r.url);
@@ -33,8 +34,9 @@ export const removeWatch = (siteId: number, url: string) => void db().prepare('D
  * matter most:
  *   1. the watch list (money pages and templates the owner pinned)
  *   2. new pages: shown for the first time in the last period, so whether they got indexed is still open
- *   3. pages that lost their visibility
- *   4. the biggest pages by clicks
+ *   3. sitemap URLs that Search Console has never shown (no impression in 90 days): the classic hiding place of an indexing problem
+ *   4. pages that lost their visibility
+ *   5. the biggest pages by clicks
  * Within a tier the least recently checked go first, so coverage rotates. At most `limit` per run (INDEX_MONITOR_URLS),
  * three at a time. A failed call never overwrites the last good result.
  *
@@ -54,10 +56,12 @@ export async function monitorSite(siteId: number, o: { client?: GscClient; limit
 	const pinnedSet = new Set(pinned);
 	const fresh = cmp.comparable ? nowRows.filter((u) => !prevSet.has(u) && !pinnedSet.has(u)) : [];
 	const freshSet = new Set(fresh);
+	const gap = neverShownUrls(site, 200).filter((u) => !pinnedSet.has(u) && !freshSet.has(u));
+	const gapSet = new Set(gap);
 	const lost = cmp.comparable ? topPages(site.id, p.prevStart, p.prevEnd, {}, 200).map((r) => r.page).filter((u) => !nowSet.has(u) && !pinnedSet.has(u)).slice(0, 20) : [];
 	const lostSet = new Set(lost);
-	const top = nowRows.slice(0, 500).filter((u) => !pinnedSet.has(u) && !freshSet.has(u) && !lostSet.has(u));
-	const tiers: [string[], number][] = [[pinned, 0], [fresh, 1], [lost, 2], [top, 3]];
+	const top = nowRows.slice(0, 500).filter((u) => !pinnedSet.has(u) && !freshSet.has(u) && !lostSet.has(u) && !gapSet.has(u));
+	const tiers: [string[], number][] = [[pinned, 0], [fresh, 1], [gap, 2], [lost, 3], [top, 4]];
 	const tierOf = new Map<string, number>();
 	for (const [urls, t] of tiers) for (const u of urls) if (!tierOf.has(u)) tierOf.set(u, t);
 	const seen = new Map((d.prepare('SELECT url, fetched_at, result FROM url_inspections WHERE site_id = ?').all(siteId) as { url: string; fetched_at: number; result: string }[]).map((r) => [r.url, r]));
@@ -65,8 +69,8 @@ export async function monitorSite(siteId: number, o: { client?: GscClient; limit
 		.filter((u) => o.force || !seen.has(u) || Date.now() - seen.get(u)!.fetched_at > TTL_MS)
 		.sort((a, b) => tierOf.get(a)! - tierOf.get(b)! || (seen.get(a)?.fetched_at ?? 0) - (seen.get(b)?.fetched_at ?? 0))
 		.slice(0, limit);
-	const picked = { pinned: 0, new: 0, lost: 0, top: 0 };
-	for (const u of queue) picked[(['pinned', 'new', 'lost', 'top'] as const)[tierOf.get(u)!]]++;
+	const picked = { pinned: 0, new: 0, gap: 0, lost: 0, top: 0 };
+	for (const u of queue) picked[(['pinned', 'new', 'gap', 'lost', 'top'] as const)[tierOf.get(u)!]]++;
 	const put = d.prepare('INSERT OR REPLACE INTO url_inspections (site_id, url, fetched_at, result) VALUES (?,?,?,?)');
 	const ev = d.prepare('INSERT INTO index_events (site_id, url, at, kind, detail) VALUES (?,?,?,?,?)');
 	const run: MonitorRun = { checked: 0, events: 0, errors: 0, stoppedEarly: null, outcome: 'done', candidates: picked };

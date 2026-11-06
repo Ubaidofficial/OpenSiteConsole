@@ -6,6 +6,7 @@ import { createTest, deleteTest, evaluateTestCached, listTests, suggestControlMa
 import { parseScope } from '$lib/experiments';
 import { intParam } from '$lib/server/params';
 import { pacificToday } from '$lib/server/dates';
+import { enqueueGa4Pages } from '$lib/server/jobs';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { days } = await parent();
@@ -15,7 +16,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		today: pacificToday(),
 		// One test that cannot be evaluated (corrupt date, say) must not take the whole page, and its Delete button, down.
 		tests: listTests(site.id).map((t) => {
-			const head = { id: t.id, name: t.name, kind: t.kind, startDate: t.start_date, windowDays: t.window_days, note: t.note, restControl: 'restOfSite' in t.control, controlNote: t.meta.controlNote ?? null, controlMethod: t.meta.controlMethod ?? null };
+			const head = { id: t.id, name: t.name, kind: t.kind, startDate: t.start_date, windowDays: t.window_days, note: t.note, restControl: 'restOfSite' in t.control, fromChangeLog: !!t.meta.annotationId, controlNote: t.meta.controlNote ?? null, controlMethod: t.meta.controlMethod ?? null };
 			try {
 				return { ...head, error: null as string | null, outcome: evaluateTestCached(site, t) };
 			} catch (e) {
@@ -55,6 +56,7 @@ export const actions: Actions = {
 			}
 			const id = createTest(site.id, { name: String(f.get('name') ?? ''), kind, startDate, windowDays, treatment, control: control.prefixes.length || control.urls.length ? control : undefined, controlNote, controlMethod, old: parseScope(String(f.get('old') ?? '')), new: parseScope(String(f.get('new') ?? '')), note: String(f.get('note') ?? '') });
 			audit('seo_test.created', { siteId: site.id, detail: `#${id} ${kind}` });
+			enqueueGa4Pages(site.id); // so the test can also be judged on conversions
 			return { ok: 'Test saved. Results firm up as days pass after the change.' };
 		} catch (e) {
 			return fail(400, { error: e instanceof Error ? e.message : 'Could not save the test.' });

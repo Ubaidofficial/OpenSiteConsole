@@ -173,3 +173,48 @@ export async function aiAssistantTraffic(accountId: number, property: string, st
 	}
 	return [...merged.values()];
 }
+
+export interface Ga4PageDay { date: string; page: string; sessions: number; keyEvents: number }
+
+/**
+ * Google-organic sessions and key events by day and landing page: what an SEO test needs to be judged on conversions as well as
+ * clicks. Paged (100,000 rows a request, 600,000 in all) and merged by landing path, so query-string variants of a page count once.
+ */
+export async function organicLandingDaily(accountId: number, property: string, startDate: string, endDate: string, http: HttpOptions = {}): Promise<Ga4PageDay[]> {
+	const LIMIT = 100_000;
+	const MAX_ROWS = 600_000;
+	const merged = new Map<string, Ga4PageDay>();
+	for (let offset = 0; offset < MAX_ROWS; offset += LIMIT) {
+		const r = await googleJson<{ rows?: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[] }>(
+			tok(accountId),
+			`${DATA}/${property}:runReport`,
+			{
+				method: 'POST',
+				body: JSON.stringify({
+					dateRanges: [{ startDate, endDate }],
+					dimensions: [{ name: 'date' }, { name: 'landingPagePlusQueryString' }],
+					metrics: [{ name: 'sessions' }, { name: 'keyEvents' }],
+					dimensionFilter: { filter: { fieldName: 'sessionSourceMedium', stringFilter: { matchType: 'EXACT', value: 'google / organic' } } },
+					orderBys: [{ dimension: { dimensionName: 'date' } }, { dimension: { dimensionName: 'landingPagePlusQueryString' } }],
+					limit: LIMIT,
+					offset
+				})
+			},
+			http
+		);
+		const rows = r.rows ?? [];
+		for (const row of rows) {
+			const date = ymd(row.dimensionValues[0].value);
+			const page = landingPath(row.dimensionValues[1].value);
+			const k = `${date}\n${page}`;
+			const cur = merged.get(k) ?? { date, page, sessions: 0, keyEvents: 0 };
+			cur.sessions += Number(row.metricValues[0].value);
+			cur.keyEvents += Number(row.metricValues[1].value);
+			merged.set(k, cur);
+		}
+		if (rows.length < LIMIT) break;
+		// Rows come oldest day first, so stopping here would silently drop the most recent days and read as a collapse after a change.
+		if (offset + LIMIT >= MAX_ROWS) throw new Error(`GA4 returned more than ${MAX_ROWS.toLocaleString('en-US')} landing-page rows for ${startDate} to ${endDate}; conversions cannot be judged on a partial load.`);
+	}
+	return [...merged.values()];
+}

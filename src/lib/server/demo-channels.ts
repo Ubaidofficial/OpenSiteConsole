@@ -5,6 +5,7 @@ import type { GtmContainer, GtmLive } from './gtm';
 import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01 } from './demo';
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
+import { db } from './db';
 
 const sites = DEMO_ACCOUNTS.flatMap((a) => a.sites);
 const siteOf = (urlOrHost: string) => sites.find((s) => hostKey(s.siteUrl) === hostKey(urlOrHost)) ?? sites[0];
@@ -213,6 +214,45 @@ export function demoPageFetch(siteUrl: string): typeof fetch {
 		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}"></head><body>${h1}<p>demo</p></body></html>`;
 		return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
 	}) as typeof fetch;
+}
+
+/**
+ * Demo sitemap: every page Search Console has shown for the site, minus two of them (so "earns clicks but missing from the
+ * sitemap" has something to show), plus pages that were never shown (some old, some new), so the coverage view has all its cases.
+ */
+export function demoSitemapFetch(siteId: number): typeof fetch {
+	return (async (input: RequestInfo | URL) => {
+		const url = new URL(String(input));
+		if (!url.pathname.endsWith('sitemap.xml')) return new Response('not found', { status: 404 });
+		const rows = db().prepare('SELECT page, SUM(clicks) c FROM sa_rows WHERE site_id = ? GROUP BY page ORDER BY c DESC').all(siteId) as { page: string; c: number }[];
+		const origin = `${url.protocol}//${url.host}`;
+		const today = pacificToday();
+		const entries = [
+			...rows.slice(0, Math.max(0, rows.length - 2)).map((r) => ({ loc: r.page, lastmod: addDays(today, -40 - (r.page.length % 30)) })),
+			...Array.from({ length: 6 }, (_, i) => ({ loc: `${origin}/guides/archive-2019-${i + 1}`, lastmod: '2019-06-0' + (i + 1) })),
+			...Array.from({ length: 2 }, (_, i) => ({ loc: `${origin}/blog/just-published-${i + 1}`, lastmod: addDays(today, -3 - i) }))
+		];
+		const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries.map((e) => `<url><loc>${e.loc.replace(/&/g, '&amp;')}</loc><lastmod>${e.lastmod}</lastmod></url>`).join('')}</urlset>`;
+		return new Response(xml, { status: 200, headers: { 'content-type': 'application/xml' } });
+	}) as typeof fetch;
+}
+
+/**
+ * Demo GA4 organic sessions and key events by day and landing page, derived from the demo Search Console pages so the two line up
+ * (sessions a little above clicks, key events about 4% of sessions with a stable per-page rate), as in real data.
+ */
+export async function demoGa4OrganicDaily(property: string, start: string, end: string): Promise<{ date: string; page: string; sessions: number; keyEvents: number }[]> {
+	for (const a of DEMO_ACCOUNTS) {
+		const i = DEMO_GA4_PROPERTIES(a.sub).findIndex((p) => p.prop.property === property);
+		if (i < 0) continue;
+		const rows = await new DemoClient(a.sub).query(a.sites[i].siteUrl, { startDate: start, endDate: end, dimensions: ['date', 'page'], rowLimit: 500_000 });
+		return rows.map((r) => {
+			const page = new URL(r.keys[1]).pathname;
+			const sessions = Math.round(r.clicks * 1.12) + (r.clicks > 0 ? 1 : 0);
+			return { date: r.keys[0], page, sessions, keyEvents: Math.round(sessions * (0.02 + 0.04 * h01(property, page)) * 10) / 10 };
+		});
+	}
+	return [];
 }
 
 /** Demo CrUX: a fetch stand-in. Some sites have field data, the rest answer 404 ("not enough traffic"), like the real API. */

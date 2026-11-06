@@ -18,6 +18,31 @@ export function propertyLabel(siteUrl: string): string {
 /** The unlabelled name, used where the user must type it to confirm something. */
 export const bareName = (siteUrl: string) => siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
 
+/**
+ * Does this URL belong to the Search Console property? A domain property covers the host and its subdomains on http and https;
+ * a URL-prefix property covers exactly its scheme and host (www and non-www are different properties) and its path prefix.
+ * Google's URL Inspection refuses anything else, so such URLs must not reach the indexing monitor.
+ */
+export function inProperty(url: string, siteUrl: string): boolean {
+	let u: URL;
+	try {
+		u = new URL(url);
+	} catch {
+		return false;
+	}
+	if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+	if (isDomainProperty(siteUrl)) {
+		const d = siteUrl.slice('sc-domain:'.length).toLowerCase();
+		return u.hostname === d || u.hostname.endsWith('.' + d);
+	}
+	try {
+		const p = new URL(siteUrl);
+		return u.protocol === p.protocol && u.host === p.host && u.pathname.startsWith(p.pathname);
+	} catch {
+		return false;
+	}
+}
+
 /** A URL-prefix property for the site root (https://example.com/), not a sub-path. */
 export function isRootPrefix(siteUrl: string): boolean {
 	if (isDomainProperty(siteUrl)) return false;

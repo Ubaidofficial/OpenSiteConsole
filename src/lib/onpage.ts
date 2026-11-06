@@ -16,7 +16,7 @@ export interface Parsed {
 }
 
 const codePoint = (n: number) => (n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : '�');
-const decode = (s: string) =>
+export const decode = (s: string) =>
 	s
 		.replace(/&nbsp;/g, ' ')
 		.replace(/&amp;/g, '&')
