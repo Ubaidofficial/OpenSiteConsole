@@ -1,0 +1,40 @@
+
+=== scratch copy of HEAD in /tmp/tmp.GfIQeB3QK7 ===
+
+=== install adapter-cloudflare@7.2.10 + wrangler ===
+		"@sveltejs/adapter-cloudflare": "7.2.10",
+		"@sveltejs/kit": "^2.70.3",
+		"wrangler": "^4.158.0"
+
+=== 1. vite build (SvelteKit + adapter) ===
+exit code: 0
+  ✔ done
+
+=== 2. wrangler bundle (dry run, no upload): which node:* imports survive into the Worker? ===
+exit code: 0
+bundle bytes: 1806334
+      4 from "node:crypto"
+      1 from "node:dns"
+      3 from "node:fs"
+      1 from "node:http"
+      1 from "node:https"
+      1 from "node:net"
+      3 from "node:path"
+      1 from "node:stream"
+      1 from "node:zlib"
+
+=== 3. wrangler dev --local: first request, as shipped ===
+HTTP/1.1 500 
+Transfer-Encoding: chunked
+Date: Fri, 06 Nov 2026 02:16:05 GMT
+Content-Type: text/plain;charset=UTF-8
+
+Error: operation not permitted
+    at mkdirSync (node-internal:internal_fs_sync:278:17)
+    at openDb (file:///tmp/tmp.GfIQeB3QK7/.svelte-kit/output/server/chunks/db.js:399:27)
+
+=== 4. same, after removing only the mkdirSync in db.ts (to find the NEXT blocker) ===
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mUncaught ReferenceError: __filename is not defined Error[0m
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mUncaught Error: Promise will never complete. [0m
+
+(scratch copy left in /tmp/tmp.GfIQeB3QK7)

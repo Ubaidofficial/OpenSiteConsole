@@ -3,9 +3,18 @@ import { config } from './config';
 import { pacificToday } from './dates';
 import { syncSite } from './sync';
 import { syncAccountSites } from './accounts';
-import { syncBing, syncClarity, syncGa4 } from './channels';
+import { syncBing, syncClarity, syncGa4, syncGtm } from './channels';
 import type { LinkKind } from './links';
 import { cruxIntegration, syncCrux } from './crux';
+import { monitorSite } from './indexmon';
+import { listTests, warmTests } from './seotests';
+import { ensureGa4PageDaily } from './ga4tests';
+import { runUrgentAlerts, runWeeklyDigest } from './digest';
+import { actionsFor } from './actions';
+import { getSite } from './clients';
+import { importGoogleUpdates, lastUpdatesCheck } from './gupdates';
+import { syncSitemapUrls } from './sitemapcov';
+import { autoSubmit } from './indexnow';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -43,14 +52,39 @@ export function enqueueSiteSync(siteId: number, mode: 'incremental' | 'auto' = '
 		// Keep walking back through history without waiting for the next scheduler tick.
 		// Deferred: while this job runs its own key is still active, so re-queueing now would be dropped as a duplicate.
 		if (mode === 'auto' && !r.backfillDone) setTimeout(() => enqueueSiteSync(siteId, 'auto'), 0);
+		// Tests are only worth computing once the history they compare against is complete.
+		else {
+			warmTests(siteId);
+			try {
+				const s = getSite(siteId);
+				if (s) actionsFor(s);
+			} catch {
+				/* computed on first view instead */
+			}
+		}
 		return r;
 	});
 	if (queued) db().prepare("UPDATE sites SET sync_status = 'queued' WHERE id = ? AND sync_status != 'running'").run(siteId);
 	return queued;
 }
 
+/** Load the daily GA4 landing-page data a site's SEO tests need, then recompute the tests. */
+export function enqueueGa4Pages(siteId: number): boolean {
+	return enqueue(`ga4pages:${siteId}`, async () => {
+		await ensureGa4PageDaily(siteId, listTests(siteId));
+		warmTests(siteId);
+	});
+}
+
 export function enqueueLinkSync(siteId: number, kind: Exclude<LinkKind, 'openseo'>): boolean {
-	const run = kind === 'bing' ? syncBing : kind === 'ga4' ? syncGa4 : syncClarity;
+	// After GA4 itself has synced, refresh the per-page data the tests use (a no-op for a site with no tests).
+	const syncGa4AndPages = async (id: number) => {
+		const r = await syncGa4(id);
+		await ensureGa4PageDaily(id, listTests(id));
+		warmTests(id);
+		return r;
+	};
+	const run = kind === 'bing' ? syncBing : kind === 'ga4' ? syncGa4AndPages : kind === 'gtm' ? syncGtm : syncClarity;
 	const queued = enqueue(`${kind}:${siteId}`, () => (run as (id: number) => Promise<unknown>)(siteId));
 	if (queued) db().prepare("UPDATE site_links SET sync_status = 'queued' WHERE site_id = ? AND kind = ? AND sync_status != 'running'").run(siteId, kind);
 	return queued;
@@ -61,11 +95,43 @@ export function enqueueCruxSync(siteId: number): boolean {
 	return enqueue(`crux:${siteId}`, () => syncCrux(siteId));
 }
 
+/** Indexing monitor for one site: inspects its top URLs and records changes. Opt-in per site, since it spends URL Inspection quota. */
+export function enqueueIndexMonitor(siteId: number): boolean {
+	return enqueue(`index:${siteId}`, () => monitorSite(siteId));
+}
+
+/** Read a site's submitted sitemaps (a few HTTP requests): daily, or after 6 h if the last attempt had a problem. */
+export function enqueueSitemapSync(siteId: number): boolean {
+	return enqueue(`sitemap:${siteId}`, async () => {
+		const r = await syncSitemapUrls(siteId);
+		// New and changed URLs go to IndexNow if the site has switched that on (a no-op otherwise).
+		const site = getSite(siteId);
+		if (site) await autoSubmit(site, r.changes).catch(() => {});
+		return r;
+	});
+}
+
 const SIX_HOURS = 6 * 3600_000;
-const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, clarity: 22 * 3600_000 };
+const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, gtm: 12 * 3600_000, clarity: 22 * 3600_000 };
+
+/** Whether the indexing monitor should run for a site now: switched on, not yet done today, and not in a back-off after a failure. */
+export const monitorDue = (row: { m: number; c: string | null; n: number | null }, today: string, now = Date.now()) => !!row.m && row.c !== today && (!row.n || row.n <= now);
 
 export function schedulerTick() {
 	const d = db();
+	// The weekly digest (made once per week, catching up if the server was off on the day) and urgent alerts (every few hours).
+	if (!process.env.VITEST) {
+		enqueue('digest', async () => {
+			await runWeeklyDigest();
+			const last = Number((d.prepare("SELECT value FROM kv WHERE key = 'urgent_checked'").get() as { value: string } | undefined)?.value ?? 0);
+			if (Date.now() - last > 3 * 3600_000) {
+				await runUrgentAlerts();
+				d.prepare("INSERT OR REPLACE INTO kv (key, value) VALUES ('urgent_checked', ?)").run(String(Date.now()));
+			}
+		});
+	}
+	// Google's list of ranking updates changes a few times a year: a daily look is plenty, and a failure just waits for tomorrow.
+	if (!process.env.VITEST && Date.now() - (lastUpdatesCheck() ?? 0) > 20 * 3600_000) void importGoogleUpdates();
 	const sites = d
 		.prepare(
 			`SELECT s.id, s.backfill_done, s.last_sync_at FROM sites s JOIN accounts a ON a.id = s.account_id
@@ -80,9 +146,17 @@ export function schedulerTick() {
 		const today = pacificToday();
 		for (const s of sites) if ((d.prepare('SELECT crux_pulled_on p FROM sites WHERE id = ?').get(s.id) as { p: string | null }).p !== today) enqueueCruxSync(s.id);
 	}
+	const today = pacificToday();
+	for (const s of sites) {
+		const sm = d.prepare('SELECT fetched_at f, error e FROM sitemap_sync WHERE site_id = ?').get(s.id) as { f: number; e: string | null } | undefined;
+		if (!sm || Date.now() - sm.f > (sm.e ? SIX_HOURS : 24 * 3600_000)) enqueueSitemapSync(s.id);
+		const row = d.prepare('SELECT index_monitor m, index_checked_on c, index_next_at n FROM sites WHERE id = ?').get(s.id) as { m: number; c: string | null; n: number | null };
+		// `n` is a back-off set after a refusal or a total failure, so a broken connection is not hammered every tick.
+		if (monitorDue(row, today)) enqueueIndexMonitor(s.id);
+	}
 	const links = d
-		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','clarity')")
-		.all() as { site_id: number; kind: 'bing' | 'ga4' | 'clarity'; last_sync_at: number | null }[];
+		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','gtm','clarity')")
+		.all() as { site_id: number; kind: 'bing' | 'ga4' | 'gtm' | 'clarity'; last_sync_at: number | null }[];
 	for (const l of links) if (!l.last_sync_at || Date.now() - l.last_sync_at > REFRESH_MS[l.kind]) enqueueLinkSync(l.site_id, l.kind);
 }
 

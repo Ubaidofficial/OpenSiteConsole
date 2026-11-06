@@ -4,8 +4,8 @@
 	import { ago } from '$lib/format';
 
 	let { data, form } = $props();
-	const cards = ['google', 'bing', 'ga4', 'clarity', 'openseo'] as const;
-	const label: Record<string, string> = { google: 'Search Console', bing: 'Bing', ga4: 'GA4', clarity: 'Clarity', openseo: 'OpenSEO' };
+	const cards = ['google', 'bing', 'ga4', 'gtm', 'clarity', 'openseo'] as const;
+	const label: Record<string, string> = { google: 'Search Console', bing: 'Bing', ga4: 'GA4', gtm: 'Tag Manager', clarity: 'Clarity', openseo: 'OpenSEO' };
 	const done = $derived({ google: data.total, ...data.progress });
 	let busy = $state<string | null>(null);
 	const submit = (name: string) => () => {
@@ -30,17 +30,18 @@
 	{/each}
 </div>
 
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+<div class="stagger grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<!-- 1 Google -->
 	<section class="card p-4">
-		<h2 class="mb-1 font-medium">1 · Google Search Console <span class="chip ml-1">+ GA4 access</span></h2>
-		<p class="mb-3 text-xs text-muted-foreground">One Google sign-in grants Search Console and GA4 together. Repeat for each Google account.</p>
+		<h2 class="mb-1 font-medium">1 · Google Search Console <span class="chip ml-1">+ GA4 &amp; Tag Manager access</span></h2>
+		<p class="mb-3 text-xs text-muted-foreground">One Google sign-in grants Search Console, GA4 and Tag Manager (read-only) together. Repeat for each Google account.</p>
 		<ul class="mb-3 space-y-1 text-sm">
 			{#each data.accounts as a}
 				<li class="flex items-center gap-2">
 					<span class="pii">{a.email}</span>
 					{#if a.status === 'revoked'}<span class="chip text-bad">revoked</span>{/if}
 					{#if a.ga4}<span class="chip text-good">GA4 ✓</span>{:else}<span class="chip text-warn" title="Reconnect to grant GA4 access">GA4 not granted</span>{/if}
+					{#if a.gtm}<span class="chip text-good">GTM ✓</span>{:else}<span class="chip text-warn" title="Reconnect to grant Tag Manager access">GTM not granted</span>{/if}
 				</li>
 			{:else}<li class="text-muted-foreground">No accounts yet.</li>{/each}
 		</ul>
@@ -84,9 +85,20 @@
 
 </div>
 
-<!-- 4 Clarity -->
+<!-- 4 Tag Manager -->
 <section class="card mt-4 p-4">
-	<h2 class="mb-1 font-medium">4 · Microsoft Clarity</h2>
+	<h2 class="mb-1 font-medium">4 · Google Tag Manager <span class="chip ml-1">read-only</span></h2>
+	<p class="mb-3 text-xs text-muted-foreground">
+		Reads each site's <b>published</b> container (tags, triggers, variables) and checks it against GA4 and Search Console on the site's <b>Tag Manager</b> tab: is the container published, does it send to the GA4 property linked here, are tags paused, does GA4 see the traffic Google sends. Needs the <b>Tag Manager API</b> enabled in your Google Cloud project. Containers are matched to sites by their domain, or by a name that is the site's address; OpenSiteConsole never edits or publishes a container.
+	</p>
+	<form method="POST" action="?/gtmAuto" use:enhance={submit('gtm')}><button class="btn btn-primary" disabled={busy === 'gtm'}>{busy === 'gtm' ? 'Matching…' : 'Find & link containers'}</button></form>
+	{#if msgFor('gtm')?.ok}<p class="mt-2 text-sm text-good">{msgFor('gtm')?.ok}</p>{/if}
+	{#if msgFor('gtm')?.error}<p class="mt-2 text-sm text-bad">{msgFor('gtm')?.error}</p>{/if}
+</section>
+
+<!-- 5 Clarity -->
+<section class="card mt-4 p-4">
+	<h2 class="mb-1 font-medium">5 · Microsoft Clarity</h2>
 	<p class="mb-3 text-xs text-muted-foreground">
 		Clarity has one token per project (a project is usually one site). In Clarity: open the project → <b>Settings</b> → <b>Data Export</b> → <b>Generate new API token</b> (project admins only).
 		Clarity allows <b>10 API calls per project per day</b> and only exposes the last 1–3 days, so OpenSiteConsole stores one snapshot a day. Connecting uses one of today's calls.
@@ -122,7 +134,7 @@
 
 <!-- 5 OpenSEO -->
 <section class="card mt-4 p-4">
-	<h2 class="mb-1 font-medium">5 · OpenSEO <span class="chip ml-1">optional</span></h2>
+	<h2 class="mb-1 font-medium">6 · OpenSEO <span class="chip ml-1">optional</span></h2>
 	<p class="mb-3 text-xs text-muted-foreground">Links each site to its OpenSEO project (matched by domain) so an AI agent can combine OpenSEO's keyword/rank/audit data with this first-party data. Use an API key from OpenSEO → Settings.</p>
 	{#if data.openseo}
 		<div class="mb-2 flex items-center gap-2 text-sm"><span class="pii">{data.openseo.baseUrl}</span><span class="text-xs text-muted-foreground">{data.openseo.linked} site(s) linked</span>
@@ -139,7 +151,7 @@
 
 <!-- 6 Core Web Vitals -->
 <section class="card mt-4 p-4">
-	<h2 class="mb-1 font-medium">6 · Core Web Vitals <span class="chip ml-1">optional</span></h2>
+	<h2 class="mb-1 font-medium">7 · Core Web Vitals <span class="chip ml-1">optional</span></h2>
 	<p class="mb-3 text-xs text-muted-foreground">
 		Real-user speed data (LCP, INP, CLS and more) from Google's Chrome UX Report, saved once a day per site. It needs a free API key: in Google Cloud Console enable the <b>Chrome UX Report API</b>, then create an API key under Credentials. Sites with too little Chrome traffic have no data, which is normal.
 	</p>
@@ -160,13 +172,13 @@
 	<h2 class="mb-2 font-medium">Connections by site</h2>
 	<div class="card overflow-x-auto">
 		<table class="w-full">
-			<thead><tr><th class="th">Site</th><th class="th">Google</th><th class="th">Bing</th><th class="th">GA4</th><th class="th">Clarity</th><th class="th">OpenSEO</th></tr></thead>
+			<thead><tr><th class="th">Site</th><th class="th">Google</th><th class="th">Bing</th><th class="th">GA4</th><th class="th">GTM</th><th class="th">Clarity</th><th class="th">OpenSEO</th></tr></thead>
 			<tbody>
 				{#each data.rows as r (r.id)}
 					<tr>
 						<td class="td whitespace-nowrap"><a class="pii hover:underline" href="/sites/{r.id}">{r.name}</a><div class="pii text-[11px] text-muted-foreground">{r.account}</div></td>
 						<td class="td {r.google === 'synced' ? 'text-good' : 'text-muted-foreground'}">{r.google === 'synced' ? '✓' : r.google}</td>
-						{#each ['bing', 'ga4', 'clarity', 'openseo'] as const as k}
+						{#each ['bing', 'ga4', 'gtm', 'clarity', 'openseo'] as const as k}
 							{@const l = r.links[k]}
 							<td class="td text-xs">
 								{#if l}
@@ -177,10 +189,10 @@
 									</div>
 									<div class="text-[11px] text-muted-foreground">{k === 'openseo' ? 'linked by domain' : l.status === 'running' || l.status === 'queued' ? '⟳ ' + l.status : l.status === 'error' ? l.message : 'synced ' + ago(l.lastSync)}
 										{#if k !== 'openseo'}<form method="POST" action="?/resync" use:enhance class="inline"><input type="hidden" name="siteId" value={r.id} /><input type="hidden" name="kind" value={k} /> <button class="underline">refresh</button></form>{/if}</div>
-								{:else if k === 'bing' || k === 'ga4'}
+								{:else if k === 'bing' || k === 'ga4' || k === 'gtm'}
 									<details><summary class="cursor-pointer text-muted-foreground">link…</summary>
 										<form method="POST" action="?/manual" use:enhance class="mt-1 flex gap-1"><input type="hidden" name="siteId" value={r.id} /><input type="hidden" name="kind" value={k} />
-											<input class="input w-40 !py-0.5 text-xs" name="externalId" placeholder={k === 'bing' ? 'https://www.site.com/' : 'properties/123456'} /><button class="btn !py-0.5">Link</button></form></details>
+											<input class="input w-40 !py-0.5 text-xs" name="externalId" placeholder={k === 'bing' ? 'https://www.site.com/' : k === 'gtm' ? 'GTM-ABC1234' : 'properties/123456'} /><button class="btn !py-0.5">Link</button></form></details>
 								{:else}<span class="text-muted-foreground">–</span>{/if}
 							</td>
 						{/each}

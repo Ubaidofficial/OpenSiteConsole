@@ -1,4 +1,5 @@
 import { googleJson, accessToken, type HttpOptions } from './google';
+import { assistantOf, GA4_SOURCE_PATTERN, type Assistant } from '../ai';
 
 /** Endpoints and scopes verified against Google's GA4 docs. */
 const ADMIN = 'https://analyticsadmin.googleapis.com/v1beta';
@@ -33,6 +34,16 @@ export async function listProperties(accountId: number, http: HttpOptions = {}):
 export async function webStreamUrls(accountId: number, property: string, http: HttpOptions = {}): Promise<string[]> {
 	const r = await googleJson<{ dataStreams?: { webStreamData?: { defaultUri?: string } }[] }>(tok(accountId), `${ADMIN}/${property}/dataStreams`, {}, http);
 	return (r.dataStreams ?? []).map((s) => s.webStreamData?.defaultUri).filter((u): u is string => !!u);
+}
+
+/**
+ * Measurement IDs (G-XXXXXXX) of a property's web data streams, used to check that the Tag Manager container sends data to
+ * the property that is linked here. `webStreamData.measurementId` comes from my reading of the Admin API's DataStream
+ * resource and is not confirmed against a live response; if absent this returns [] and the cross-check is skipped.
+ */
+export async function webStreamMeasurementIds(accountId: number, property: string, http: HttpOptions = {}): Promise<string[]> {
+	const r = await googleJson<{ dataStreams?: { webStreamData?: { measurementId?: string } }[] }>(tok(accountId), `${ADMIN}/${property}/dataStreams`, {}, http);
+	return (r.dataStreams ?? []).map((s) => s.webStreamData?.measurementId).filter((m): m is string => !!m);
 }
 
 const ymd = (s: string) => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
@@ -120,6 +131,90 @@ export async function organicGoogleLanding(accountId: number, property: string, 
 		cur.engagedSessions += m[1];
 		cur.keyEvents += m[2];
 		merged.set(page, cur);
+	}
+	return [...merged.values()];
+}
+
+export interface Ga4Ai { assistant: Assistant; page: string; sessions: number; engagedSessions: number; keyEvents: number }
+
+/**
+ * Sessions that arrived from AI assistants (ChatGPT, Perplexity, Gemini, Claude, Copilot), by landing page. Sources are
+ * picked with a regular-expression filter and then named by `assistantOf`; rows it does not recognise are dropped.
+ */
+export async function aiAssistantTraffic(accountId: number, property: string, startDate: string, endDate: string, http: HttpOptions = {}): Promise<Ga4Ai[]> {
+	const r = await googleJson<{ rows?: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[] }>(
+		tok(accountId),
+		`${DATA}/${property}:runReport`,
+		{
+			method: 'POST',
+			body: JSON.stringify({
+				dateRanges: [{ startDate, endDate }],
+				dimensions: [{ name: 'sessionSource' }, { name: 'landingPagePlusQueryString' }],
+				metrics: ['sessions', 'engagedSessions', 'keyEvents'].map((name) => ({ name })),
+				dimensionFilter: { filter: { fieldName: 'sessionSource', stringFilter: { matchType: 'PARTIAL_REGEXP', value: GA4_SOURCE_PATTERN, caseSensitive: false } } },
+				orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+				limit: 10000
+			})
+		},
+		http
+	);
+	const merged = new Map<string, Ga4Ai>();
+	for (const row of r.rows ?? []) {
+		const assistant = assistantOf(row.dimensionValues[0].value);
+		if (!assistant) continue;
+		const page = landingPath(row.dimensionValues[1].value);
+		const m = row.metricValues.map((v) => Number(v.value));
+		const key = `${assistant}\n${page}`;
+		const cur = merged.get(key) ?? { assistant, page, sessions: 0, engagedSessions: 0, keyEvents: 0 };
+		cur.sessions += m[0];
+		cur.engagedSessions += m[1];
+		cur.keyEvents += m[2];
+		merged.set(key, cur);
+	}
+	return [...merged.values()];
+}
+
+export interface Ga4PageDay { date: string; page: string; sessions: number; keyEvents: number }
+
+/**
+ * Google-organic sessions and key events by day and landing page: what an SEO test needs to be judged on conversions as well as
+ * clicks. Paged (100,000 rows a request, 600,000 in all) and merged by landing path, so query-string variants of a page count once.
+ */
+export async function organicLandingDaily(accountId: number, property: string, startDate: string, endDate: string, http: HttpOptions = {}): Promise<Ga4PageDay[]> {
+	const LIMIT = 100_000;
+	const MAX_ROWS = 600_000;
+	const merged = new Map<string, Ga4PageDay>();
+	for (let offset = 0; offset < MAX_ROWS; offset += LIMIT) {
+		const r = await googleJson<{ rows?: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[] }>(
+			tok(accountId),
+			`${DATA}/${property}:runReport`,
+			{
+				method: 'POST',
+				body: JSON.stringify({
+					dateRanges: [{ startDate, endDate }],
+					dimensions: [{ name: 'date' }, { name: 'landingPagePlusQueryString' }],
+					metrics: [{ name: 'sessions' }, { name: 'keyEvents' }],
+					dimensionFilter: { filter: { fieldName: 'sessionSourceMedium', stringFilter: { matchType: 'EXACT', value: 'google / organic' } } },
+					orderBys: [{ dimension: { dimensionName: 'date' } }, { dimension: { dimensionName: 'landingPagePlusQueryString' } }],
+					limit: LIMIT,
+					offset
+				})
+			},
+			http
+		);
+		const rows = r.rows ?? [];
+		for (const row of rows) {
+			const date = ymd(row.dimensionValues[0].value);
+			const page = landingPath(row.dimensionValues[1].value);
+			const k = `${date}\n${page}`;
+			const cur = merged.get(k) ?? { date, page, sessions: 0, keyEvents: 0 };
+			cur.sessions += Number(row.metricValues[0].value);
+			cur.keyEvents += Number(row.metricValues[1].value);
+			merged.set(k, cur);
+		}
+		if (rows.length < LIMIT) break;
+		// Rows come oldest day first, so stopping here would silently drop the most recent days and read as a collapse after a change.
+		if (offset + LIMIT >= MAX_ROWS) throw new Error(`GA4 returned more than ${MAX_ROWS.toLocaleString('en-US')} landing-page rows for ${startDate} to ${endDate}; conversions cannot be judged on a partial load.`);
 	}
 	return [...merged.values()];
 }

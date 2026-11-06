@@ -92,11 +92,14 @@ export const SCOPE_WRITE = 'https://www.googleapis.com/auth/webmasters';
 export const SCOPE_READ = 'https://www.googleapis.com/auth/webmasters.readonly';
 
 export const SCOPE_GA4_READ = 'https://www.googleapis.com/auth/analytics.readonly';
+/** Read-only on purpose: OpenSiteConsole inspects Tag Manager containers, it never edits or publishes them. */
+export const SCOPE_GTM_READ = 'https://www.googleapis.com/auth/tagmanager.readonly';
 
-/** One consent covers Search Console and (unless GOOGLE_INCLUDE_GA4=0) GA4, so users click once. */
+/** One consent covers Search Console and (unless GOOGLE_INCLUDE_GA4=0 / GOOGLE_INCLUDE_GTM=0) GA4 and Tag Manager, so users click once. */
 export function scopes(): string {
 	const ga4 = process.env.GOOGLE_INCLUDE_GA4 === '0' ? '' : ` ${SCOPE_GA4_READ}`;
-	return `openid email ${config.readOnly ? SCOPE_READ : SCOPE_WRITE}${ga4}`;
+	const gtm = process.env.GOOGLE_INCLUDE_GTM === '0' ? '' : ` ${SCOPE_GTM_READ}`;
+	return `openid email ${config.readOnly ? SCOPE_READ : SCOPE_WRITE}${ga4}${gtm}`;
 }
 
 export function redirectUri(): string {

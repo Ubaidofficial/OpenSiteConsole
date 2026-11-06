@@ -1,9 +1,10 @@
 import { db } from './db';
 import { config } from './config';
 import { allSites } from './queries';
-import { bestMatch, hostsMatch } from './hosts';
+import { bestMatch, hostKey, hostsMatch } from './hosts';
 import { BingApiError, RealBingClient } from './bing';
-import { bingClientFor, ga4SourceFor } from './channels';
+import { bingClientFor, ga4SourceFor, gtmSourceFor } from './channels';
+import { containerHosts, isWebContainer, type GtmContainer } from './gtm';
 import { fetchInsights, ClarityApiError, utcDay } from './clarity';
 import { demoClarityFetch, demoOpenSeoProjects } from './demo-channels';
 import { listOpenSeoProjects } from './openseo';
@@ -12,10 +13,12 @@ import { enqueueCruxSync, enqueueLinkSync } from './jobs';
 import { CruxError, queryOrigin } from './crux';
 import { audit } from './db';
 import { SCOPE_GA4 } from './ga4';
+import { SCOPE_GTM_READ } from './google';
 
 const visibleSites = () => allSites().filter((s) => !['siteUnverifiedUser', 'none'].includes(s.permission));
 
 export const hasGa4Scope = (a: { scopes: string; is_demo: number }) => !!a.is_demo || a.scopes.includes(SCOPE_GA4);
+export const hasGtmScope = (a: { scopes: string; is_demo: number }) => !!a.is_demo || a.scopes.includes(SCOPE_GTM_READ);
 
 // ── Bing ─────────────────────────────────────────────────────────────────────
 export function autoMatchBing(integrationId: number) {
@@ -95,6 +98,54 @@ export async function autoMatchGa4() {
 
 export async function listGa4Candidates(accountId: number) {
 	return ga4SourceFor(accountId).listProperties();
+}
+
+// ── Tag Manager ──────────────────────────────────────────────────────────────
+/**
+ * Link each unlinked site to the web container whose domain (or, failing that, name) matches it. Unlike GA4 this looks across
+ * every account that has Tag Manager access, because the person who manages tags is often not the Search Console owner.
+ */
+export async function autoMatchGtm() {
+	const accounts = (db().prepare("SELECT id, scopes, is_demo, email FROM accounts WHERE status = 'active' ORDER BY id").all() as { id: number; scopes: string; is_demo: number; email: string }[]);
+	const noScope = accounts.filter((a) => !hasGtmScope(a)).map((a) => a.email);
+	let matched = 0;
+	const ambiguous: string[] = [];
+	const used = new Set<string>();
+	for (const acc of accounts.filter(hasGtmScope)) {
+		const sites = visibleSites().filter((s) => !linksFor(s.id).gtm);
+		if (!sites.length) break;
+		const containers = (await gtmSourceFor(acc.id).listContainers()).filter(isWebContainer);
+		for (const site of sites) {
+			const cands = containers.filter((c) => containerHosts(c).some((h) => hostsMatch(h, site.site_url)));
+			const exact = cands.filter((c) => containerHosts(c).some((h) => hostKey(h) === hostKey(site.site_url)));
+			const pick: GtmContainer | undefined = exact.length === 1 ? exact[0] : exact.length === 0 && cands.length === 1 ? cands[0] : undefined;
+			if (!pick) {
+				if (cands.length > 1) ambiguous.push(site.site_url);
+				continue;
+			}
+			setLink(site.id, 'gtm', { accountId: acc.id, externalId: pick.path, label: `${pick.publicId} · ${pick.name}` });
+			enqueueLinkSync(site.id, 'gtm');
+			used.add(pick.path);
+			matched++;
+		}
+	}
+	const unmatchedSites = visibleSites().filter((s) => !linksFor(s.id).gtm && !ambiguous.includes(s.site_url)).map((s) => s.site_url);
+	return { matched, ambiguous, unmatchedSites, noScope };
+}
+
+/** Link a site by hand to a container given as GTM-XXXXXXX or accounts/123/containers/456, looked up in the connected accounts. */
+export async function linkGtmManually(siteId: number, ref: string) {
+	const want = ref.trim();
+	if (!/^(GTM-[A-Z0-9]+|accounts\/\d+\/containers\/\d+)$/i.test(want)) throw new Error('Enter a container ID like GTM-ABC1234, or a path like accounts/123/containers/456.');
+	for (const acc of db().prepare("SELECT id, scopes, is_demo FROM accounts WHERE status = 'active' ORDER BY id").all() as { id: number; scopes: string; is_demo: number }[]) {
+		if (!hasGtmScope(acc)) continue;
+		const hit = (await gtmSourceFor(acc.id).listContainers()).find((c) => c.publicId.toLowerCase() === want.toLowerCase() || c.path === want);
+		if (!hit) continue;
+		setLink(siteId, 'gtm', { accountId: acc.id, externalId: hit.path, label: `${hit.publicId} · ${hit.name}` });
+		enqueueLinkSync(siteId, 'gtm');
+		return hit;
+	}
+	throw new Error(`No container ${want} is visible to your connected Google accounts (they need Tag Manager access; reconnect them if it was never granted).`);
 }
 
 // ── Clarity ──────────────────────────────────────────────────────────────────

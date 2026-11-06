@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getSite } from '$lib/server/clients';
 import { breakdown, brandTerms, periodFor, topQueries } from '$lib/server/queries';
 import { ctrOf, isBranded, pctChange } from '$lib/analytics';
+import { isQuestionQuery } from '$lib/trends';
 
 export const load: PageServerLoad = async ({ params, parent, url }) => {
 	const { days } = await parent();
@@ -9,6 +10,7 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 	const p = periodFor(site, days);
 	const f = { country: url.searchParams.get('country') || undefined, device: url.searchParams.get('device') || undefined };
 	const b = url.searchParams.get('b') ?? 'all';
+	const onlyQuestions = url.searchParams.get('q') === 'questions';
 	const terms = brandTerms(site);
 	const prev = new Map(topQueries(site.id, p.prevStart, p.prevEnd, f, 20_000).map((r) => [r.query, r]));
 	const rows = topQueries(site.id, p.start, p.end, f, 5000)
@@ -22,10 +24,12 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 			posChange: prev.has(r.query) ? r.position - prev.get(r.query)!.position : null,
 			branded: isBranded(r.query, terms)
 		}))
-		.filter((r) => (b === 'brand' ? r.branded : b === 'nonbrand' ? !r.branded : true));
+		.filter((r) => (b === 'brand' ? r.branded : b === 'nonbrand' ? !r.branded : true))
+		.filter((r) => (onlyQuestions ? isQuestionQuery(r.query) : true));
 	return {
 		rows,
 		b,
+		onlyQuestions,
 		filters: f,
 		countries: breakdown(site.id, p.start, p.end, 'country').map((c) => c.key),
 		devices: breakdown(site.id, p.start, p.end, 'device').map((c) => c.key),

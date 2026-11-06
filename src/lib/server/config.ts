@@ -48,6 +48,10 @@ export const config = {
 	get maxRowsPerDay() {
 		return Number(env('MAX_ROWS_PER_DAY', '100000'));
 	},
+	/** URLs the indexing monitor inspects per site per run. URL Inspection is quota-limited; I am not certain of the current figure, so stay well under it. */
+	get indexMonitorUrls() {
+		return Math.min(200, Math.max(1, Number(env('INDEX_MONITOR_URLS', '40')) || 40));
+	},
 	get syncConcurrency() {
 		return Math.max(1, Number(env('SYNC_CONCURRENCY', '2')));
 	},

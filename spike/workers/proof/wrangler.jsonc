@@ -1,0 +1,9 @@
+{
+	"name": "osc-workers-proof",
+	"main": "src/worker.ts",
+	"compatibility_date": "2026-10-01",
+	// Nothing here talks to Cloudflare: the id below is a placeholder that only `--local` ever sees.
+	"d1_databases": [{ "binding": "DB", "database_name": "osc-proof", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }],
+	"triggers": { "crons": ["*/15 * * * *"] },
+	"vars": { "USE_FIXTURE_CLIENT": "1" }
+}

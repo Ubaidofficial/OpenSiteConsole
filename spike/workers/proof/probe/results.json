@@ -1,0 +1,126 @@
+{
+  "none": {
+    "startupSetIntervalError": "Error: Disallowed operation called within global scope. Asynchronous I/O (ex: fetch() or connect()), setting a timeout, and generating random values are not allowed within global scope. To fix this error, perform this operation within a handler. https://developers.cloudflare.com/workers/runtime-apis/handlers/",
+    "moduleStateHits": 3,
+    "import node:crypto + aes-256-gcm": {
+      "ok": true,
+      "detail": "hello"
+    },
+    "import node:fs: existsSync / mkdirSync(./data) / write+read /tmp": {
+      "ok": true,
+      "detail": {
+        "existsSync_root": true,
+        "mkdirSync_relative": "Error: operation not permitted",
+        "tmp_roundtrip": "hi"
+      }
+    },
+    "import node:path": {
+      "ok": true,
+      "detail": "/a/b"
+    },
+    "import node:zlib gunzipSync": {
+      "ok": true,
+      "detail": "<urlset/>"
+    },
+    "import node:net isIP": {
+      "ok": true,
+      "detail": [
+        4,
+        6,
+        0
+      ]
+    },
+    "import node:dns lookup(example.com)": {
+      "ok": true,
+      "detail": "104.20.23.154"
+    },
+    "import node:stream Readable.toWeb": {
+      "ok": true,
+      "detail": "function"
+    },
+    "process.env / process.cwd()": {
+      "ok": true,
+      "detail": {
+        "env": "object",
+        "cwd": "/bundle"
+      }
+    },
+    "node:http request to own origin (loopback) works": {
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "body": "pong"
+      }
+    },
+    "node:http request honours a custom `lookup` that REFUSES (the guardedFetch mechanism)": {
+      "ok": false,
+      "error": "The options.lookup option is not implemented"
+    },
+    "import better-sqlite3": {
+      "ok": false,
+      "error": "__filename is not defined"
+    }
+  },
+  "nodejs_compat": {
+    "startupSetIntervalError": "Error: Disallowed operation called within global scope. Asynchronous I/O (ex: fetch() or connect()), setting a timeout, and generating random values are not allowed within global scope. To fix this error, perform this operation within a handler. https://developers.cloudflare.com/workers/runtime-apis/handlers/",
+    "moduleStateHits": 3,
+    "import node:crypto + aes-256-gcm": {
+      "ok": true,
+      "detail": "hello"
+    },
+    "import node:fs: existsSync / mkdirSync(./data) / write+read /tmp": {
+      "ok": true,
+      "detail": {
+        "existsSync_root": true,
+        "mkdirSync_relative": "Error: operation not permitted",
+        "tmp_roundtrip": "hi"
+      }
+    },
+    "import node:path": {
+      "ok": true,
+      "detail": "/a/b"
+    },
+    "import node:zlib gunzipSync": {
+      "ok": true,
+      "detail": "<urlset/>"
+    },
+    "import node:net isIP": {
+      "ok": true,
+      "detail": [
+        4,
+        6,
+        0
+      ]
+    },
+    "import node:dns lookup(example.com)": {
+      "ok": true,
+      "detail": "104.20.23.154"
+    },
+    "import node:stream Readable.toWeb": {
+      "ok": true,
+      "detail": "function"
+    },
+    "process.env / process.cwd()": {
+      "ok": true,
+      "detail": {
+        "env": "object",
+        "cwd": "/bundle"
+      }
+    },
+    "node:http request to own origin (loopback) works": {
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "body": "pong"
+      }
+    },
+    "node:http request honours a custom `lookup` that REFUSES (the guardedFetch mechanism)": {
+      "ok": false,
+      "error": "The options.lookup option is not implemented"
+    },
+    "import better-sqlite3": {
+      "ok": false,
+      "error": "__filename is not defined"
+    }
+  }
+}

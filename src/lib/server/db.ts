@@ -104,10 +104,10 @@ CREATE TABLE IF NOT EXISTS integrations (
 );
 CREATE TABLE IF NOT EXISTS site_links (
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
-	kind TEXT NOT NULL,                 -- bing | ga4 | clarity | openseo
+	kind TEXT NOT NULL,                 -- bing | ga4 | gtm | clarity | openseo
 	integration_id INTEGER REFERENCES integrations(id) ON DELETE CASCADE,
 	account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE,   -- ga4: which Google account
-	external_id TEXT NOT NULL,          -- bing site url | properties/123 | clarity label | openseo project id
+	external_id TEXT NOT NULL,          -- bing site url | properties/123 | accounts/1/containers/2 | clarity label | openseo project id
 	label TEXT,
 	last_sync_at INTEGER,
 	sync_status TEXT NOT NULL DEFAULT 'idle',
@@ -192,6 +192,184 @@ CREATE TABLE IF NOT EXISTS site_appearance (
 	position REAL NOT NULL,
 	PRIMARY KEY (site_id, days, appearance)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS gtm_snapshots (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	container_path TEXT NOT NULL,       -- accounts/123/containers/456
+	public_id TEXT, name TEXT,          -- GTM-XXXXXXX and the container's name
+	domains TEXT NOT NULL DEFAULT '[]', -- JSON array: the container's domainName values
+	live_version_id TEXT,               -- NULL when the container has never been published
+	live_version_name TEXT,
+	ga4_measurement_ids TEXT NOT NULL DEFAULT '[]',  -- JSON array: the linked GA4 property's web-stream IDs, for the cross-check
+	payload TEXT NOT NULL,              -- JSON {tags, triggers, variables}: compact summaries of the live version
+	fetched_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_ai (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,
+	assistant TEXT NOT NULL,            -- ChatGPT | Perplexity | Gemini | Claude | Copilot
+	page TEXT NOT NULL,                 -- landing path, no query string
+	sessions INTEGER NOT NULL,
+	engaged_sessions INTEGER NOT NULL,
+	key_events REAL NOT NULL,
+	pulled_on TEXT NOT NULL,
+	PRIMARY KEY (site_id, days, assistant, page)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS seo_tests (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	name TEXT NOT NULL,
+	kind TEXT NOT NULL,                 -- split | before_after | switch
+	start_date TEXT NOT NULL,           -- the day the change went live
+	window_days INTEGER NOT NULL DEFAULT 28,
+	treatment TEXT NOT NULL,            -- JSON {prefixes, urls}
+	control TEXT NOT NULL,              -- JSON {prefixes, urls}, or {"restOfSite":true}
+	meta TEXT NOT NULL DEFAULT '{}',    -- switch: {old, new} scopes
+	note TEXT,
+	created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS kv (
+	key TEXT PRIMARY KEY,
+	value TEXT NOT NULL
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS google_updates (
+	id TEXT PRIMARY KEY,                -- g:<incident id> from Google's Search Status Dashboard, or m:<n> for a manual entry
+	name TEXT NOT NULL,                 -- e.g. "May 2026 core update"
+	kind TEXT NOT NULL,                 -- core | spam | discover | other
+	begin_date TEXT NOT NULL,           -- YYYY-MM-DD (UTC date of the dashboard timestamp)
+	end_date TEXT,                      -- NULL while still rolling out
+	source TEXT NOT NULL,               -- google | manual
+	updated_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS sitemap_urls (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	norm TEXT NOT NULL,                 -- host (no www) + path (no trailing slash), for matching against Search Console pages
+	lastmod TEXT,                       -- YYYY-MM-DD if the sitemap gave one
+	sitemap TEXT NOT NULL,              -- which sitemap file listed it
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS sitemap_urls_norm ON sitemap_urls(site_id, norm);
+CREATE TABLE IF NOT EXISTS sitemap_sync (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	fetched_at INTEGER NOT NULL,
+	sitemaps INTEGER NOT NULL,          -- files read
+	urls INTEGER NOT NULL,
+	truncated INTEGER NOT NULL DEFAULT 0,
+	error TEXT                          -- first problem, if any
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS action_cache (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,
+	cache_key TEXT NOT NULL,
+	payload TEXT NOT NULL,              -- JSON ActionItem[], ranked
+	computed_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, days)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS action_state (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	key TEXT NOT NULL,
+	state TEXT NOT NULL,                -- done | snoozed
+	until INTEGER NOT NULL,             -- ms; the item returns after this if it is still detected
+	updated_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, key)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_page_daily (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	date TEXT NOT NULL,
+	page TEXT NOT NULL,                 -- landing path, no query string
+	sessions INTEGER NOT NULL,          -- Google-organic sessions that landed there
+	key_events REAL NOT NULL,
+	PRIMARY KEY (site_id, date, page)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_page_meta (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	from_date TEXT,                     -- earliest day stored
+	through_date TEXT,                  -- latest day stored
+	pulled_at INTEGER NOT NULL,
+	error TEXT
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS digests (
+	id INTEGER PRIMARY KEY,
+	kind TEXT NOT NULL,                 -- weekly | urgent
+	week_key TEXT,                      -- the digest day this weekly digest is for; NULL for one made by hand or an urgent alert
+	created_at INTEGER NOT NULL,
+	payload TEXT NOT NULL,              -- JSON Digest (weekly) or {items} (urgent)
+	delivery TEXT NOT NULL DEFAULT 'none',   -- none (no webhook configured) | sent | failed
+	delivered_at INTEGER,
+	delivery_message TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS digests_week ON digests(kind, week_key) WHERE week_key IS NOT NULL;
+CREATE TABLE IF NOT EXISTS alerts_sent (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	key TEXT NOT NULL,
+	sent_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, key)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS indexnow_keys (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	key TEXT NOT NULL,                  -- 8-128 chars of a-z A-Z 0-9 and "-"; must also be hosted as /<key>.txt on each host
+	created_at INTEGER NOT NULL,
+	auto INTEGER NOT NULL DEFAULT 0     -- submit new and changed sitemap URLs automatically
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS indexnow_hosts (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	host TEXT NOT NULL,
+	verified_at INTEGER NOT NULL,
+	ok INTEGER NOT NULL,                -- the key file was found on the host and holds the key
+	message TEXT,
+	PRIMARY KEY (site_id, host)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS indexnow_urls (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	submitted_at INTEGER NOT NULL,      -- last accepted submission, for the per-URL cooldown
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS indexnow_log (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	at INTEGER NOT NULL,
+	host TEXT NOT NULL,
+	urls INTEGER NOT NULL,
+	status INTEGER NOT NULL,            -- HTTP status, 0 if there was no answer
+	message TEXT,
+	source TEXT NOT NULL                -- manual | auto
+);
+CREATE INDEX IF NOT EXISTS indexnow_log_site ON indexnow_log(site_id, at);
+CREATE TABLE IF NOT EXISTS seo_test_results (
+	test_id INTEGER PRIMARY KEY REFERENCES seo_tests(id) ON DELETE CASCADE,
+	cache_key TEXT NOT NULL,            -- changes whenever the data, the test or the algorithm changes
+	outcome TEXT NOT NULL,              -- JSON TestOutcome
+	computed_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS index_watch (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	added_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS index_history (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	day TEXT NOT NULL,
+	indexed INTEGER NOT NULL, not_indexed INTEGER NOT NULL, unknown INTEGER NOT NULL,
+	PRIMARY KEY (site_id, day)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS index_events (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	at INTEGER NOT NULL,
+	kind TEXT NOT NULL,                 -- deindexed | indexed | canonical_changed | blocked | unblocked | fetch_error
+	detail TEXT
+);
+CREATE INDEX IF NOT EXISTS index_events_site ON index_events(site_id, at);
+CREATE TABLE IF NOT EXISTS onpage_checks (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	checked_at INTEGER NOT NULL,
+	payload TEXT NOT NULL,              -- JSON {status, finalUrl, error?, parsed, queries, issues, score}
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS api_keys (
 	id INTEGER PRIMARY KEY,
 	name TEXT NOT NULL, prefix TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,
@@ -213,6 +391,11 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('appearance_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN appearance_pulled_on TEXT');
 	if (!cols('sites').includes('ga4_periods_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_periods_on TEXT');
 	if (!cols('sites').includes('crux_pulled_on')) db.exec('ALTER TABLE sites ADD COLUMN crux_pulled_on TEXT');
+	if (!cols('sites').includes('index_monitor')) db.exec('ALTER TABLE sites ADD COLUMN index_monitor INTEGER NOT NULL DEFAULT 0');
+	if (!cols('sites').includes('index_message')) db.exec('ALTER TABLE sites ADD COLUMN index_message TEXT');
+	if (!cols('sites').includes('index_next_at')) db.exec('ALTER TABLE sites ADD COLUMN index_next_at INTEGER');
+	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
+	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.
 	const version = db.pragma('user_version', { simple: true }) as number;

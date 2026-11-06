@@ -117,7 +117,7 @@
 	{#if data.length === 0}
 		<div class="flex items-center justify-center text-muted-foreground" style="height:{height}px">No data in this period yet</div>
 	{:else}
-		<svg {width} {height} role="img" aria-label="Traffic chart" onpointermove={move} onpointerleave={() => (hover = null)} class="touch-none select-none">
+		<svg {width} {height} role="img" aria-label="Traffic chart" onpointermove={move} onpointerleave={() => (hover = null)} class="reveal-x touch-none select-none">
 			<defs>
 				{#each series as s}
 					<linearGradient id="g-{uid}-{s.key}" x1="0" y1="0" x2="0" y2="1">

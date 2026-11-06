@@ -1,0 +1,30 @@
+// Deploys OpenSiteConsole to Cloudflare: a Worker in front of a Container that runs the app.
+// Setup steps: deploy/cloudflare/README.md. Run from the repository root:  npx --prefix deploy/cloudflare wrangler deploy
+{
+	"$schema": "./deploy/cloudflare/node_modules/wrangler/config-schema.json",
+	"name": "opensiteconsole",
+	"main": "deploy/cloudflare/worker.ts",
+	"compatibility_date": "2026-10-01",
+	"containers": [
+		{
+			"class_name": "OpenSiteConsole",
+			"image": "./Dockerfile.cloudflare",
+			"image_build_context": ".",
+			// 1 GiB of memory and 4 GB of disk. Raise to "standard-1" (4 GiB) for sites with very large sitemaps or backfills.
+			"instance_type": "basic",
+			// One instance: the database is a single SQLite file, replicated to R2 by one writer.
+			"max_instances": 1
+		}
+	],
+	"durable_objects": { "bindings": [{ "name": "OSC", "class_name": "OpenSiteConsole" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["OpenSiteConsole"] }],
+	// Wakes the container so the app's own scheduler keeps syncing while nobody is browsing. The app's cadences are daily
+	// (sync, indexing checks), every 3 hours (urgent alerts) and weekly (digest), so every 3 hours is enough. Every 30 minutes
+	// (and SLEEP_AFTER "35m") keeps it running all day: more current, and it costs more.
+	"triggers": { "crons": ["0 */3 * * *"] },
+	"vars": {
+		// "ORIGIN": "https://seo.example.com",   // the public address; if unset, the first address you open is remembered
+		// "SLEEP_AFTER": "20m",                  // idle time before the container sleeps
+		"R2_BUCKET": "opensiteconsole-data"
+	}
+}

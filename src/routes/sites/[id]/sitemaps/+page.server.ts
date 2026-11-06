@@ -2,7 +2,9 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { clientForSite, getSite } from '$lib/server/clients';
 import { config } from '$lib/server/config';
-import { audit } from '$lib/server/db';
+import { audit, db } from '$lib/server/db';
+import { diagnoseSitemap } from '$lib/server/sitemapcov';
+import { demoSitemapFetch } from '$lib/server/demo-channels';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { client, site } = clientForSite(Number(params.id));
@@ -19,6 +21,15 @@ function guard() {
 }
 
 export const actions: Actions = {
+	/** Fetch the sitemap like a crawler and compare it with what Google last reported. Read-only, so allowed in READ_ONLY mode. */
+	check: async ({ params, request }) => {
+		const feed = String((await request.formData()).get('feed') ?? '').trim();
+		if (!/^https?:\/\/\S+$/.test(feed)) return fail(400, { error: 'Not a sitemap address.' });
+		const { client, site } = clientForSite(Number(params.id));
+		const google = (await client.listSitemaps(site.site_url).catch(() => [])).find((s) => s.path === feed);
+		const demo = !!(db().prepare('SELECT is_demo FROM accounts WHERE id = ?').get(site.account_id) as { is_demo: number }).is_demo;
+		return { check: await diagnoseSitemap(feed, site.site_url, google, demo ? demoSitemapFetch(site.id) : undefined) };
+	},
 	submit: async ({ params, request }) => {
 		const blocked = guard();
 		if (blocked) return blocked;

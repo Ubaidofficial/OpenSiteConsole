@@ -8,6 +8,7 @@ import { ctrOf, pctChangeMin, positionShift } from '$lib/analytics';
 import { config } from '$lib/server/config';
 import { linksFor } from '$lib/server/links';
 import { openSeoProjectUrl } from '$lib/server/connect';
+import { queueFor } from '$lib/server/actions';
 
 export const load: LayoutServerLoad = ({ params, url }) => {
 	const site = getSite(Number(params.id));
@@ -20,8 +21,17 @@ export const load: LayoutServerLoad = ({ params, url }) => {
 	const comparable = historyCoversPrevious(site, period.prevStart);
 	const solid = comparable && prev.impressions >= 100 && now.impressions >= 100;
 	const links = linksFor(site.id);
+	// The count on the Actions tab; it is cached, so this is a lookup after the first computation following a sync.
+	let actionBadge = { open: 0, blocking: 0 };
+	try {
+		const open = queueFor(site).open;
+		actionBadge = { open: open.length, blocking: open.filter((a) => a.blocking).length };
+	} catch {
+		/* the tab still works; only the badge is missing */
+	}
 	return {
-		linked: { bing: !!links.bing, ga4: !!links.ga4, clarity: !!links.clarity },
+		actionBadge,
+		linked: { bing: !!links.bing, ga4: !!links.ga4, gtm: !!links.gtm, clarity: !!links.clarity },
 		openseo: links.openseo ? { name: links.openseo.label, url: openSeoProjectUrl(links.openseo.integration_id, links.openseo.external_id) } : null,
 		site: {
 			id: site.id,

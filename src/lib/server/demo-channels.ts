@@ -1,9 +1,11 @@
 import type { BingClient, BingDay, BingSite, BingTermRow } from './bing';
 import type { Ga4Day, Ga4Property } from './ga4';
 import type { ClarityMetric } from './clarity';
+import type { GtmContainer, GtmLive } from './gtm';
 import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01 } from './demo';
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
+import { db } from './db';
 
 const sites = DEMO_ACCOUNTS.flatMap((a) => a.sites);
 const siteOf = (urlOrHost: string) => sites.find((s) => hostKey(s.siteUrl) === hostKey(urlOrHost)) ?? sites[0];
@@ -56,6 +58,67 @@ export const DEMO_GA4_PROPERTIES = (accountSub: string): { prop: Ga4Property; ur
 		prop: { property: `properties/${accountSub === 'demo-a' ? 1000 : 2000}${i}`, displayName: `${s.brand} (GA4)`, account: 'Demo account' },
 		url: s.siteUrl.startsWith('sc-domain:') ? `https://www.${s.siteUrl.slice(10)}` : s.siteUrl
 	}));
+
+/** A GA4 measurement ID for a demo property. Real ones are "G-" plus ten letters and digits. */
+export const demoGa4MeasurementId = (property: string) => `G-DEMO${property.replace(/\D/g, '')}`;
+
+const gtmId = (brand: string) => 'GTM-' + brand.slice(0, 7).toUpperCase().padEnd(7, 'X');
+const hostOfDemo = (siteUrl: string) => (siteUrl.startsWith('sc-domain:') ? siteUrl.slice(10) : new URL(siteUrl).hostname.replace(/^www\./, ''));
+
+/**
+ * Demo Tag Manager containers, one per demo site except northwind (no container, so the "unmatched" path is visible).
+ * Planted problems, like the other demo data: pixelforge sends to the wrong GA4 ID and has a paused tag, trailmaps was
+ * never published, ledgerly still has a Universal Analytics tag and no GA4 tag, coffeelab has a tag with no trigger.
+ */
+export function demoGtmContainers(): GtmContainer[] {
+	return sites
+		.filter((s) => s.brand !== 'northwind')
+		.map((s, i) => ({
+			path: `accounts/60000/containers/${7000 + i}`,
+			publicId: gtmId(s.brand),
+			name: hostOfDemo(s.siteUrl),
+			// Domain names are optional in real containers; leave them empty for one so name-based matching is exercised too.
+			domains: s.brand === 'coffeelab' ? [] : [hostOfDemo(s.siteUrl)],
+			usage: ['web'],
+			accountName: 'Demo Tag Manager account'
+		}));
+}
+
+export function demoGtmLive(containerPath: string): GtmLive | null {
+	const c = demoGtmContainers().find((x) => x.path === containerPath);
+	if (!c) return null;
+	const brand = sites.find((s) => hostOfDemo(s.siteUrl) === c.name)?.brand ?? '';
+	if (brand === 'trailmaps') return null;
+	const props = DEMO_ACCOUNTS.flatMap((a) => DEMO_GA4_PROPERTIES(a.sub));
+	const prop = props.find((p) => p.prop.displayName.toLowerCase().startsWith(brand));
+	const mid = brand === 'pixelforge' ? 'G-OLDSITE01' : prop ? demoGa4MeasurementId(prop.prop.property) : null;
+	const trig = [
+		{ id: '1', name: 'All Pages', type: 'pageview' },
+		{ id: '2', name: 'Click: outbound link', type: 'linkClick' },
+		{ id: '3', name: 'Form submit', type: 'formSubmission' }
+	];
+	const tag = (id: string, name: string, type: string, o: Partial<GtmLive['tags'][number]> = {}) => ({ id, name, type, paused: false, firing: ['All Pages'], blocking: [], measurementId: null, eventName: null, ...o });
+	const tags: GtmLive['tags'] =
+		brand === 'ledgerly'
+			? [tag('1', 'UA - pageview', 'ua'), tag('2', 'Cookie banner', 'html')]
+			: [
+					tag('1', 'Google tag', 'googtag', { measurementId: mid }),
+					tag('2', 'GA4 - outbound click', 'gaawe', { firing: ['Click: outbound link'], measurementId: mid, eventName: 'outbound_click' }),
+					tag('3', 'GA4 - lead form', 'gaawe', { firing: ['Form submit'], measurementId: mid, eventName: 'generate_lead' }),
+					...(brand === 'pixelforge' ? [tag('4', 'Old remarketing', 'sp', { paused: true })] : []),
+					...(brand === 'coffeelab' ? [tag('4', 'Heatmap script', 'html', { firing: [] })] : [])
+				];
+	return {
+		versionId: '12',
+		versionName: 'Demo live version',
+		tags,
+		triggers: trig,
+		variables: [
+			{ id: '1', name: 'GA4 measurement ID', type: 'c' },
+			{ id: '2', name: 'Page path', type: 'u' }
+		]
+	};
+}
 
 export function demoGa4Daily(property: string, startDate: string, endDate: string): Ga4Day[] {
 	const all = DEMO_ACCOUNTS.flatMap((a) => DEMO_GA4_PROPERTIES(a.sub).map((p, i) => ({ p, s: a.sites[i] })));
@@ -112,6 +175,82 @@ export async function demoGa4Landing(property: string, start: string, end: strin
 		if (i < 0) continue;
 		const rows = await new DemoClient(a.sub).query(a.sites[i].siteUrl, { startDate: start, endDate: end, dimensions: ['page'], rowLimit: 5000 });
 		return rows.map((r) => ({ page: new URL(r.keys[0]).pathname, sessions: Math.round(r.clicks * 1.12) + 1, engagedSessions: Math.round(r.clicks * 0.7), keyEvents: Math.round(r.clicks * 0.04 * 10) / 10 }));
+	}
+	return [];
+}
+
+/**
+ * Demo AI-assistant sessions, a small share of the demo Google-organic landing pages (ChatGPT largest), so the AI view
+ * lines up with the pages the other reports show. Not every page gets any.
+ */
+export async function demoGa4AiTraffic(property: string, start: string, end: string): Promise<{ assistant: 'ChatGPT' | 'Perplexity' | 'Gemini' | 'Claude' | 'Copilot'; page: string; sessions: number; engagedSessions: number; keyEvents: number }[]> {
+	const pages = (await demoGa4Landing(property, start, end)).sort((a, b) => b.sessions - a.sessions).slice(0, 12);
+	const shares = [['ChatGPT', 0.05], ['Perplexity', 0.02], ['Gemini', 0.015], ['Claude', 0.01], ['Copilot', 0.005]] as const;
+	return pages.flatMap((p) =>
+		shares.flatMap(([assistant, share]) => {
+			const sessions = Math.round(p.sessions * share * (0.6 + h01(property, p.page, assistant)));
+			return sessions >= 1 ? [{ assistant, page: p.page, sessions, engagedSessions: Math.round(sessions * 0.7), keyEvents: Math.round(sessions * 0.05 * 10) / 10 }] : [];
+		})
+	);
+}
+
+/**
+ * Demo page fetcher for the on-page check (demo sites are .example domains that do not exist). Pages get deterministic
+ * HTML with planted problems: some lack a meta description, some have a generic title, one is noindex, one has two H1s.
+ */
+export function demoPageFetch(siteUrl: string): typeof fetch {
+	const host = hostKey(siteUrl);
+	const def = sites.find((s) => hostKey(s.siteUrl) === host) ?? sites[0];
+	return (async (input: RequestInfo | URL) => {
+		const url = new URL(String(input));
+		const r = h01(host, url.pathname);
+		const slug = url.pathname.split('/').filter(Boolean).pop() ?? 'home';
+		if (r < 0.06) return new Response('gone', { status: 404 });
+		const words = slug.replace(/-\d+$/, '').replace(/-/g, ' ');
+		const title = r < 0.3 ? `Home | ${def.brand}` : `${def.topic} - ${words} | ${def.brand}`;
+		const desc = r > 0.55 && r < 0.75 ? '' : `<meta name="description" content="A practical guide to ${def.topic}: ${words}.">`;
+		const robots = r > 0.94 ? '<meta name="robots" content="noindex,follow">' : '';
+		const h1 = r > 0.8 && r < 0.9 ? '' : `<h1>${r < 0.45 ? words : def.topic}</h1>${r > 0.9 && r <= 0.94 ? '<h1>Welcome</h1>' : ''}`;
+		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}"></head><body>${h1}<p>demo</p></body></html>`;
+		return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
+	}) as typeof fetch;
+}
+
+/**
+ * Demo sitemap: every page Search Console has shown for the site, minus two of them (so "earns clicks but missing from the
+ * sitemap" has something to show), plus pages that were never shown (some old, some new), so the coverage view has all its cases.
+ */
+export function demoSitemapFetch(siteId: number): typeof fetch {
+	return (async (input: RequestInfo | URL) => {
+		const url = new URL(String(input));
+		if (!url.pathname.endsWith('sitemap.xml')) return new Response('not found', { status: 404 });
+		const rows = db().prepare('SELECT page, SUM(clicks) c FROM sa_rows WHERE site_id = ? GROUP BY page ORDER BY c DESC').all(siteId) as { page: string; c: number }[];
+		const origin = `${url.protocol}//${url.host}`;
+		const today = pacificToday();
+		const entries = [
+			...rows.slice(0, Math.max(0, rows.length - 2)).map((r) => ({ loc: r.page, lastmod: addDays(today, -40 - (r.page.length % 30)) })),
+			...Array.from({ length: 6 }, (_, i) => ({ loc: `${origin}/guides/archive-2019-${i + 1}`, lastmod: '2019-06-0' + (i + 1) })),
+			...Array.from({ length: 2 }, (_, i) => ({ loc: `${origin}/blog/just-published-${i + 1}`, lastmod: addDays(today, -3 - i) }))
+		];
+		const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries.map((e) => `<url><loc>${e.loc.replace(/&/g, '&amp;')}</loc><lastmod>${e.lastmod}</lastmod></url>`).join('')}</urlset>`;
+		return new Response(xml, { status: 200, headers: { 'content-type': 'application/xml' } });
+	}) as typeof fetch;
+}
+
+/**
+ * Demo GA4 organic sessions and key events by day and landing page, derived from the demo Search Console pages so the two line up
+ * (sessions a little above clicks, key events about 4% of sessions with a stable per-page rate), as in real data.
+ */
+export async function demoGa4OrganicDaily(property: string, start: string, end: string): Promise<{ date: string; page: string; sessions: number; keyEvents: number }[]> {
+	for (const a of DEMO_ACCOUNTS) {
+		const i = DEMO_GA4_PROPERTIES(a.sub).findIndex((p) => p.prop.property === property);
+		if (i < 0) continue;
+		const rows = await new DemoClient(a.sub).query(a.sites[i].siteUrl, { startDate: start, endDate: end, dimensions: ['date', 'page'], rowLimit: 500_000 });
+		return rows.map((r) => {
+			const page = new URL(r.keys[1]).pathname;
+			const sessions = Math.round(r.clicks * 1.12) + (r.clicks > 0 ? 1 : 0);
+			return { date: r.keys[0], page, sessions, keyEvents: Math.round(sessions * (0.02 + 0.04 * h01(property, page)) * 10) / 10 };
+		});
 	}
 	return [];
 }

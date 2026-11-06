@@ -1,0 +1,82 @@
+file                                            prep     get     all     run    exec    prag     txn   rowid   AWAIT asyncFn callers
+src/lib/server/sync.ts                            21       2       1      18       0       0       4       1      21      12      22
+src/lib/server/channels.ts                        20       5       0      15       0       0       3       0      20      12      35
+src/lib/server/db.ts                               2       0       1       1      12       5       0       0      19       5      13
+src/lib/server/indexnow.ts                        19       6       6       7       0       0       2       0      19      17      32
+src/lib/server/queries.ts                         15       3      12       0       0       0       0       0      15      19      28
+src/lib/server/indexmon.ts                        11       0       5       9       0       0       1       0      14      10      21
+src/lib/server/sitemapcov.ts                      13       5       4       4       0       0       1       0      13       5       7
+src/lib/server/accounts.ts                        12       3       2       7       0       0       1       3      12       7      10
+src/lib/server/jobs.ts                            12       4       3       5       0       0       0       0      12      14      34
+src/lib/server/seotests.ts                        12       5       4       3       0       0       0       1      12       9      18
+src/lib/server/digest.ts                          10       5       1       4       0       0       1       1      10      11      32
+src/routes/sites/[id]/settings/+page.server.ts      10       1       2       7       0       0       1       0      10       5      14
+src/lib/server/ga4tests.ts                         9       4       1       4       0       0       1       0       9       4       6
+src/lib/server/insights.ts                         9       4       5       0       0       0       0       0       9      12      28
+src/lib/server/links.ts                            9       1       3       5       0       0       0       1       9       9       9
+src/lib/server/mcp.ts                              8       4       4       0       0       0       0       0       8      30      66
+src/lib/server/actions.ts                          7       2       2       3       0       0       0       0       7       8      38
+src/lib/server/gupdates.ts                         7       2       1       4       0       0       1       0       7       7       6
+src/lib/server/apikeys.ts                          5       1       1       3       0       0       0       1       5       4       5
+src/routes/+page.server.ts                         5       2       2       1       0       0       0       0       5       4      12
+src/lib/server/connect.ts                          4       0       3       1       0       0       0       0       4      19      54
+src/lib/server/onpage.ts                           4       1       2       1       0       0       0       0       4       5      12
+src/routes/sites/[id]/bing/+page.server.ts         4       2       2       0       0       0       0       0       4       3       8
+src/routes/sites/[id]/inspect/+page.server.ts       3       1       1       2       0       0       0       0       4       5      10
+src/lib/server/bing.ts                             3       1       0       2       0       0       0       0       3       7      10
+src/lib/server/crux.ts                             3       0       1       2       0       0       0       0       3       3       5
+src/lib/server/google.ts                           3       1       0       2       0       0       0       0       3       2       4
+src/lib/server/tracking.ts                         3       3       0       0       0       0       0       0       3       2       6
+src/routes/accounts/+page.server.ts                3       1       2       0       0       0       0       0       3       6      11
+src/routes/sites/[id]/+page.server.ts              3       1       0       2       0       0       0       0       3       6      18
+src/routes/sites/[id]/analytics/+page.server.ts       3       0       3       0       0       0       0       0       3       2       7
+src/lib/server/clarity.ts                          2       1       0       1       0       0       0       0       2       3       4
+src/lib/server/clients.ts                          2       2       0       0       0       0       0       0       2       2       3
+src/routes/+layout.server.ts                       2       2       0       0       0       0       0       0       2       1       2
+src/routes/connect/+page.server.ts                 2       1       0       1       0       0       0       0       2      14      31
+src/routes/sites/[id]/clarity/+page.server.ts       2       1       1       0       0       0       0       0       2       2       7
+src/lib/server/demo-channels.ts                    1       0       1       0       0       0       0       0       1       1       1
+src/lib/server/duplicates.ts                       1       0       0       1       0       0       1       0       1       3       4
+src/lib/server/portfolio.ts                        1       1       0       0       0       0       0       0       1      15      19
+src/routes/auth/callback/+server.ts                1       0       1       0       0       0       0       0       1       1       4
+src/routes/sites/[id]/+layout.server.ts            1       1       0       0       0       0       0       0       1       1       7
+src/routes/sites/[id]/indexing/+page.server.ts       1       0       0       1       0       0       0       0       1       5      14
+src/routes/sites/[id]/pages/+page.server.ts        1       0       1       0       0       0       0       0       1       1       5
+src/routes/sites/[id]/sitemaps/+page.server.ts       1       1       0       0       0       0       0       0       1       4       8
+src/hooks.server.ts                                0       0       0       0       0       0       0       0       0       1       3
+src/lib/server/ga4.ts                              0       0       0       0       0       0       0       0       0       1       1
+src/lib/server/gtm.ts                              0       0       0       0       0       0       0       0       0       1       1
+src/routes/actions/+page.server.ts                 0       0       0       0       0       0       0       0       0       1       1
+src/routes/agents/+page.server.ts                  0       0       0       0       0       0       0       0       0       3       4
+src/routes/api/mcp/+server.ts                      0       0       0       0       0       0       0       0       0       1       1
+src/routes/auth/bing/callback/+server.ts           0       0       0       0       0       0       0       0       0       1       3
+src/routes/digest/+page.server.ts                  0       0       0       0       0       0       0       0       0       4       7
+src/routes/portfolio/+page.server.ts               0       0       0       0       0       0       0       0       0       1       4
+src/routes/sitemaps/+page.server.ts                0       0       0       0       0       0       0       0       0       6       7
+src/routes/sites/[id]/actions/+page.server.ts       0       0       0       0       0       0       0       0       0       2       3
+src/routes/sites/[id]/cannibalization/+page.server.ts       0       0       0       0       0       0       0       0       0       1       2
+src/routes/sites/[id]/decay/+page.server.ts        0       0       0       0       0       0       0       0       0       1       6
+src/routes/sites/[id]/export/+server.ts            0       0       0       0       0       0       0       0       0       1       3
+src/routes/sites/[id]/groups/+page.server.ts       0       0       0       0       0       0       0       0       0       1       5
+src/routes/sites/[id]/history/+server.ts           0       0       0       0       0       0       0       0       0       1       3
+src/routes/sites/[id]/indexnow/+page.server.ts       0       0       0       0       0       0       0       0       0       9      25
+src/routes/sites/[id]/indexnow/key.txt/+server.ts       0       0       0       0       0       0       0       0       0       1       1
+src/routes/sites/[id]/onpage/+page.server.ts       0       0       0       0       0       0       0       0       0       3       5
+src/routes/sites/[id]/opportunities/+page.server.ts       0       0       0       0       0       0       0       0       0       1       3
+src/routes/sites/[id]/queries/+page.server.ts       0       0       0       0       0       0       0       0       0       1       5
+src/routes/sites/[id]/segments/+page.server.ts       0       0       0       0       0       0       0       0       0       2       5
+src/routes/sites/[id]/sync/+server.ts              0       0       0       0       0       0       0       0       0       1       1
+src/routes/sites/[id]/tags/+page.server.ts         0       0       0       0       0       0       0       0       0       1       4
+src/routes/sites/[id]/tests/+page.server.ts        0       0       0       0       0       0       0       0       0       4       8
+src/routes/sites/[id]/trends/+page.server.ts       0       0       0       0       0       0       0       0       0       1       4
+src/routes/sites/[id]/types/+page.server.ts        0       0       0       0       0       0       0       0       0       1       5
+src/routes/sites/[id]/vitals/+page.server.ts       0       0       0       0       0       0       0       0       0       1       3
+src/routes/updates/+page.server.ts                 0       0       0       0       0       0       0       0       0       4       5
+------------------------------------------------------------------------------------------------------------------------------------
+TOTAL                                            270      80      78     116      12       5      17       8     291     374     818
+
+src/lib/server direct await-needed: 248   src/routes+hooks direct: 43
+direct sites inside Array.map/filter/forEach/... callbacks (cannot simply be awaited): 2
+functions (incl. arrow fns/route handlers) that must become async: 374, of which currently sync: 246; getters: 0
+calls to those functions: 818, of which have no await today: 769; inside Array callbacks: 27
+INSERT OR REPLACE prepared statements: 34; RunResult.changes reads: 0; .iterate: 0

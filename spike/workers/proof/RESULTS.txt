@@ -1,0 +1,174 @@
+PASS  original: all 3 sites backfilled to the retention horizon  33 sync steps
+INFO  original produced 70613 sa_rows (includes two 26,000-row days, so paging past the 25,000-row API page ran)
+PASS  D1[jsonEach] per-step SyncResult sequence equals original  33 steps
+PASS  D1[jsonEach] :: sa_rows  70613 rows identical
+PASS  D1[jsonEach] :: site_daily  352 rows identical
+PASS  D1[jsonEach] :: site_daily_type  704 rows identical
+PASS  D1[jsonEach] :: site_appearance  45 rows identical
+PASS  D1[jsonEach] :: sites  3 rows identical
+PASS  D1[jsonEach] :: sync_runs  33 rows identical
+INFO  D1[jsonEach] full 3-site backfill: 1565 D1 round trips, 10355 statements, 15617 ms inside the Worker (local emulator, NOT a latency benchmark)
+PASS  D1[perRow] per-step SyncResult sequence equals original  33 steps
+PASS  D1[perRow] :: sa_rows  70613 rows identical
+PASS  D1[perRow] :: site_daily  352 rows identical
+PASS  D1[perRow] :: site_daily_type  704 rows identical
+PASS  D1[perRow] :: site_appearance  45 rows identical
+PASS  D1[perRow] :: sites  3 rows identical
+PASS  D1[perRow] :: sync_runs  33 rows identical
+INFO  D1[perRow] full 3-site backfill: 1565 D1 round trips, 605730 statements, 41323 ms inside the Worker (local emulator, NOT a latency benchmark)
+PASS  port-on-sqlite[jsonEach] per-step results equal original
+PASS  port-on-sqlite[jsonEach] :: sa_rows  70613 rows identical
+PASS  port-on-sqlite[jsonEach] :: site_appearance  45 rows identical
+PASS  port-on-sqlite[jsonEach] :: site_daily  352 rows identical
+PASS  port-on-sqlite[jsonEach] :: site_daily_type  704 rows identical
+PASS  port-on-sqlite[jsonEach] :: sites  3 rows identical
+PASS  port-on-sqlite[jsonEach] :: sync_runs  33 rows identical
+PASS  port-on-sqlite[perRow] per-step results equal original
+PASS  port-on-sqlite[perRow] :: sa_rows  70613 rows identical
+PASS  port-on-sqlite[perRow] :: site_appearance  45 rows identical
+PASS  port-on-sqlite[perRow] :: site_daily  352 rows identical
+PASS  port-on-sqlite[perRow] :: site_daily_type  704 rows identical
+PASS  port-on-sqlite[perRow] :: sites  3 rows identical
+PASS  port-on-sqlite[perRow] :: sync_runs  33 rows identical
+PASS  read site=1 days=7 :: period
+PASS  read site=1 days=7 :: summary
+PASS  read site=1 days=7 :: dailySeries
+PASS  read site=1 days=7 :: dailyUnfilled
+PASS  read site=1 days=7 :: typeBreakdown
+PASS  read site=1 days=7 :: topQueries
+PASS  read site=1 days=7 :: topQueriesFiltered
+PASS  read site=1 days=7 :: topQueriesUnderscore
+PASS  read site=1 days=7 :: queryPageRows
+PASS  read site=1 days=7 :: anonymisedShare
+PASS  read days=7 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=7 :: siteCards (batched rewrite, 2 D1 round trip)
+PASS  read site=1 days=28 :: period
+PASS  read site=1 days=28 :: summary
+PASS  read site=1 days=28 :: dailySeries
+PASS  read site=1 days=28 :: dailyUnfilled
+PASS  read site=1 days=28 :: typeBreakdown
+PASS  read site=1 days=28 :: topQueries
+PASS  read site=1 days=28 :: topQueriesFiltered
+PASS  read site=1 days=28 :: topQueriesUnderscore
+PASS  read site=1 days=28 :: queryPageRows
+PASS  read site=1 days=28 :: anonymisedShare
+PASS  read days=28 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=28 :: siteCards (batched rewrite, 2 D1 round trip)
+INFO  topQueries sample: [{"query":"ß","clicks":585,"impressions":4835,"position":27.259093771065512},{"query":"naïve","clicks":525,"impressions":4652,"position":34.31999216331125}]
+INFO  LIKE search for '50%' returned 50 rows; for 'under_score' 50 rows (both engines agree: wildcards behave identically)
+PASS  read site=1 days=90 :: period
+PASS  read site=1 days=90 :: summary
+PASS  read site=1 days=90 :: dailySeries
+PASS  read site=1 days=90 :: dailyUnfilled
+PASS  read site=1 days=90 :: typeBreakdown
+PASS  read site=1 days=90 :: topQueries
+PASS  read site=1 days=90 :: topQueriesFiltered
+PASS  read site=1 days=90 :: topQueriesUnderscore
+PASS  read site=1 days=90 :: queryPageRows
+PASS  read site=1 days=90 :: anonymisedShare
+PASS  read days=90 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=90 :: siteCards (batched rewrite, 2 D1 round trip)
+PASS  read site=2 days=7 :: period
+PASS  read site=2 days=7 :: summary
+PASS  read site=2 days=7 :: dailySeries
+PASS  read site=2 days=7 :: dailyUnfilled
+PASS  read site=2 days=7 :: typeBreakdown
+PASS  read site=2 days=7 :: topQueries
+PASS  read site=2 days=7 :: topQueriesFiltered
+PASS  read site=2 days=7 :: topQueriesUnderscore
+PASS  read site=2 days=7 :: queryPageRows
+PASS  read site=2 days=7 :: anonymisedShare
+PASS  read days=7 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=7 :: siteCards (batched rewrite, 2 D1 round trip)
+PASS  read site=2 days=28 :: period
+PASS  read site=2 days=28 :: summary
+PASS  read site=2 days=28 :: dailySeries
+PASS  read site=2 days=28 :: dailyUnfilled
+PASS  read site=2 days=28 :: typeBreakdown
+PASS  read site=2 days=28 :: topQueries
+PASS  read site=2 days=28 :: topQueriesFiltered
+PASS  read site=2 days=28 :: topQueriesUnderscore
+PASS  read site=2 days=28 :: queryPageRows
+PASS  read site=2 days=28 :: anonymisedShare
+PASS  read days=28 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=28 :: siteCards (batched rewrite, 2 D1 round trip)
+PASS  read site=2 days=90 :: period
+PASS  read site=2 days=90 :: summary
+PASS  read site=2 days=90 :: dailySeries
+PASS  read site=2 days=90 :: dailyUnfilled
+PASS  read site=2 days=90 :: typeBreakdown
+PASS  read site=2 days=90 :: topQueries
+PASS  read site=2 days=90 :: topQueriesFiltered
+PASS  read site=2 days=90 :: topQueriesUnderscore
+PASS  read site=2 days=90 :: queryPageRows
+PASS  read site=2 days=90 :: anonymisedShare
+PASS  read days=90 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=90 :: siteCards (batched rewrite, 2 D1 round trip)
+PASS  read site=3 days=7 :: period
+PASS  read site=3 days=7 :: summary
+PASS  read site=3 days=7 :: dailySeries
+PASS  read site=3 days=7 :: dailyUnfilled
+PASS  read site=3 days=7 :: typeBreakdown
+PASS  read site=3 days=7 :: topQueries
+PASS  read site=3 days=7 :: topQueriesFiltered
+PASS  read site=3 days=7 :: topQueriesUnderscore
+PASS  read site=3 days=7 :: queryPageRows
+PASS  read site=3 days=7 :: anonymisedShare
+PASS  read days=7 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=7 :: siteCards (batched rewrite, 2 D1 round trip)
+PASS  read site=3 days=28 :: period
+PASS  read site=3 days=28 :: summary
+PASS  read site=3 days=28 :: dailySeries
+PASS  read site=3 days=28 :: dailyUnfilled
+PASS  read site=3 days=28 :: typeBreakdown
+PASS  read site=3 days=28 :: topQueries
+PASS  read site=3 days=28 :: topQueriesFiltered
+PASS  read site=3 days=28 :: topQueriesUnderscore
+PASS  read site=3 days=28 :: queryPageRows
+PASS  read site=3 days=28 :: anonymisedShare
+PASS  read days=28 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=28 :: siteCards (batched rewrite, 2 D1 round trip)
+PASS  read site=3 days=90 :: period
+PASS  read site=3 days=90 :: summary
+PASS  read site=3 days=90 :: dailySeries
+PASS  read site=3 days=90 :: dailyUnfilled
+PASS  read site=3 days=90 :: typeBreakdown
+PASS  read site=3 days=90 :: topQueries
+PASS  read site=3 days=90 :: topQueriesFiltered
+PASS  read site=3 days=90 :: topQueriesUnderscore
+PASS  read site=3 days=90 :: queryPageRows
+PASS  read site=3 days=90 :: anonymisedShare
+PASS  read days=90 :: siteCards (literal port, 10 D1 round trips)
+PASS  read days=90 :: siteCards (batched rewrite, 2 D1 round trip)
+INFO  dashboard siteCards for 3 sites: literal port = 10 sequential D1 round trips (3N+1); batched = 2 (sites list + one batch)
+PASS  scheduled(): step sequence equals original loop  33 cron invocations until nothing was due
+PASS  scheduled(): ends with "nothing due" (cursors persisted in D1 between invocations)
+PASS  scheduled() :: sa_rows  70613 rows identical
+PASS  scheduled() :: site_daily  352 rows identical
+PASS  scheduled() :: site_daily_type  704 rows identical
+PASS  scheduled() :: site_appearance  45 rows identical
+PASS  scheduled() :: sites  3 rows identical
+PASS  scheduled() :: sync_runs  33 rows identical
+INFO  slowest single cron step: 957 ms wall in the local emulator; D1 stats of that step type: {"roundTrips":116,"statements":457}
+PASS  known-answer vector decrypts with the real crypto.ts (validates the vector itself)
+PASS  known-answer vector decrypts in workerd via WebCrypto  {"ok":true,"plain":"1//0g-refresh-token-ünïcode-✓"}
+PASS  known HMAC session signature verifies in both
+PASS  800 cross-engine operations (encrypt/decrypt/sign/verify both ways)  0 mismatches
+PASS  tampered ciphertext rejected by both
+PASS  wrong secret rejected by WebCrypto
+PASS  forged signature rejected by both
+PASS  gzipped sitemap with 4 URLs  239 gz bytes -> 393 chars, 4 URLs (original: 4)
+PASS  gzipped sitemap with 50001 URLs  325269 gz bytes -> 4252955 chars, 50000 URLs (original: 50000)
+PASS  plain (non-gzip) sitemap passes through unchanged
+PASS  decompression bomb above the 40 MB cap rejected by both  43765 bytes gz
+PASS  damaged gzip rejected by both
+INFO  limits probe bound_params_100: accepted 100
+INFO  limits probe bound_params_101: REFUSED Error: D1_ERROR: too many SQL variables at offset 422: SQLITE_ERROR
+INFO  limits probe bound_params_500: REFUSED Error: D1_ERROR: too many SQL variables at offset 422: SQLITE_ERROR
+INFO  limits probe string_bind_1_5MB: accepted 1500000
+INFO  limits probe string_bind_2_5MB: accepted 2500000
+INFO  limits probe statement_120KB: REFUSED Error: D1_ERROR: statement too long: SQLITE_TOOBIG
+INFO  limits probe batch_30000_statements: accepted 30000
+INFO  limits probe sequential_queries_1100_in_one_invocation: accepted 1100
+PASS  emulator enforces the documented 100-bound-parameter limit (100 ok, 101 refused)
+RESULT: ALL CHECKS PASSED
