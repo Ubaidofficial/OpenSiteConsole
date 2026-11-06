@@ -103,6 +103,7 @@ export async function pullGa4Periods(siteId: number, property: string, src: Ga4S
 	const horizon = retentionHorizon(today);
 	const insU = d.prepare('INSERT OR REPLACE INTO ga4_period_users VALUES (?,?,?,?,?)');
 	const insL = d.prepare('INSERT OR REPLACE INTO ga4_landing VALUES (?,?,?,?,?,?,?)');
+	const insLP = d.prepare('INSERT OR REPLACE INTO ga4_landing_prev VALUES (?,?,?,?,?,?,?)');
 	const insA = d.prepare('INSERT OR REPLACE INTO ga4_ai VALUES (?,?,?,?,?,?,?,?)');
 	let aiFailed = false;
 	try {
@@ -110,12 +111,23 @@ export async function pullGa4Periods(siteId: number, property: string, src: Ga4S
 			let start = addDays(today, -(days - 1));
 			if (start < horizon) start = horizon;
 			// The AI-assistant report is an extra: if it fails, users and landing pages are still stored.
-			const [users, landing, ai] = await Promise.all([src.usersByChannel(property, start, today), src.landing(property, start, today), src.aiTraffic(property, start, today).catch(() => (aiFailed = true, null))]);
+			// The window just before this one, so each page can show its change. Only when the whole previous window is inside GA4's
+			// retention; an extra like the AI report, so a failure just means no change figures.
+			const prevStart = addDays(today, -(2 * days - 1));
+			const wantPrev = start === addDays(today, -(days - 1)) && prevStart >= horizon;
+			const [users, landing, ai, landingPrev] = await Promise.all([
+				src.usersByChannel(property, start, today),
+				src.landing(property, start, today),
+				src.aiTraffic(property, start, today).catch(() => (aiFailed = true, null)),
+				wantPrev ? src.landing(property, prevStart, addDays(start, -1)).catch(() => null) : Promise.resolve(null)
+			]);
 			d.transaction(() => {
 				d.prepare('DELETE FROM ga4_period_users WHERE site_id = ? AND days = ?').run(siteId, days);
 				d.prepare('DELETE FROM ga4_landing WHERE site_id = ? AND days = ?').run(siteId, days);
 				for (const u of users) insU.run(siteId, days, u.channel, u.users, today);
 				for (const l of landing) insL.run(siteId, days, l.page, l.sessions, l.engagedSessions, l.keyEvents, today);
+				d.prepare('DELETE FROM ga4_landing_prev WHERE site_id = ? AND days = ?').run(siteId, days);
+				for (const l of landingPrev ?? []) insLP.run(siteId, days, l.page, l.sessions, l.engagedSessions, l.keyEvents, today);
 				if (ai) {
 					d.prepare('DELETE FROM ga4_ai WHERE site_id = ? AND days = ?').run(siteId, days);
 					for (const a of ai) insA.run(siteId, days, a.assistant, a.page, a.sessions, a.engagedSessions, a.keyEvents, today);

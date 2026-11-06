@@ -64,12 +64,18 @@ describe('GA4 period reports in sync', () => {
 		db().prepare('UPDATE sites SET ga4_periods_on = NULL').run();
 		db().prepare('DELETE FROM ga4_period_users').run();
 		db().prepare('DELETE FROM ga4_landing').run();
+		db().prepare('DELETE FROM ga4_landing_prev').run();
 		const real = ga4SourceFor(link.account_id!);
 		let calls = 0;
 		const src: Ga4Source = { ...real, usersByChannel: (...a) => (calls++, real.usersByChannel(...a)), landing: (...a) => (calls++, real.landing(...a)) };
 		expect((await pullGa4Periods(1, link.external_id, src, today)).ok).toBe(true);
-		expect(calls).toBe(PERIODS.length * 2);
+		// users + landing for every period, plus the landing window just before each period that GA4 still keeps (all but the longest)
+		const expectedCalls = PERIODS.length * 2 + (PERIODS.length - 1);
+		expect(calls).toBe(expectedCalls);
 		for (const days of PERIODS) {
+			const prev = n('SELECT COUNT(*) n FROM ga4_landing_prev WHERE site_id = 1 AND days = ?', days);
+			if (days === PERIODS[PERIODS.length - 1]) expect(prev).toBe(0);
+			else expect(prev).toBeGreaterThan(0);
 			expect(n('SELECT COUNT(*) n FROM ga4_period_users WHERE site_id = 1 AND days = ?', days)).toBeGreaterThan(0);
 			expect(n('SELECT COUNT(*) n FROM ga4_landing WHERE site_id = 1 AND days = ?', days)).toBeGreaterThan(0);
 		}
@@ -78,7 +84,7 @@ describe('GA4 period reports in sync', () => {
 		const unique = n("SELECT users n FROM ga4_period_users WHERE site_id = 1 AND days = 28 AND channel = 'Organic Search'");
 		expect(unique).toBeLessThan(summed);
 		await pullGa4Periods(1, link.external_id, src, today);
-		expect(calls).toBe(PERIODS.length * 2); // second call the same day does nothing
+		expect(calls).toBe(expectedCalls); // second call the same day does nothing
 	});
 
 	it('a failing report never fails the GA4 sync, and is retried next time', async () => {
