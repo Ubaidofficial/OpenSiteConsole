@@ -40,7 +40,38 @@
 	<section class="card p-4 text-sm">
 		<h2 class="mb-2 font-medium">Endpoint</h2>
 		<code class="block break-all rounded bg-black/5 p-2 dark:bg-white/10">{data.mcpUrl}</code>
-		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address. Tools: list_sites, get_connections, get_overview, get_search_types, get_web_vitals, get_top_queries, get_top_pages, get_opportunities, get_bing_performance, get_ga4_summary, get_gtm_container, get_tracking_health, get_trends, get_content_groups, get_ai_traffic, get_seo_tests, get_indexing_status, get_onpage_check, get_clarity_snapshot, get_openseo_project.</p>
+		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address.</p>
+		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools:</b> <span class="font-mono">{data.tools.join(', ')}</span>.</p>
+	</section>
+</div>
+
+<h2 class="mt-6 mb-2 font-medium">Connect your AI client</h2>
+<p class="mb-3 max-w-3xl text-xs text-muted-foreground">Replace <code>osc_YOUR_KEY</code> with a key from above. The key is a bearer token. Claude (the apps) and ChatGPT reach the server from the internet, so for them the app needs a public https address; Claude Code and Codex run on your computer and can use <code>http://localhost</code>.</p>
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+	<section class="card p-4 text-sm">
+		<h3 class="mb-1 font-medium">Claude Code</h3>
+		<pre class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">claude mcp add --transport http opensiteconsole {data.mcpUrl} --header "Authorization: Bearer osc_YOUR_KEY"</pre>
+	</section>
+	<section class="card p-4 text-sm">
+		<h3 class="mb-1 font-medium">Claude (claude.ai and the desktop app)</h3>
+		<p class="text-xs text-muted-foreground">Settings → Connectors → add a custom connector. URL: <code>{data.mcpUrl}</code>. Authentication: no sign-in. Under request headers add <code>Authorization</code> with the value <code>Bearer osc_YOUR_KEY</code>. Anthropic's help article describes custom connectors with fixed header credentials; the menu names move around, so follow their current article if a label differs. Custom connectors are not on every plan.</p>
+	</section>
+	<section class="card p-4 text-sm">
+		<h3 class="mb-1 font-medium">Codex</h3>
+		<p class="mb-1 text-xs text-muted-foreground">In <code>~/.codex/config.toml</code> (or a trusted project's <code>.codex/config.toml</code>), with the key in an environment variable:</p>
+		<pre class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">[mcp_servers.opensiteconsole]
+url = "{data.mcpUrl}"
+bearer_token_env_var = "OSC_MCP_KEY"</pre>
+		<pre class="mt-1 overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">export OSC_MCP_KEY=osc_YOUR_KEY</pre>
+	</section>
+	<section class="card p-4 text-sm">
+		<h3 class="mb-1 font-medium">ChatGPT</h3>
+		<p class="text-xs text-muted-foreground"><b>May not work.</b> ChatGPT's custom connectors (Developer Mode) are reported to expect OAuth sign-in, and OpenSiteConsole authenticates with a bearer key instead; whether your plan offers a bearer-token field is unverified. Use Claude, Claude Code or Codex if ChatGPT will not accept the key.</p>
+	</section>
+	<section class="card p-4 text-sm lg:col-span-2">
+		<h3 class="mb-1 font-medium">Cursor and other clients</h3>
+		<p class="mb-1 text-xs text-muted-foreground">Clients that take a server URL plus headers usually accept this shape (check your client's documentation for the exact file and field names):</p>
+		<pre class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">{`{ "mcpServers": { "opensiteconsole": { "url": "${data.mcpUrl}", "headers": { "Authorization": "Bearer osc_YOUR_KEY" } } } }`}</pre>
 	</section>
 </div>
 

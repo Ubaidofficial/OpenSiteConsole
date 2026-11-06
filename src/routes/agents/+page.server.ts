@@ -5,11 +5,13 @@ import { createApiKey, deleteApiKey, listApiKeys } from '$lib/server/apikeys';
 import { allSites } from '$lib/server/queries';
 import { displayName } from '$lib/server/clients';
 import { intParam } from '$lib/server/params';
+import { MCP_TOOL_NAMES } from '$lib/server/mcp';
 
 export const load: PageServerLoad = () => ({
 	keys: listApiKeys().map((k) => ({ id: k.id, name: k.name, prefix: k.prefix, scope: k.site_ids ? (JSON.parse(k.site_ids) as number[]) : null, createdAt: k.created_at, lastUsedAt: k.last_used_at })),
 	sites: allSites().map((s) => ({ id: s.id, name: displayName(s.site_url) })),
-	mcpUrl: `${config.origin}/api/mcp`
+	mcpUrl: `${config.origin}/api/mcp`,
+	tools: MCP_TOOL_NAMES
 });
 
 export const actions: Actions = {

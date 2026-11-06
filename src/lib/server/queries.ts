@@ -106,6 +106,26 @@ export function topPages(siteId: number, start: string, end: string, f: Filters 
 		.all(siteId, start, end, ...w.args, limit) as PRow[];
 }
 
+export type PerfDim = 'query' | 'page' | 'country' | 'device' | 'date';
+export interface PerfFilters { country?: string; device?: string; queryContains?: string; pageContains?: string }
+const PERF_DIMS: readonly string[] = ['query', 'page', 'country', 'device', 'date'];
+const like = (s: string) => `%${s.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+
+/** Web-search performance grouped by one dimension, from the query-level rows (so anonymised queries are not in it). */
+export function performanceBy(siteId: number, start: string, end: string, dim: PerfDim, f: PerfFilters = {}, limit = 50_000): (Metrics & { key: string })[] {
+	if (!PERF_DIMS.includes(dim)) throw new Error(`Unknown dimension ${dim}`);
+	const parts: string[] = [];
+	const args: (string | number)[] = [];
+	if (f.country) (parts.push('country = ?'), args.push(f.country));
+	if (f.device) (parts.push('device = ?'), args.push(f.device));
+	if (f.queryContains) (parts.push("query LIKE ? ESCAPE '\\'"), args.push(like(f.queryContains)));
+	if (f.pageContains) (parts.push("page LIKE ? ESCAPE '\\'"), args.push(like(f.pageContains)));
+	const extra = parts.length ? ' AND ' + parts.join(' AND ') : '';
+	return db()
+		.prepare(`SELECT ${dim} AS key, SUM(clicks) clicks, SUM(impressions) impressions, ${WPOS} position FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ?${extra} GROUP BY ${dim} ORDER BY clicks DESC, impressions DESC LIMIT ?`)
+		.all(siteId, start, end, ...args, limit) as (Metrics & { key: string })[];
+}
+
 export function queryPageRows(siteId: number, start: string, end: string, minImpressions = 3, limit = 150_000): QPRow[] {
 	return db()
 		.prepare(`SELECT query, page, SUM(clicks) clicks, SUM(impressions) impressions, ${WPOS} position FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY query, page HAVING SUM(impressions) >= ? ORDER BY impressions DESC LIMIT ?`)
