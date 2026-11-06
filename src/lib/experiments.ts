@@ -80,7 +80,8 @@ export interface LiftResult {
 	/** why there is no verdict, or a caution */
 	note: string | null;
 	/** how the noise level was measured */
-	calibration: { placebos: number; noiseSd: number | null };
+	/** placebos: earlier windows used; noiseSd: their log-lift spread; detectable: the smallest change (as a fraction, 0.3 = 30%) this test could tell from noise */
+	calibration: { placebos: number; noiseSd: number | null; detectable: number | null };
 }
 
 export const MIN_TREATMENT_PRE = 30;
@@ -97,7 +98,7 @@ type Internal = LiftResult & { _logLift?: number; _se?: number };
 function liftInternal(t: Arm, c: Arm): Internal {
 	const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 	const totals = { tPre: sum(t.pre), tPost: sum(t.post), cPre: sum(c.pre), cPost: sum(c.post) };
-	const empty = (note: string): LiftResult => ({ lift: null, ciLow: null, ciHigh: null, p: null, verdict: 'too-little-data', totals, note, calibration: { placebos: 0, noiseSd: null } });
+	const empty = (note: string): LiftResult => ({ lift: null, ciLow: null, ciHigh: null, p: null, verdict: 'too-little-data', totals, note, calibration: { placebos: 0, noiseSd: null, detectable: null } });
 	if (t.post.length < MIN_POST_DAYS) return empty(`Only ${t.post.length} day(s) of data since the change; wait for at least ${MIN_POST_DAYS}, ideally 14 or more.`);
 	if (totals.tPre < MIN_TREATMENT_PRE) return empty(`The test pages had only ${totals.tPre} before the change; ${MIN_TREATMENT_PRE} are needed for a result worth reading.`);
 	if (totals.cPre < MIN_CONTROL_PRE) return empty(`The control pages had only ${totals.cPre} before the change; ${MIN_CONTROL_PRE} are needed. Add more control pages.`);
@@ -114,7 +115,7 @@ function liftInternal(t: Arm, c: Arm): Internal {
 		verdict,
 		totals,
 		note: t.post.length < 14 ? 'Fewer than 14 days since the change: treat this as early.' : null,
-		calibration: { placebos: 0, noiseSd: null },
+		calibration: { placebos: 0, noiseSd: null, detectable: null },
 		// internals for the calibrated version
 		...({ _logLift: logLift, _se: se } as object)
 	};
@@ -230,7 +231,7 @@ export function liftTestCalibrated(t: Arm, c: Arm, placebos: Placebo[]): LiftRes
 			ciLow: null,
 			ciHigh: null,
 			verdict: 'estimate-only',
-			calibration: { placebos: usable.length, noiseSd: null },
+			calibration: { placebos: usable.length, noiseSd: null, detectable: null },
 			note: `Estimate only. To tell a real change from normal drift, the test needs at least ${MIN_PLACEBOS} earlier windows of the same length with no change (${usable.length} available); the stored history is too short. The figure above is not a verdict.`
 		};
 	}
@@ -246,7 +247,8 @@ export function liftTestCalibrated(t: Arm, c: Arm, placebos: Placebo[]): LiftRes
 		ciHigh: Math.exp(_logLift + tcrit * se) - 1,
 		p,
 		verdict: p < 0.05 ? (_logLift > 0 ? 'positive' : 'negative') : 'inconclusive',
-		calibration: { placebos: usable.length, noiseSd: noise }
+		// Half the width of the 95% range on the log scale: a true change smaller than this cannot be told from drift.
+		calibration: { placebos: usable.length, noiseSd: noise, detectable: Math.exp(tcrit * se) - 1 }
 	};
 }
 
@@ -278,4 +280,52 @@ export function indexSeries(days: { date: string; value: number }[], preDays: nu
 		const m = w.reduce((a, b) => a + b.value, 0) / w.length;
 		return { date: d.date, value: base > 0 ? (m / base) * 100 : 0 };
 	});
+}
+
+// ── Control selection by co-movement ─────────────────────────────────────────
+/**
+ * What makes a test powerful on drifting traffic is a control that DRIFTS WITH the test pages. Pages in the same section of a
+ * site usually do (same template, same topic, same links, same seasonality), and a section the test pages do not belong to
+ * usually does not. So rank candidate sections by how closely their weekly clicks tracked the test pages' weekly clicks before
+ * the change (Pearson correlation of log(1 + weekly clicks)), and use the best-tracking ones as the control.
+ */
+export interface SectionSeries { key: string; weekly: number[]; clicks: number }
+export interface SectionMatch { key: string; correlation: number }
+
+const pearson = (a: number[], b: number[]) => {
+	const n = a.length;
+	if (n < 3) return null;
+	const ma = a.reduce((x, y) => x + y, 0) / n, mb = b.reduce((x, y) => x + y, 0) / n;
+	let sab = 0, saa = 0, sbb = 0;
+	for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
+	return saa > 0 && sbb > 0 ? sab / Math.sqrt(saa * sbb) : null;
+};
+
+/**
+ * Best-tracking sections first, until their combined clicks reach `volume` (the control needs enough clicks of its own that its
+ * noise does not dominate). Further sections are only added while they track nearly as well as the best (`within`, 0.1 by
+ * default): padding the control with weaker matches DILUTES it. Measured on simulated sites whose sections drift together, at
+ * a real +50% change, rest-of-site detected it 23% / 53% of the time (strong / moderate section drift), a control padded to 2x
+ * the test volume 55% / 75%, and this tighter rule (about 1x the volume, within 0.1) 90% / 95%, with false verdicts on
+ * unchanged pages at 0-1.4%. Sections that track the test pages with a correlation below `minCorrelation`, or with fewer than
+ * `minWeeks` weeks, are never used: if none qualify the caller falls back to traffic matching or the rest of the site.
+ */
+export function matchSections(treatmentWeekly: number[], sections: SectionSeries[], o: { volume: number; minCorrelation?: number; minWeeks?: number; within?: number }): SectionMatch[] {
+	const { volume, minCorrelation = 0.4, minWeeks = 8, within = 0.1 } = o;
+	if (treatmentWeekly.length < minWeeks) return [];
+	const t = treatmentWeekly.map((x) => Math.log1p(x));
+	const ranked = sections
+		.filter((s) => s.weekly.length === treatmentWeekly.length)
+		.map((s) => ({ key: s.key, clicks: s.clicks, correlation: pearson(t, s.weekly.map((x) => Math.log1p(x))) }))
+		.filter((s): s is { key: string; clicks: number; correlation: number } => s.correlation !== null && s.correlation >= minCorrelation)
+		.sort((a, b) => b.correlation - a.correlation || b.clicks - a.clicks);
+	const out: SectionMatch[] = [];
+	let total = 0;
+	for (const s of ranked) {
+		if (out.length && s.correlation < ranked[0].correlation - within) break; // a much weaker match would dilute the control
+		out.push({ key: s.key, correlation: s.correlation });
+		total += s.clicks;
+		if (total >= volume) break;
+	}
+	return total >= volume * 0.5 ? out : []; // too little volume even from everything that tracks: do not pretend
 }

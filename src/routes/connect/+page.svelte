@@ -30,7 +30,7 @@
 	{/each}
 </div>
 
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+<div class="stagger grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<!-- 1 Google -->
 	<section class="card p-4">
 		<h2 class="mb-1 font-medium">1 · Google Search Console <span class="chip ml-1">+ GA4 &amp; Tag Manager access</span></h2>

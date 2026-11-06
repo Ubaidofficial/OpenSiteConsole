@@ -102,7 +102,7 @@
 		<a class="btn btn-primary" href="/accounts">Connect an account</a>
 	</div>
 {:else}
-	<div class="mb-5 grid grid-cols-2 gap-4 md:grid-cols-4">
+	<div class="stagger mb-5 grid grid-cols-2 gap-4 md:grid-cols-4">
 		{#each kpis as k}
 			<div class="rounded-2xl border bg-card p-4 shadow-xs">
 				<div class="text-xs font-medium text-muted-foreground">{k.label}</div>
@@ -128,7 +128,7 @@
 		<p class="mb-4 text-xs text-muted-foreground">Comparisons with the previous period appear once each site has finished downloading its history ({data.totals.loading} still loading). Totals for the selected period are already correct for the days downloaded so far.</p>
 	{/if}
 
-	<div class="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-3">
+	<div class="stagger grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-3">
 		{#each cards as c (c.id)}
 			<article class="group relative rounded-2xl border bg-card p-5 shadow-xs transition-all hover:-translate-y-px hover:shadow-md {c.hidden ? 'opacity-55' : ''}">
 				<div class="flex items-start gap-3">

@@ -15,8 +15,8 @@ import { gtmSnapshot, trackingHealth } from './tracking';
 import { tagTypeLabel } from './gtm';
 import { allLinks } from './links';
 import { aiTrafficReport, countryCannibalReport, forecastReport, groupsReport, heatmapReport, localesReport, trajectories, trendsReport, urlClassesReport } from './insights';
-import { evaluateTest, listTests } from './seotests';
-import { indexSummary, recentEvents } from './indexmon';
+import { evaluateTestCached, listTests } from './seotests';
+import { indexHistory, indexSummary, recentEvents, watchList } from './indexmon';
 import { storedChecks } from './onpage';
 import { isQuestionQuery } from '../trends';
 import { EVENT_SEVERITY } from '../indexing';
@@ -357,14 +357,14 @@ const TOOLS: Tool[] = [
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			return listTests(site.id).map((t) => {
-				let o: ReturnType<typeof evaluateTest>;
+				let o: ReturnType<typeof evaluateTestCached>;
 				try {
-					o = evaluateTest(site, t);
+					o = evaluateTestCached(site, t);
 				} catch (e) {
 					return { id: t.id, name: t.name, error: 'This test could not be evaluated: ' + (e instanceof Error ? e.message : 'unknown error') };
 				}
-				const fmt = (r: typeof o.clicks) => ({ verdict: r.verdict, noiseCalibratedOnEarlierWindows: r.calibration.placebos, lift: r.lift == null ? null : r2(r.lift * 100) + '%', interval95: r.ciLow == null ? null : `${r2(r.ciLow! * 100)}% to ${r2(r.ciHigh! * 100)}%`, p: r.p == null ? null : r2(r.p), totals: r.totals, note: r.note });
-				return { id: t.id, name: t.name, kind: t.kind, changeDate: t.start_date, windowDays: t.window_days, daysSinceChange: o.postDays, testPages: o.treatmentPages, controlPages: o.controlPages, clicks: fmt(o.clicks), impressions: fmt(o.impressions), averagePosition: o.position ? { before: r2(o.position.before), after: r2(o.position.after) } : null, redirectParts: o.parts };
+				const fmt = (r: typeof o.clicks) => ({ verdict: r.verdict, noiseCalibratedOnEarlierWindows: r.calibration.placebos, smallestDetectableChange: r.calibration.detectable == null ? null : '±' + r2(r.calibration.detectable * 100) + '%', lift: r.lift == null ? null : r2(r.lift * 100) + '%', interval95: r.ciLow == null ? null : `${r2(r.ciLow! * 100)}% to ${r2(r.ciHigh! * 100)}%`, p: r.p == null ? null : r2(r.p), totals: r.totals, note: r.note });
+				return { id: t.id, name: t.name, kind: t.kind, control: t.meta.controlNote ?? ('restOfSite' in t.control ? 'the rest of the site' : 'named pages'), changeDate: t.start_date, windowDays: t.window_days, daysSinceChange: o.postDays, testPages: o.treatmentPages, controlPages: o.controlPages, clicks: fmt(o.clicks), impressions: fmt(o.impressions), averagePosition: o.position ? { before: r2(o.position.before), after: r2(o.position.after) } : null, redirectParts: o.parts };
 			});
 		}
 	},
@@ -381,7 +381,7 @@ const TOOLS: Tool[] = [
 				return { period: u.period, ...(u.comparable ? {} : { dead_and_fading_unavailable: u.reason }), counts: u.counts, clicksLostByClass: u.lostClicks, urls: u.rows.slice(0, limit(a, 50)).map((r) => ({ page: r.page, class: r.cls, clicks: r.clicks, previousClicks: r.prevClicks, impressions: r.impressions, position: r2(r.position), indexed: r.index, fetchState: r.fetchState })), caution: 'Only pages Search Console has shown at least once are visible here. Compare with your sitemap to find pages with no impressions at all.' };
 			}
 			const s = indexSummary(site.id);
-			return { monitoring: !!site.index_monitor, checkedUrls: s.checked, ...s.counts, lastCheck: s.lastCheck ? new Date(s.lastCheck).toISOString() : null, notIndexed: s.notIndexed.slice(0, limit(a, 25)) };
+			return { monitoring: !!site.index_monitor, ...(site.index_message ? { status: site.index_message } : {}), checkedUrls: s.checked, ...s.counts, indexedShareOfInspected: s.indexedShare == null ? null : r2(s.indexedShare * 100) + '%', lastCheck: s.lastCheck ? new Date(s.lastCheck).toISOString() : null, whyNotIndexed: s.reasons, indexedShareHistory: indexHistory(site.id, 30).map((h) => ({ day: h.day, indexed: h.indexed, notIndexed: h.notIndexed })), watchList: watchList(site.id), notIndexed: s.notIndexed.slice(0, limit(a, 25)), note: 'The inspected set is a rotating sample, not the whole site.' };
 		}
 	},
 	{

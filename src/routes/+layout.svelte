@@ -76,4 +76,4 @@
 		{data.revoked} Google account(s) lost access. <a class="font-medium underline" href="/accounts">Reconnect</a> to resume syncing.
 	</div>
 {/if}
-<main class="mx-auto max-w-[1400px] px-4 py-6">{@render children()}</main>
+<main class="mx-auto max-w-[1400px] px-4 py-6">{#key page.url.pathname.split('/').slice(1, 3).join('/')}<div class="page-in">{@render children()}</div>{/key}</main>

@@ -111,8 +111,8 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each view as row}
-				<tr class="transition-colors hover:bg-muted/50" class:cursor-pointer={!!onRowClick} onclick={() => onRowClick?.(row)}>
+			{#each view as row, ri}
+				<tr class="fade-in transition-colors hover:bg-muted/50" style="--i:{Math.min(ri, 12)}" class:cursor-pointer={!!onRowClick} onclick={() => onRowClick?.(row)}>
 					{#each cols as c}
 						<td class="td" class:pii={isPii(c, row)} class:text-right={numeric(c)} class:tnum={numeric(c)} style="{c.bar ? barStyle(c, row) : ''}{c.width ? `;max-width:${c.width}` : ''}">
 							{#if c.type === 'link'}

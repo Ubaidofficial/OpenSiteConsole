@@ -45,7 +45,7 @@
 						{@const max = Math.max(...r.months)}
 						<tr>
 							<td class="td pii max-w-[22rem] truncate" title={r.key}>{r.key.replace(/^https?:\/\/(www\.)?/, '')}</td>
-							{#each r.months as v, i}<td class="td tnum text-center text-[11px]" style="background:color-mix(in oklch, var(--c-clicks) {Math.round(cell(v, max) * 65)}%, transparent)" title="{fmtInt(v)} clicks">{v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v}</td>{/each}
+							{#each r.months as v, i}<td class="fade-in td tnum text-center text-[11px]" style:--i={i} style="background:color-mix(in oklch, var(--c-clicks) {Math.round(cell(v, max) * 65)}%, transparent)" title="{fmtInt(v)} clicks">{v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v}</td>{/each}
 							<td class="td tnum text-right text-xs {r.fromPeakPct != null && r.fromPeakPct <= -0.5 ? 'text-bad' : ''}">{r.fromPeakPct == null ? '–' : fmtSigned(r.fromPeakPct)}</td>
 							<td class="td tnum text-right text-xs {r.trendPct != null && r.trendPct <= -0.25 ? 'text-bad' : r.trendPct != null && r.trendPct >= 0.25 ? 'text-good' : ''}">{r.trendPct == null ? '–' : fmtSigned(r.trendPct)}</td>
 						</tr>

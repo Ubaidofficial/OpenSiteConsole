@@ -2,7 +2,8 @@ import { db } from './db';
 import type { SiteRow } from './clients';
 import { addDays, daysBetween, eachDay } from './dates';
 import { siteEnd } from './queries';
-import { emptyScope, indexSeries, isEmptyScope, liftTestCalibrated, pickControl, placebosFrom, scopeMatcher, type LiftResult, type Scope } from '../experiments';
+import { urlSection, spansHosts } from '../groups';
+import { emptyScope, indexSeries, isEmptyScope, liftTestCalibrated, matchSections, pickControl, placebosFrom, scopeMatcher, type LiftResult, type Scope } from '../experiments';
 
 /** YYYY-MM-DD that is an actual calendar day (rejects 2026-02-31 and 9999-99-99, which a hand-made request could send). */
 export const isRealDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d + 'T00:00:00Z')) && new Date(d + 'T00:00:00Z').toISOString().slice(0, 10) === d;
@@ -17,7 +18,7 @@ export interface SeoTest {
 	window_days: number;
 	treatment: Scope;
 	control: Scope | { restOfSite: true };
-	meta: { old?: Scope; new?: Scope };
+	meta: { old?: Scope; new?: Scope; controlNote?: string; controlMethod?: 'sections' | 'traffic' | 'rest' | 'named' };
 	note: string | null;
 	created_at: number;
 }
@@ -37,6 +38,9 @@ export interface NewTest {
 	treatment: Scope;
 	/** split only: the control pages. Omitted = the rest of the site (before/after and switch always use that). */
 	control?: Scope;
+	/** how the control was chosen, shown on the test */
+	controlNote?: string;
+	controlMethod?: 'sections' | 'traffic' | 'rest' | 'named';
 	/** switch only */
 	old?: Scope;
 	new?: Scope;
@@ -49,7 +53,7 @@ export function createTest(siteId: number, t: NewTest): number {
 	if (!isRealDate(t.startDate)) throw new Error('Enter the date the change went live as a real date (YYYY-MM-DD).');
 	const windowDays = Math.min(90, Math.max(7, Math.round(t.windowDays ?? 28)));
 	let treatment = t.treatment;
-	const meta: SeoTest['meta'] = {};
+	const meta: SeoTest['meta'] = { controlNote: t.controlNote, controlMethod: t.controlMethod };
 	if (t.kind === 'switch') {
 		if (!t.old || isEmptyScope(t.old) || !t.new || isEmptyScope(t.new)) throw new Error('A redirect test needs the old URLs and the new URLs.');
 		// Old and new are measured together: traffic that moves from one to the other must not count as a loss.
@@ -58,7 +62,7 @@ export function createTest(siteId: number, t: NewTest): number {
 		meta.new = t.new;
 	}
 	if (isEmptyScope(treatment)) throw new Error('Say which pages the change affects: a path such as /blog/ or a list of URLs.');
-	const control = t.kind === 'split' && t.control && !isEmptyScope(t.control) ? t.control : { restOfSite: true };
+	const control = t.control && !isEmptyScope(t.control) ? t.control : { restOfSite: true };
 	return Number(
 		db()
 			.prepare('INSERT INTO seo_tests (site_id, name, kind, start_date, window_days, treatment, control, meta, note, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
@@ -90,6 +94,8 @@ const PLACEBO_MAX = 4;
 
 /** Evaluate one test against the stored data. The change day itself counts as "after". */
 export function evaluateTest(site: Pick<SiteRow, 'id' | 'synced_through' | 'backfill_done' | 'backfilled_to'>, test: SeoTest): TestOutcome {
+	// Date.UTC overflows silently (9999-99-99 becomes a date in the year 10007), so do not rely on an exception to catch a corrupt row.
+	if (!isRealDate(test.start_date)) throw new Error(`This test has an invalid change date (${test.start_date}); delete it and create it again.`);
 	const end = siteEnd(site);
 	const n = test.window_days;
 	const preStart = addDays(test.start_date, -n);
@@ -167,6 +173,43 @@ export function evaluateTest(site: Pick<SiteRow, 'id' | 'synced_through' | 'back
 	};
 }
 
+/** Bump when the maths in evaluateTest / experiments.ts changes, so stored results are recomputed. */
+const ALGORITHM = 'v4-detectable';
+
+type CacheSite = Pick<SiteRow, 'id' | 'synced_through' | 'backfill_done' | 'backfilled_to' | 'last_sync_at'>;
+
+/**
+ * evaluateTest scans up to five windows of daily page data, 0.7-0.9 s on a large site, and every Tests-page view and every
+ * MCP call needs every test. A test's outcome only changes when the site's data does, so it is stored and reused until a
+ * sync (last_sync_at / synced_through move), the stored history changes, the test is edited, or ALGORITHM is bumped.
+ * Failures are never stored. Tests are also computed ahead of time after each sync (warmTests).
+ */
+export function evaluateTestCached(site: CacheSite, test: SeoTest): TestOutcome {
+	const key = JSON.stringify([ALGORITHM, site.synced_through, site.last_sync_at, site.backfill_done, site.backfilled_to, test.start_date, test.window_days, test.treatment, test.control, test.meta]);
+	const d = db();
+	const hit = d.prepare('SELECT cache_key, outcome FROM seo_test_results WHERE test_id = ?').get(test.id) as { cache_key: string; outcome: string } | undefined;
+	if (hit && hit.cache_key === key) return JSON.parse(hit.outcome) as TestOutcome;
+	const outcome = evaluateTest(site, test);
+	d.prepare('INSERT OR REPLACE INTO seo_test_results (test_id, cache_key, outcome, computed_at) VALUES (?,?,?,?)').run(test.id, key, JSON.stringify(outcome), Date.now());
+	return outcome;
+}
+
+/** Compute (and store) every test of a site; one that cannot be evaluated is skipped, never thrown. */
+export function warmTests(siteId: number): number {
+	const site = db().prepare('SELECT id, synced_through, backfill_done, backfilled_to, last_sync_at FROM sites WHERE id = ?').get(siteId) as CacheSite | undefined;
+	if (!site) return 0;
+	let n = 0;
+	for (const t of listTests(siteId)) {
+		try {
+			evaluateTestCached(site, t);
+			n++;
+		} catch {
+			/* surfaced on the Tests page */
+		}
+	}
+	return n;
+}
+
 /** Suggest control pages for a split test: pages outside the treatment with a similar amount of traffic before the change. */
 export function suggestControl(site: Pick<SiteRow, 'id' | 'synced_through'>, treatment: Scope, startDate: string, windowDays = 28): string[] {
 	if (isEmptyScope(treatment)) return [];
@@ -174,6 +217,59 @@ export function suggestControl(site: Pick<SiteRow, 'id' | 'synced_through'>, tre
 		.prepare('SELECT page, SUM(clicks) clicks FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY page')
 		.all(site.id, addDays(startDate, -windowDays), addDays(startDate, -1)) as { page: string; clicks: number }[];
 	return pickControl(rows, scopeMatcher(treatment));
+}
+
+export interface ControlSuggestion {
+	urls: string[];
+	method: 'sections' | 'traffic' | 'none';
+	/** plain-language description for the test card */
+	note: string;
+	sections: { key: string; correlation: number }[];
+}
+
+const WEEKS_BACK = 26;
+
+/**
+ * The control for a test, chosen the way that gives the test the most power: pages in the sections of the site whose weekly
+ * clicks moved with the test pages before the change (see matchSections), excluding the test pages themselves. Falls back to
+ * traffic-level matching (similar clicks per page), then to nothing, in which case the caller uses the rest of the site.
+ * Only data BEFORE the change is read, so the choice cannot be influenced by how the test turned out.
+ */
+export function suggestControlMatched(site: Pick<SiteRow, 'id' | 'synced_through'>, treatment: Scope, startDate: string, windowDays = 28): ControlSuggestion {
+	const none = (note: string): ControlSuggestion => ({ urls: [], method: 'none', note, sections: [] });
+	if (isEmptyScope(treatment)) return none('No test pages given.');
+	const d = db();
+	const first = (d.prepare('SELECT MIN(date) d FROM sa_rows WHERE site_id = ?').get(site.id) as { d: string | null }).d;
+	if (!first) return none('No stored data yet.');
+	const weeks = Math.min(WEEKS_BACK, Math.floor(daysBetween(first, startDate) / 7));
+	const rows = d
+		.prepare('SELECT CAST((julianday(?) - julianday(date) - 1) / 7 AS INTEGER) wk, page, SUM(clicks) clicks FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY wk, page')
+		.all(startDate, site.id, addDays(startDate, -7 * Math.max(weeks, 1)), addDays(startDate, -1)) as { wk: number; page: string; clicks: number }[];
+	const inT = scopeMatcher(treatment);
+	const withHost = spansHosts(rows.map((r) => r.page));
+	const treat = new Array(Math.max(weeks, 0)).fill(0);
+	const sec = new Map<string, { weekly: number[]; clicks: number; pages: Map<string, number> }>();
+	for (const r of rows) {
+		const i = weeks - 1 - r.wk; // oldest week first
+		if (i < 0 || i >= weeks) continue;
+		if (inT(r.page)) { treat[i] += r.clicks; continue; }
+		const key = urlSection(r.page, 1, withHost);
+		const s = sec.get(key) ?? { weekly: new Array(weeks).fill(0), clicks: 0, pages: new Map() };
+		s.weekly[i] += r.clicks; s.clicks += r.clicks; s.pages.set(r.page, (s.pages.get(r.page) ?? 0) + r.clicks);
+		sec.set(key, s);
+	}
+	const treatClicks = treat.reduce((a, b) => a + b, 0);
+	if (weeks >= 8 && treatClicks > 0) {
+		const match = matchSections(treat, [...sec].map(([key, s]) => ({ key, weekly: s.weekly, clicks: s.clicks })), { volume: treatClicks });
+		if (match.length) {
+			const pages = match.flatMap((m) => [...sec.get(m.key)!.pages]).sort((a, b) => b[1] - a[1]).slice(0, 2000).map(([p]) => p);
+			const list = match.map((m) => `${m.key} (r = ${m.correlation.toFixed(2)})`).join(', ');
+			const weak = match[0].correlation < 0.6 ? ' This is a weak match, so the control tracks the test pages only loosely: expect a wider range and read the result with extra caution.' : '';
+			return { urls: pages, method: 'sections', sections: match, note: `Control = pages in ${list}: sections whose weekly clicks moved with the test pages over the ${weeks} weeks before the change.${weak}` };
+		}
+	}
+	const urls = suggestControl(site, treatment, startDate, windowDays);
+	return urls.length ? { urls, method: 'traffic', sections: [], note: `Control = ${urls.length} pages with a similar amount of traffic before the change. No section of the site tracked the test pages closely enough (or there are fewer than 8 weeks of history) to match on.` } : none('No suitable control pages were found.');
 }
 
 export { emptyScope };

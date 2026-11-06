@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import DataTable from '$lib/components/DataTable.svelte';
 	import { ago } from '$lib/format';
+	import LineChart from '$lib/components/LineChart.svelte';
 	let { data, form } = $props();
 	let cls = $state('all');
 	const labels: Record<string, string> = { dead: 'Dead', 'not-indexed': 'Not indexed', fading: 'Fading', underperforming: 'Underperforming', weak: 'Weak' };
@@ -32,11 +33,32 @@
 		Re-inspects this site's biggest pages (plus pages that lost their visibility) with Google's URL Inspection and records what changed: de-indexed, newly indexed, canonical swapped, blocked by robots.txt, page fetch errors.
 		Each run checks up to {data.perRun} URLs, the least recently checked first, so coverage rotates through the site. URL Inspection has a daily quota (set <code>INDEX_MONITOR_URLS</code> to change the number; I am not certain of Google's current limit), which is why daily monitoring is opt-in per site.
 	</p>
+	{#if data.message}<p class="mt-2 rounded-md border border-[color:var(--warn)] p-2 text-xs text-warn">{data.message}{#if data.nextAt && data.nextAt > Date.now()} Next attempt {new Date(data.nextAt).toLocaleTimeString()}.{/if}</p>{/if}
 	{#if form?.ok}<p class="mt-2 text-sm text-good">{form.ok}</p>{/if}{#if form?.error}<p class="mt-2 text-sm text-bad">{form.error}</p>{/if}
 	<div class="mt-3 flex flex-wrap gap-3 text-sm">
-		<span><b>{data.summary.counts.indexed}</b> indexed</span><span class={data.summary.counts.not_indexed ? 'text-bad' : ''}><b>{data.summary.counts.not_indexed}</b> not indexed</span><span class="text-muted-foreground"><b>{data.summary.counts.unknown}</b> unknown</span><span class="text-muted-foreground">of {data.summary.checked} inspected</span>
+		<span><b>{data.summary.counts.indexed}</b> indexed</span><span class={data.summary.counts.not_indexed ? 'text-bad' : ''}><b>{data.summary.counts.not_indexed}</b> not indexed</span><span class="text-muted-foreground"><b>{data.summary.counts.unknown}</b> unknown</span><span class="text-muted-foreground">of {data.summary.checked} inspected</span>{#if data.summary.indexedShare != null}<span class="ml-auto"><b>{(data.summary.indexedShare * 100).toFixed(0)}%</b> of inspected URLs are indexed</span>{/if}
 	</div>
+	<p class="mt-2 text-[11px] text-muted-foreground">Order of checking: your watch list, then pages that appeared for the first time this period (indexing still open), then pages that lost visibility, then the biggest pages. The inspected set is a rotating sample, not the whole site.</p>
 </section>
+
+<div class="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+	<section class="card p-4">
+		<h2 class="mb-1 font-medium">Why pages are not indexed</h2>
+		{#if data.summary.reasons.length}
+			<table class="w-full text-sm"><tbody>{#each data.summary.reasons as r}<tr><td class="td">{r.reason}</td><td class="td tnum w-12 text-right">{r.count}</td></tr>{/each}</tbody></table>
+			<p class="mt-2 text-[11px] text-muted-foreground">Google's own wording. “Crawled, currently not indexed” usually means quality or duplication; “Discovered, currently not indexed” usually means crawl budget or weak internal links; a “duplicate / canonical” reason means another URL was chosen instead.</p>
+		{:else}<p class="text-sm text-muted-foreground">No non-indexed URLs among those inspected.</p>{/if}
+		{#if data.history.length > 1}
+			<div class="mt-3"><LineChart xs={data.history.map((h) => h.day)} height={110} zero={false} format={(v) => v.toFixed(0) + '%'} series={[{ label: 'Indexed share of inspected URLs', color: 'var(--c-clicks)', values: data.history.map((h) => (h.indexed + h.notIndexed ? (h.indexed / (h.indexed + h.notIndexed)) * 100 : null)) }]} /></div>
+		{/if}
+	</section>
+	<section class="card p-4">
+		<h2 class="mb-1 font-medium">Watch list</h2>
+		<p class="mb-2 text-xs text-muted-foreground">Money pages, key templates, a page you just changed: they are always checked first, even if they get few clicks.</p>
+		<form method="POST" action="?/watchAdd" use:enhance class="mb-2 flex gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" placeholder="Full URLs, one per line"></textarea><button class="btn">Add</button></form>
+		<ul class="space-y-1 text-xs">{#each data.watch as u}<li class="flex items-center gap-2"><span class="pii min-w-0 flex-1 truncate">{u.replace(/^https?:\/\/(www\.)?/, '')}</span><form method="POST" action="?/watchRemove" use:enhance><input type="hidden" name="url" value={u} /><button class="text-muted-foreground hover:text-[color:var(--bad)]" aria-label="Remove">✕</button></form></li>{:else}<li class="text-muted-foreground">Nothing pinned yet.</li>{/each}</ul>
+	</section>
+</div>
 
 <section class="mb-5">
 	<h2 class="mb-1 font-medium">What changed</h2>

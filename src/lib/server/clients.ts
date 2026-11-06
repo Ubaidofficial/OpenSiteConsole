@@ -42,6 +42,8 @@ export interface SiteRow {
 	index_monitor: number;
 	index_checked_on: string | null;
 	ga4_ai_on: string | null;
+	index_message: string | null;
+	index_next_at: number | null;
 	created_at: number;
 }
 

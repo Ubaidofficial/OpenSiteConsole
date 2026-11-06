@@ -7,6 +7,6 @@
 	});
 </script>
 
-<svg {width} {height} aria-hidden="true">
+<svg {width} {height} aria-hidden="true" class="reveal-x">
 	{#if d}<path {d} fill="none" stroke={color} stroke-width="1.5" stroke-linejoin="round" />{/if}
 </svg>

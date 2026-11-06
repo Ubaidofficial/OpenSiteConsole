@@ -7,6 +7,7 @@ import { syncBing, syncClarity, syncGa4, syncGtm } from './channels';
 import type { LinkKind } from './links';
 import { cruxIntegration, syncCrux } from './crux';
 import { monitorSite } from './indexmon';
+import { warmTests } from './seotests';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -44,6 +45,8 @@ export function enqueueSiteSync(siteId: number, mode: 'incremental' | 'auto' = '
 		// Keep walking back through history without waiting for the next scheduler tick.
 		// Deferred: while this job runs its own key is still active, so re-queueing now would be dropped as a duplicate.
 		if (mode === 'auto' && !r.backfillDone) setTimeout(() => enqueueSiteSync(siteId, 'auto'), 0);
+		// Tests are only worth computing once the history they compare against is complete.
+		else warmTests(siteId);
 		return r;
 	});
 	if (queued) db().prepare("UPDATE sites SET sync_status = 'queued' WHERE id = ? AND sync_status != 'running'").run(siteId);
@@ -70,6 +73,9 @@ export function enqueueIndexMonitor(siteId: number): boolean {
 const SIX_HOURS = 6 * 3600_000;
 const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, gtm: 12 * 3600_000, clarity: 22 * 3600_000 };
 
+/** Whether the indexing monitor should run for a site now: switched on, not yet done today, and not in a back-off after a failure. */
+export const monitorDue = (row: { m: number; c: string | null; n: number | null }, today: string, now = Date.now()) => !!row.m && row.c !== today && (!row.n || row.n <= now);
+
 export function schedulerTick() {
 	const d = db();
 	const sites = d
@@ -88,8 +94,9 @@ export function schedulerTick() {
 	}
 	const today = pacificToday();
 	for (const s of sites) {
-		const row = d.prepare('SELECT index_monitor m, index_checked_on c FROM sites WHERE id = ?').get(s.id) as { m: number; c: string | null };
-		if (row.m && row.c !== today) enqueueIndexMonitor(s.id);
+		const row = d.prepare('SELECT index_monitor m, index_checked_on c, index_next_at n FROM sites WHERE id = ?').get(s.id) as { m: number; c: string | null; n: number | null };
+		// `n` is a back-off set after a refusal or a total failure, so a broken connection is not hammered every tick.
+		if (monitorDue(row, today)) enqueueIndexMonitor(s.id);
 	}
 	const links = d
 		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','gtm','clarity')")

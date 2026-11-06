@@ -185,3 +185,53 @@ html[data-privacy='on'] .pii {
 	background: oklch(0.32 0.07 var(--h));
 	color: oklch(0.86 0.1 var(--h));
 }
+
+/*
+ * Motion. Subtle on purpose: it should help the eye land (a page settling in, a chart drawing, a bar growing), never make
+ * anyone wait. Everything is short (under ~0.9 s, most under 0.4 s), uses fill-mode `backwards` so an element can never be
+ * left stuck invisible or displaced, and exists only for people who have not asked their system to reduce motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+	@keyframes osc-rise {
+		from { opacity: 0; transform: translateY(8px); }
+		to { opacity: 1; transform: none; }
+	}
+	@keyframes osc-fade {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+	@keyframes osc-reveal {
+		from { clip-path: inset(-6px 100% -6px -6px); }
+		to { clip-path: inset(-6px -6px -6px -6px); }
+	}
+	@keyframes osc-grow {
+		from { transform: scaleY(0); opacity: 0.4; }
+		to { transform: scaleY(1); opacity: 1; }
+	}
+
+	/* the content of a page settling in when you navigate */
+	.page-in { animation: osc-rise 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
+	/* one block rising, optionally staggered with --i */
+	.rise { animation: osc-rise 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+	/* the children of a grid or list rise one after another (capped, so a long list never takes long) */
+	.stagger > * { animation: osc-rise 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+	.stagger > :nth-child(1) { --i: 0; } .stagger > :nth-child(2) { --i: 1; } .stagger > :nth-child(3) { --i: 2; }
+	.stagger > :nth-child(4) { --i: 3; } .stagger > :nth-child(5) { --i: 4; } .stagger > :nth-child(6) { --i: 5; }
+	.stagger > :nth-child(7) { --i: 6; } .stagger > :nth-child(8) { --i: 7; } .stagger > :nth-child(n + 9) { --i: 8; }
+	.fade-in { animation: osc-fade 0.3s ease-out backwards; animation-delay: calc(var(--i, 0) * 14ms); }
+	/* a chart drawing left to right */
+	.reveal-x { animation: osc-reveal 0.8s cubic-bezier(0.3, 0.7, 0.2, 1) backwards; }
+	/* small bars growing from their baseline */
+	.grow-bar { transform-box: fill-box; transform-origin: 50% 100%; animation: osc-grow 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 22ms); }
+
+	/* expandable rows open with a fade rather than a jump */
+	details[open] > :not(summary) { animation: osc-fade 0.22s ease-out; }
+
+	/* controls answer the pointer */
+	.btn { transition-property: color, background-color, border-color, box-shadow, transform; transition-duration: 0.15s; }
+	.btn:active:not(:disabled) { transform: scale(0.97); }
+	.chip { transition-duration: 0.15s; }
+	button.chip:active { transform: scale(0.96); }
+	.card { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+	.input { transition-duration: 0.15s; }
+}

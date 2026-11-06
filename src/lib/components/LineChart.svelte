@@ -76,7 +76,7 @@
 	{#if xs.length < 2}
 		<div class="flex items-center justify-center text-muted-foreground" style="height:{height}px">Not enough data yet</div>
 	{:else}
-		<svg {width} {height} role="img" aria-label="Comparison chart" onpointermove={move} onpointerleave={() => (hover = null)} class="touch-none select-none">
+		<svg {width} {height} role="img" aria-label="Comparison chart" onpointermove={move} onpointerleave={() => (hover = null)} class="reveal-x touch-none select-none">
 			{#each yTicks as t}
 				<line x1={pad.l} x2={width - pad.r} y1={t.y} y2={t.y} stroke="var(--border)" stroke-width="1" />
 				<text x={pad.l - 6} y={t.y + 3.5} text-anchor="end" font-size="10" fill="var(--muted-foreground)">{format(t.v)}</text>

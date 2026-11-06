@@ -64,7 +64,7 @@
 						<td class="td" class:pii={brand(t.query)}>{t.query}</td><td class="td tnum text-right">{fmtInt(t.clicks)}</td>
 						<td class="td text-xs {dirTone[t.direction]}">{dir[t.direction]}</td>
 						<td class="td tnum text-right text-xs">{t.weeklyChangePct == null ? '–' : fmtSigned(t.weeklyChangePct / 100)}</td>
-						<td class="td"><svg width="96" height="22" role="img" aria-label="weekly clicks">{#each t.weekly as v, i}<rect x={i * 8} y={22 - (v / max) * 20} width="6" height={Math.max(1, (v / max) * 20)} fill="var(--c-clicks)" opacity="0.7" />{/each}</svg></td>
+						<td class="td"><svg width="96" height="22" role="img" aria-label="weekly clicks">{#each t.weekly as v, i}<rect class="grow-bar" style="--i:{i}" x={i * 8} y={22 - (v / max) * 20} width="6" height={Math.max(1, (v / max) * 20)} fill="var(--c-clicks)" opacity="0.7" />{/each}</svg></td>
 					</tr>
 				{:else}<tr><td class="td text-muted-foreground" colspan="5">No query data yet.</td></tr>{/each}
 			</tbody></table>

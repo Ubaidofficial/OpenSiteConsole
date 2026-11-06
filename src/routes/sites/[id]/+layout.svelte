@@ -76,7 +76,7 @@
 
 <!-- The totals live on Overview only: every other tab is a table that already has these columns. -->
 {#if isActive('')}
-<div class="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+<div class="stagger mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
 	{#each kpis as k}
 		<div class="card px-3 py-2">
 			<div class="text-xs text-muted-foreground">{k.l}</div>
@@ -89,8 +89,8 @@
 
 <nav class="mb-4 flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
 	{#each tabs as [t, label]}
-		<a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] {isActive(t) ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/tags' && data.linked.gtm) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a>
+		<a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] transition-colors duration-150 {isActive(t) ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/tags' && data.linked.gtm) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a>
 	{/each}
 </nav>
 
-{@render children()}
+{#key page.url.pathname + '|' + (page.url.searchParams.get('view') ?? '')}<div class="page-in">{@render children()}</div>{/key}

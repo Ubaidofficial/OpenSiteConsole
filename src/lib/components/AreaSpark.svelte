@@ -27,7 +27,7 @@
 <svg
 	viewBox="0 0 {W} {geom.H}"
 	preserveAspectRatio="none"
-	class="block w-full overflow-visible {className}"
+	class="reveal-x block w-full overflow-visible {className}"
 	style="height:{height}px;color:{color}"
 	role="img"
 	aria-label={trend === 'up' ? 'Daily clicks, growing' : trend === 'down' ? 'Daily clicks, falling' : 'Daily clicks'}
