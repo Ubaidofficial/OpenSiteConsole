@@ -224,6 +224,17 @@ CREATE TABLE IF NOT EXISTS ga4_ai (
 	pulled_on TEXT NOT NULL,
 	PRIMARY KEY (site_id, days, assistant, page)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_ai_prev (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,              -- the window length; this is the equally long window just BEFORE the one in ga4_ai
+	assistant TEXT NOT NULL,
+	page TEXT NOT NULL,
+	sessions INTEGER NOT NULL,
+	engaged_sessions INTEGER NOT NULL,
+	key_events REAL NOT NULL,
+	pulled_on TEXT NOT NULL,
+	PRIMARY KEY (site_id, days, assistant, page)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS seo_tests (
 	id INTEGER PRIMARY KEY,
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,

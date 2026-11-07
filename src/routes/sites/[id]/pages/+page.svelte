@@ -15,6 +15,7 @@
 	const G = { group: 'Google', groupColor: '#d97706' };
 	const B = { group: 'Bing', groupColor: '#0284c7' };
 	const A = { group: 'GA4 · Google organic', groupColor: '#ea580c' };
+	const AI = { group: 'AI assistants · GA4', groupColor: '#6366f1' };
 	const C = { group: 'Clarity · last 24 h', groupColor: '#7c3aed' };
 	const cols = $derived([
 		{ key: 'path', label: 'Page', type: 'link' as const, href: (r: { url: string }) => r.url, display: (r: { path: string }) => r.path },
@@ -36,6 +37,13 @@
 					{ key: 'aKeyEvents', label: 'Key events', type: 'int' as const, deltaKey: 'aKeyEventsD', title: 'GA4 key events (conversions) from those sessions', ...A }
 				]
 			: []),
+		...(data.sources.ai.hasData
+			? [
+					{ key: 'aiSessions', label: 'Sessions', type: 'int' as const, deltaKey: 'aiSessionsD', title: 'GA4 sessions that came from an AI assistant (ChatGPT, Perplexity, Gemini, Claude, Copilot) and landed on this page, with the change against the previous period', ...AI },
+					{ key: 'aiEngaged', label: 'Engaged', type: 'pct' as const, title: 'Share of those AI-assistant sessions that GA4 counted as engaged', ...AI },
+					{ key: 'aiTop', label: 'Top assistant', type: 'text' as const, title: 'The assistant that sent the most sessions to this page', ...AI }
+				]
+			: []),
 		...(data.sources.clarity.hasData
 			? [
 					{ key: 'cSessions', label: 'Sessions', type: 'int' as const, title: 'Clarity sessions on this page in its latest 24-hour snapshot', ...C },
@@ -49,13 +57,14 @@
 			!data.sources.google.comparable ? 'Google: the previous period is still downloading, so no changes are shown.' : '',
 			data.sources.bing.linked && !data.sources.bing.hasData ? 'Bing is linked: its pages appear after the next Bing sync.' : data.sources.bing.hasData && !data.sources.bing.comparable ? 'Bing: stored history does not reach the previous period, so no Bing changes are shown.' : '',
 			data.sources.ga4.linked && !data.sources.ga4.hasData ? 'GA4 is linked: sessions per page appear after the next GA4 sync.' : data.sources.ga4.hasData && !data.sources.ga4.comparable ? 'GA4: the previous period is pulled with the next daily sync, so changes appear then.' : '',
+			data.sources.ai.status === 'failed' ? 'AI assistants: the last pull of the AI report from GA4 failed and will be retried, so no AI columns are shown (zeros would not be real).' : data.sources.ai.status === 'ok' && !data.sources.ai.hasData ? 'AI assistants: GA4 reported no sessions from ChatGPT, Perplexity, Gemini, Claude or Copilot in this period.' : data.sources.ai.hasData && !data.sources.ai.comparable ? 'AI assistants: no previous-period AI sessions are stored (the previous window arrives with the next daily GA4 pull, or it had none), so no AI changes are shown.' : '',
 			data.sources.clarity.hasData ? `Clarity covers only the last 24 hours (snapshot of ${data.sources.clarity.day}), not the selected period.` : ''
 		].filter(Boolean)
 	);
 </script>
 
 <div class="mb-3 flex"><a class="btn ml-auto" href="/sites/{page.params.id}/export?dim=page&days={page.url.searchParams.get('days') ?? 28}">Export CSV</a></div>
-<p class="mb-2 text-xs text-muted-foreground">Every source side by side, joined on the page's path (so www, http and https variants count as one page). Arrows show the change against the previous period; a dash means that source has nothing for the page. GA4 counts Google-organic sessions only: sessions and clicks are different measurements, so expect them close, not equal.</p>
+<p class="mb-2 text-xs text-muted-foreground">Every source side by side, joined on the page's path (so www, http and https variants count as one page). Arrows show the change against the previous period; a dash means that source has nothing for the page. GA4 counts Google-organic sessions only: sessions and clicks are different measurements, so expect them close, not equal. The AI group counts GA4 sessions whose referrer is an AI assistant; an assistant that sends no referrer shows up as Direct and is not counted, so treat it as a floor. It does not include citations or bot crawls.</p>
 {#each notes as n}<p class="mb-1 text-xs text-muted-foreground">{n}</p>{/each}
 <div class="mt-2"></div>
 <DataTable rows={data.rows} {cols} sortKey="gClicks" onRowClick={toggle} empty="No page data yet." />
