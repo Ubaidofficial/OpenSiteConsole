@@ -429,6 +429,9 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('index_next_at')) db.exec('ALTER TABLE sites ADD COLUMN index_next_at INTEGER');
 	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
 	if (!cols('api_keys').includes('expires_at')) db.exec('ALTER TABLE api_keys ADD COLUMN expires_at INTEGER'); // NULL = never (keys made by hand)
+	// Whether a key may use the MCP tools that change things. Off unless the owner ticked it; existing keys stay read-only.
+	if (!cols('api_keys').includes('can_write')) db.exec('ALTER TABLE api_keys ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
+	if (!cols('oauth_codes').includes('can_write')) db.exec('ALTER TABLE oauth_codes ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.

@@ -5,7 +5,7 @@ import { syncSite } from '../src/lib/server/sync';
 import { DemoClient } from '../src/lib/server/demo';
 import { autoMatchGa4, connectBingKey, connectClarity, connectOpenSeo } from '../src/lib/server/connect';
 import { createApiKey, deleteApiKey } from '../src/lib/server/apikeys';
-import { handleMcp } from '../src/lib/server/mcp';
+import { handleMcp, MCP_WRITE_TOOL_NAMES } from '../src/lib/server/mcp';
 import { queueDepth } from '../src/lib/server/jobs';
 import { db } from '../src/lib/server/db';
 
@@ -53,7 +53,7 @@ describe('MCP server', () => {
 		expect((await call('osc_nope', { jsonrpc: '2.0', id: 1, method: 'tools/list' })).status).toBe(401);
 	});
 
-	it('speaks the MCP handshake and advertises read-only tools', async () => {
+	it('speaks the MCP handshake and advertises its tools, marking the ones that only read', async () => {
 		const init = await call(key, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
 		expect(init.json.result.serverInfo.name).toBe('seoconsole');
 		expect(init.json.result.capabilities.tools).toBeDefined();
@@ -61,7 +61,9 @@ describe('MCP server', () => {
 		const list = await call(key, { jsonrpc: '2.0', id: 2, method: 'tools/list' });
 		const names = list.json.result.tools.map((t: { name: string }) => t.name);
 		expect(names).toEqual(expect.arrayContaining(['list_sites', 'get_overview', 'get_search_types', 'get_opportunities', 'get_bing_performance', 'get_ga4_summary', 'get_clarity_snapshot', 'get_openseo_project']));
-		expect(list.json.result.tools.every((t: { annotations: { readOnlyHint: boolean } }) => t.annotations.readOnlyHint)).toBe(true);
+		const tools = list.json.result.tools as { name: string; annotations: { readOnlyHint: boolean } }[];
+		const writes = new Set(MCP_WRITE_TOOL_NAMES);
+		expect(tools.every((t) => t.annotations.readOnlyHint === !writes.has(t.name))).toBe(true);
 		expect((await call(key, { jsonrpc: '2.0', id: 3, method: 'nope' })).json.error.code).toBe(-32601);
 	});
 

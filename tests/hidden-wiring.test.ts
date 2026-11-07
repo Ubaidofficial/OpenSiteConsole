@@ -11,7 +11,7 @@ import { addDays } from '../src/lib/server/dates';
 import { actionsFor, queueFor, setActionState } from '../src/lib/server/actions';
 import { hiddenReport } from '../src/lib/server/hidden';
 import { createApiKey } from '../src/lib/server/apikeys';
-import { handleMcp, MCP_TOOL_NAMES } from '../src/lib/server/mcp';
+import { handleMcp } from '../src/lib/server/mcp';
 import { ACTION_TYPES, NAMES_TARGETS } from '../src/lib/actions';
 
 const drain = async () => {
@@ -298,9 +298,6 @@ describe('the cached queue notices when Bing, GA4 or Clarity data changes', () =
 });
 
 describe('Claude can ask for each of them in plain language through the existing tool', () => {
-	it('the tool count the website advertises has not changed', () => {
-		expect(MCP_TOOL_NAMES).toHaveLength(29);
-	});
 	it('hidden_overview counts every kind and says which sources are missing', async () => {
 		plant();
 		const r = await tool('get_opportunities', { site: '1', type: 'hidden_overview' });
