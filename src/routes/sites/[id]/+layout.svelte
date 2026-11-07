@@ -7,7 +7,8 @@
 	import { RefreshCw } from '@lucide/svelte';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import { Tip } from '$lib/components/ui/tooltip';
-	import { SITE_TABS as tabs } from '$lib/explain';
+	import { SITE_TABS, SITE_TAB_GROUPS } from '$lib/explain';
+	const tabOf = (t: string) => SITE_TABS.find(([p]) => p === t)!;
 	import Delta from '$lib/components/Delta.svelte';
 	import { fmtInt, fmtPct, fmtPos, ago } from '$lib/format';
 
@@ -66,9 +67,17 @@
 </div>
 {/if}
 
-<nav class="mb-4 flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
-	{#each tabs as [t, label, about]}
-		<Tip interactive text={about}><a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] transition-colors duration-150 {isActive(t) ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{#if t === '/actions' && data.actionBadge.open}<span class="ml-1.5 inline-grid min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold {data.actionBadge.blocking ? 'bg-[color:var(--bad)] text-white' : 'bg-muted text-muted-foreground'}" title="{data.actionBadge.open} open{data.actionBadge.blocking ? ', ' + data.actionBadge.blocking + ' blocking' : ''}">{data.actionBadge.open}</span>{/if}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/tags' && data.linked.gtm) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a></Tip>
+<nav class="mb-4 flex flex-wrap gap-x-5 gap-y-2" aria-label="Site sections">
+	{#each SITE_TAB_GROUPS as [caption, paths]}
+		<div role="group" aria-label={caption} class="flex flex-col">
+			<span class="px-3 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{caption}</span>
+			<div class="flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
+				{#each paths as t}
+					{@const [, label, about] = tabOf(t)}
+					<Tip interactive text={about}><a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] transition-colors duration-150 {isActive(t) ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{#if t === '/actions' && data.actionBadge.open}<span class="ml-1.5 inline-grid min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold {data.actionBadge.blocking ? 'bg-[color:var(--bad)] text-white' : 'bg-muted text-muted-foreground'}" title="{data.actionBadge.open} open{data.actionBadge.blocking ? ', ' + data.actionBadge.blocking + ' blocking' : ''}">{data.actionBadge.open}</span>{/if}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/tags' && data.linked.gtm) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a></Tip>
+				{/each}
+			</div>
+		</div>
 	{/each}
 </nav>
 

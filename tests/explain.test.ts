@@ -50,3 +50,38 @@ describe('portfolio explainers', () => {
 		expect(PORTFOLIO_INTRO).toMatch(/across all your visible, synced sites/);
 	});
 });
+
+describe('sync run labels', () => {
+	it('names both modes, passes unknown ones through, and the explanation matches the real chunk size', async () => {
+		const { syncModeLabel, SYNC_RUNS_EXPLAIN } = await import('../src/lib/explain');
+		expect(syncModeLabel('auto')).toBe('Sync + backfill');
+		expect(syncModeLabel('incremental')).toBe('Sync');
+		expect(syncModeLabel('something-new')).toBe('something-new');
+		// The page says "45 days"; that must be the constant the sync really uses.
+		expect(readFileSync('src/lib/server/sync.ts', 'utf8')).toMatch(/BACKFILL_CHUNK_DAYS = 45;/);
+		expect(SYNC_RUNS_EXPLAIN).toContain('45 days');
+		expect(readFileSync('src/routes/sites/[id]/settings/+page.svelte', 'utf8')).toMatch(/syncModeLabel\(r\.mode\)/);
+	});
+});
+
+describe('column header hints', () => {
+	const walkSrc = (dir: string): string[] => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? walkSrc(p) : [p]; });
+	const files = walkSrc('src').filter((f) => /\.(svelte|ts)$/.test(f)).map((f) => readFileSync(f, 'utf8'));
+	it('every hinted label is a column label that really exists, so the list cannot go stale', async () => {
+		const { COLUMN_HINT } = await import('../src/lib/explain');
+		for (const label of Object.keys(COLUMN_HINT)) {
+			expect(files.some((t) => t.includes(`label: '${label}'`)), label).toBe(true);
+			expect(COLUMN_HINT[label].length, label).toBeGreaterThan(25);
+		}
+	});
+	it('a label that means different things in different tables always carries its own title', () => {
+		for (const t of files) for (const m of t.matchAll(/\{[^{}]*label: 'Expected'[^{}]*\}/g)) expect(m[0], m[0]).toMatch(/title:/);
+		const anomalies = readFileSync('src/routes/portfolio/+page.svelte', 'utf8').split('\n').find((l) => l.trim().startsWith('anomalies:'))!;
+		expect(anomalies.match(/label: 'Δ'[^}]*}/)![0]).toMatch(/title:/);
+	});
+	it('the table shows the hint through the styled tooltip, with no second native one', () => {
+		const table = readFileSync('src/lib/components/DataTable.svelte', 'utf8');
+		expect(table).toMatch(/text=\{c\.title \?\? COLUMN_HINT\[c\.label\] \?\? ''\}/);
+		expect(table).not.toMatch(/<button[^>]*title=\{c\.title\}/);
+	});
+});

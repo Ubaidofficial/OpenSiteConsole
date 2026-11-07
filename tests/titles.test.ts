@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SITE_TABS } from '../src/lib/explain';
+import { SITE_TABS, SITE_TAB_GROUPS } from '../src/lib/explain';
 import { pageTitle } from '../src/lib/titles';
 
 describe('browser tab titles', () => {
@@ -42,7 +42,20 @@ describe('site tabs', () => {
 	});
 	it('the layouts use these lists, and the static page title is gone so there is only one <title>', () => {
 		expect(readFileSync('src/routes/+layout.svelte', 'utf8')).toMatch(/<title>\{pageTitle\(page\.url\.pathname\)\}<\/title>/);
-		expect(readFileSync('src/routes/sites/[id]/+layout.svelte', 'utf8')).toMatch(/SITE_TABS as tabs/);
+		expect(readFileSync('src/routes/sites/[id]/+layout.svelte', 'utf8')).toMatch(/SITE_TABS, SITE_TAB_GROUPS/);
 		expect(readFileSync('src/app.html', 'utf8')).not.toMatch(/<title>/);
+	});
+});
+
+describe('site tab groups', () => {
+	it('every tab is in exactly one group, in the order the groups list them, and no group is empty', () => {
+		const grouped = SITE_TAB_GROUPS.flatMap(([, paths]) => [...paths]);
+		expect(new Set(grouped).size).toBe(grouped.length); // none twice
+		expect([...grouped].sort()).toEqual(SITE_TABS.map(([t]) => t).sort()); // none missing, none invented
+		for (const [caption, paths] of SITE_TAB_GROUPS) expect(paths.length, caption).toBeGreaterThan(0);
+		expect(new Set(SITE_TAB_GROUPS.map(([c]) => c)).size).toBe(SITE_TAB_GROUPS.length);
+	});
+	it('the Overview tab leads the first group, so the page opens on it', () => {
+		expect(SITE_TAB_GROUPS[0][1][0]).toBe('');
 	});
 });

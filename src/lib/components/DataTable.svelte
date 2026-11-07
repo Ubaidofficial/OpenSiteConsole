@@ -2,6 +2,8 @@
 	import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, Inbox, Search } from '@lucide/svelte';
 	import { fmtInt, fmtPct, fmtPos, fmtSigned } from '$lib/format';
 	import { privacy } from '$lib/privacy.svelte';
+	import { Tip } from '$lib/components/ui/tooltip';
+	import { COLUMN_HINT } from '$lib/explain';
 
 	interface Col {
 		key: string;
@@ -133,14 +135,14 @@
 			<tr>
 				{#each cols as c, ci}
 					<th class="th" class:text-right={numeric(c)} style="{tint(c)}{edge(ci)}" aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-						<button class="inline-flex items-center gap-1 rounded-sm font-medium transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 {sortKey === c.key ? 'text-foreground' : ''}" title={c.title} onclick={() => sortBy(c.key)}>
+						<Tip interactive text={c.title ?? COLUMN_HINT[c.label] ?? ''}><button class="inline-flex items-center gap-1 rounded-sm font-medium transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 {sortKey === c.key ? 'text-foreground' : ''}" onclick={() => sortBy(c.key)}>
 							{c.label}
 							{#if sortKey === c.key}
 								{#if sortDir === 'asc'}<ArrowUp class="size-3" />{:else}<ArrowDown class="size-3" />{/if}
 							{:else}
 								<ChevronsUpDown class="size-3 opacity-40" />
 							{/if}
-						</button>
+						</button></Tip>
 					</th>
 				{/each}
 			</tr>
