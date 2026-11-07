@@ -363,7 +363,7 @@ const TOOLS: Tool[] = [
 				clarity: { linkedSites: n('clarity'), tools: ['get_clarity_snapshot'] },
 				openseo: { linkedSites: n('openseo'), tools: ['get_openseo_project'] },
 				coreWebVitals: { connected: cruxIntegration() != null, tools: ['get_web_vitals'] },
-				hint: 'A source with linkedSites below `sites` can be completed on the Connect page. Every tool here is read-only.'
+				hint: 'A source with linkedSites below `sites` can be completed on the Connect page. The tools listed here only read. A few other tools change things, and they only work if the owner allowed changes for this connection on the Agents page.'
 			};
 		}
 	},
