@@ -185,7 +185,7 @@ describe('MCP bridge tools on demo data', () => {
 		const res = await handleMcp(new Request('http://x/api/mcp', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) }));
 		const names = (await res.json()).result.tools.map((t: { name: string }) => t.name);
 		for (const n of ['get_performance', 'inspect_url', 'get_sitemaps']) expect(names).toContain(n);
-		expect(names).toHaveLength(29);
+		expect(names).toHaveLength(39);
 		expect(names).toContain('get_page_insights');
 	});
 });

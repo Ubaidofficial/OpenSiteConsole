@@ -10,7 +10,7 @@ export const load: PageServerLoad = ({ url }) => {
 	const r = checkAuthorize(url.search, config.origin);
 	if (r.kind === 'error') error(400, r.message);
 	if (r.kind === 'redirect') redirect(303, r.location);
-	return { requestId: r.requestId, clientName: r.clientName, redirectHost: r.redirectHost, sites: allSites().map((s) => ({ id: s.id, name: displayName(s.site_url) })) };
+	return { requestId: r.requestId, clientName: r.clientName, redirectHost: r.redirectHost, sites: allSites().map((s) => ({ id: s.id, name: displayName(s.site_url) })), readOnly: config.readOnly };
 };
 
 const expired = 'This sign-in request expired or was already used. Start again from the app.';
@@ -25,7 +25,7 @@ export const actions: Actions = {
 			siteIds = [...new Set(f.getAll('site').map(Number).filter((n) => Number.isInteger(n) && known.has(n)))];
 			if (!siteIds.length) return fail(400, { error: 'Pick at least one site, or choose all sites.' });
 		}
-		const r = approveRequest(id, siteIds);
+		const r = approveRequest(id, siteIds, Date.now(), f.get('submit') === '1' && !config.readOnly);
 		return r ? { redirect: r.location } : fail(400, { error: expired });
 	},
 	deny: async ({ request }) => {

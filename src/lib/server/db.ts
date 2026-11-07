@@ -235,6 +235,21 @@ CREATE TABLE IF NOT EXISTS ga4_ai_prev (
 	pulled_on TEXT NOT NULL,
 	PRIMARY KEY (site_id, days, assistant, page)
 ) WITHOUT ROWID;
+-- One row per URL per channel the app (or an agent) pushed it to. "Accepted" means the channel received it, never that the page is indexed:
+-- whether it got indexed is read later from the stored URL Inspection (the submitted URLs are also put on the indexing monitor's watch list).
+CREATE TABLE IF NOT EXISTS index_submissions (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	channel TEXT NOT NULL,              -- indexnow | bing | google_indexing_api
+	at INTEGER NOT NULL,
+	ok INTEGER NOT NULL,
+	message TEXT,
+	source TEXT NOT NULL,               -- app | mcp
+	key_id INTEGER                      -- the API key, for source = mcp
+);
+CREATE INDEX IF NOT EXISTS idx_index_submissions_site ON index_submissions (site_id, at DESC);
+CREATE INDEX IF NOT EXISTS idx_index_submissions_url ON index_submissions (site_id, url);
 CREATE TABLE IF NOT EXISTS seo_tests (
 	id INTEGER PRIMARY KEY,
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
@@ -439,6 +454,8 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('index_message')) db.exec('ALTER TABLE sites ADD COLUMN index_message TEXT');
 	if (!cols('sites').includes('index_next_at')) db.exec('ALTER TABLE sites ADD COLUMN index_next_at INTEGER');
 	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
+	if (!cols('api_keys').includes('permission')) db.exec("ALTER TABLE api_keys ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'"); // read | submit
+	if (!cols('oauth_codes').includes('permission')) db.exec("ALTER TABLE oauth_codes ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'");
 	if (!cols('api_keys').includes('expires_at')) db.exec('ALTER TABLE api_keys ADD COLUMN expires_at INTEGER'); // NULL = never (keys made by hand)
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking

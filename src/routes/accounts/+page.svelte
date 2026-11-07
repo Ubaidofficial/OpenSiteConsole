@@ -57,6 +57,22 @@
 					<input class="input min-w-64 flex-1 sm:max-w-xl" name="siteUrl" placeholder="sc-domain:example.com or https://example.com/" aria-label="Property to add" />
 					<button class="btn">Add property</button>
 				</form>
+				<details class="mt-2 text-sm">
+					<summary class="cursor-pointer text-xs text-muted-foreground">Prove ownership here (no need to open Search Console)</summary>
+					<form method="POST" use:enhance class="mt-2 flex flex-wrap items-center gap-2">
+						<input type="hidden" name="id" value={a.id} />
+						<input class="input min-w-64 flex-1 sm:max-w-md" name="siteUrl" placeholder="example.com or https://example.com/" aria-label="Site to verify" />
+						<select class="input" name="method" aria-label="Verification method">
+							<option value="DNS_TXT">Domain: DNS TXT record</option><option value="DNS_CNAME">Domain: DNS CNAME record</option>
+							<option value="META">URL site: meta tag</option><option value="FILE">URL site: HTML file</option>
+						</select>
+						<button class="btn" formaction="?/verifyToken">1 · Get token</button>
+						<button class="btn btn-primary" formaction="?/verifyNow">2 · Verify and add</button>
+					</form>
+					{#if form?.verify && form.verify.accountId === a.id}<p class="mt-2 max-w-3xl rounded bg-black/5 p-2 text-xs dark:bg-white/10"><b>{form.verify.property}</b>: {form.verify.help}<br />When it is in place, press <i>2 · Verify and add</i>.</p>{/if}
+					<p class="mt-2 max-w-3xl text-xs text-muted-foreground">Google gives a token; you place it on the site or in DNS (this app cannot change your site or DNS); then Google checks and the site is added to Search Console.
+						{#if !data.siteVerification}<b class="text-warn">Off on this server:</b> set <code>GOOGLE_INCLUDE_SITE_VERIFICATION=1</code> and reconnect the Google account (an extra permission is asked).{/if}</p>
+				</details>
 			{/if}
 		</div>
 	{:else}

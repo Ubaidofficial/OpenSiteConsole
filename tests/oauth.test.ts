@@ -645,3 +645,34 @@ describe('the cross-site check (it replaces SvelteKit\'s own, which cannot exemp
 		expect(readFileSync('src/hooks.server.ts', 'utf8')).toMatch(/crossSiteRefused\(\{/);
 	});
 });
+
+describe('sign-in and the submit permission', () => {
+	const signIn = (allowSubmit?: boolean) => {
+		const c = newClient();
+		const chk = checkAuthorize(authorizeQuery(c.id), ORIGIN());
+		if (chk.kind !== 'consent') throw new Error('no consent');
+		const code = new URL(approveRequest(chk.requestId, null, Date.now(), allowSubmit)!.location).searchParams.get('code')!;
+		const r = redeemCode({ code, clientId: c.id, redirectUri: CLAUDE, verifier: VERIFIER });
+		if (!r.ok) throw new Error(r.description);
+		return { ...(r.body as { access_token: string; refresh_token: string }), clientId: c.id };
+	};
+	const permissionOf = (token: string) => authenticate(new Request('http://x', { headers: { authorization: `Bearer ${token}` } }))?.permission;
+
+	it('an approved app is read-only unless the owner ticked "allow submitting", and a refresh keeps whatever was granted', () => {
+		const plain = signIn();
+		expect(permissionOf(plain.access_token)).toBe('read');
+		const granted = signIn(true);
+		expect(permissionOf(granted.access_token)).toBe('submit');
+		const next = refreshTokens({ refreshToken: granted.refresh_token, clientId: granted.clientId });
+		if (!next.ok) throw new Error(next.description);
+		expect(permissionOf((next.body as { access_token: string }).access_token)).toBe('submit');
+		expect(permissionOf(plain.access_token)).toBe('read'); // the other app is untouched
+	});
+
+	it('the consent page asks for submitting separately and is off by default; the server cannot grant it in READ_ONLY mode', async () => {
+		const svelte = readFileSync('src/routes/oauth/authorize/+page.svelte', 'utf8');
+		expect(svelte).toMatch(/name="submit" value="1"/);
+		expect(svelte).not.toMatch(/name="submit"[^>]*checked/);
+		expect(readFileSync('src/routes/oauth/authorize/+page.server.ts', 'utf8')).toMatch(/f\.get\('submit'\) === '1' && !config\.readOnly/);
+	});
+});

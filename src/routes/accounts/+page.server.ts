@@ -7,6 +7,7 @@ import { clientForAccount, type AccountLite } from '$lib/server/clients';
 import { enqueueSiteSync } from '$lib/server/jobs';
 import { intParam } from '$lib/server/params';
 import { redirectUri } from '$lib/server/google';
+import { VERIFY_METHODS, getVerificationToken, siteVerificationEnabled, verifyAndAdd, type VerifyMethod } from '$lib/server/siteverify';
 
 export const load: PageServerLoad = ({ url }) => {
 	const counts = db().prepare('SELECT account_id, COUNT(*) n FROM sites GROUP BY account_id').all() as { account_id: number; n: number }[];
@@ -15,6 +16,7 @@ export const load: PageServerLoad = ({ url }) => {
 		googleConfigured: !!(config.googleClientId && config.googleClientSecret),
 		redirectUri: redirectUri(),
 		readOnly: config.readOnly,
+		siteVerification: siteVerificationEnabled(),
 		connected: url.searchParams.get('connected'),
 		error: url.searchParams.get('error')
 	};
@@ -22,7 +24,38 @@ export const load: PageServerLoad = ({ url }) => {
 
 const acc = (id: number) => db().prepare('SELECT id, google_sub, is_demo FROM accounts WHERE id = ?').get(id) as AccountLite | undefined;
 
+const methodOf = (v: FormDataEntryValue | null): VerifyMethod | null => (VERIFY_METHODS.includes(String(v) as VerifyMethod) ? (String(v) as VerifyMethod) : null);
+
 export const actions: Actions = {
+	/** Step 1 of proving ownership here: ask Google for the token to put on the site or in DNS. */
+	verifyToken: async ({ request }) => {
+		const f = await request.formData();
+		const a = acc(intParam(f.get('id')));
+		const method = methodOf(f.get('method'));
+		if (!a) return fail(404, { error: 'Unknown account' });
+		if (!method) return fail(400, { error: 'Pick a verification method.' });
+		try {
+			const r = await getVerificationToken(a.id, String(f.get('siteUrl') ?? ''), method);
+			return { verify: { accountId: a.id, property: r.property.gscUrl, method: r.method, help: r.help } };
+		} catch (e) {
+			return fail(400, { error: e instanceof Error ? e.message : 'Could not get a token' });
+		}
+	},
+	/** Step 2: once the token is in place, ask Google to check, then add the site to Search Console. */
+	verifyNow: async ({ request }) => {
+		if (config.readOnly) return fail(403, { error: 'READ_ONLY=1: verifying and adding properties is disabled.' });
+		const f = await request.formData();
+		const a = acc(intParam(f.get('id')));
+		const method = methodOf(f.get('method'));
+		if (!a) return fail(404, { error: 'Unknown account' });
+		if (!method) return fail(400, { error: 'Pick a verification method.' });
+		try {
+			const r = await verifyAndAdd(a, String(f.get('siteUrl') ?? ''), method);
+			return { ok: `Verified ${r.property.gscUrl}${r.added ? ' and added it to Search Console' : ' (it was already in Search Console, or could not be added: check the properties list)'}. Data starts syncing; it takes a few minutes.` };
+		} catch (e) {
+			return fail(400, { error: e instanceof Error ? e.message : 'Verification failed' });
+		}
+	},
 	refresh: async ({ request }) => {
 		const id = intParam((await request.formData()).get('id'));
 		try {

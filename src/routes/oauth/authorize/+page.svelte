@@ -41,7 +41,8 @@
 					</div>
 				{/if}
 			</fieldset>
-			<p class="text-xs text-muted-foreground">Access is read-only: it can look at your Search Console, GA4, Bing and indexing data, and cannot change anything. You can remove it any time on the Agents page.</p>
+			<label class="flex items-start gap-2 text-sm"><input type="checkbox" name="submit" value="1" class="mt-1" disabled={data.readOnly} /> <span><b>Also allow submitting</b> (off by default). Lets this app send URLs and sitemaps to search engines (IndexNow, Bing, Search Console) and start an indexing check. It still cannot delete your data or change a site's content.{#if data.readOnly} <b class="text-warn">Not available: this server runs with READ_ONLY=1.</b>{/if}</span></label>
+			<p class="text-xs text-muted-foreground">Unless you tick the box above, access is read-only: it can look at your Search Console, GA4, Bing and indexing data, and cannot change anything. You can remove it any time on the Agents page.</p>
 			{#if form?.error}<p class="text-sm text-bad">{form.error}</p>{/if}
 			<div class="flex gap-2">
 				<button class="btn btn-primary">Allow</button>

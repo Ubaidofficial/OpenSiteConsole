@@ -97,9 +97,12 @@ export const SCOPE_GTM_READ = 'https://www.googleapis.com/auth/tagmanager.readon
 
 /** One consent covers Search Console and (unless GOOGLE_INCLUDE_GA4=0 / GOOGLE_INCLUDE_GTM=0) GA4 and Tag Manager, so users click once. */
 export function scopes(): string {
+	// The Indexing API scope is opt-in (GOOGLE_INCLUDE_INDEXING=1) and only ever requested together with write access, never in READ_ONLY mode.
+	const indexing = process.env.GOOGLE_INCLUDE_INDEXING === '1' && !config.readOnly ? ' https://www.googleapis.com/auth/indexing' : '';
+	const verify = process.env.GOOGLE_INCLUDE_SITE_VERIFICATION === '1' && !config.readOnly ? ' https://www.googleapis.com/auth/siteverification.verify_only' : '';
 	const ga4 = process.env.GOOGLE_INCLUDE_GA4 === '0' ? '' : ` ${SCOPE_GA4_READ}`;
 	const gtm = process.env.GOOGLE_INCLUDE_GTM === '0' ? '' : ` ${SCOPE_GTM_READ}`;
-	return `openid email ${config.readOnly ? SCOPE_READ : SCOPE_WRITE}${ga4}${gtm}`;
+	return `openid email ${config.readOnly ? SCOPE_READ : SCOPE_WRITE}${indexing}${verify}${ga4}${gtm}`;
 }
 
 export function redirectUri(): string {

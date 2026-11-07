@@ -8,14 +8,14 @@
 
 <h1 class="mb-1 text-lg font-semibold">Agents &amp; MCP</h1>
 <p class="mb-4 max-w-3xl text-sm text-muted-foreground">
-	SEOConsole exposes a <b>read-only</b> MCP server, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Google Tag Manager, Bing, Clarity and Core Web Vitals data in one place. <code>get_tracking_health</code> cross-checks Search Console, GA4 and Tag Manager for a site, <code>get_trends</code> and <code>get_content_groups</code> cover movement and structure, <code>get_seo_tests</code> reads test results, and <code>get_connections</code> shows which tools are connected.
+	SEOConsole exposes an MCP server that is <b>read-only by default</b>, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Google Tag Manager, Bing, Clarity and Core Web Vitals data in one place. <code>get_tracking_health</code> cross-checks Search Console, GA4 and Tag Manager for a site, <code>get_trends</code> and <code>get_content_groups</code> cover movement and structure, <code>get_seo_tests</code> reads test results, and <code>get_connections</code> shows which tools are connected.
 	Connect it alongside OpenSEO's MCP: ask the agent for a site's <code>get_openseo_project</code> and it can hand that project id to OpenSEO's keyword, rank-tracking and audit tools.
-	Nothing here can change a site or spend money.
+	A key can optionally be given the <b>submit</b> permission, which lets an agent push URLs and sitemaps to search engines (IndexNow, Bing, Search Console, and Google's Indexing API for job and livestream pages) and start an indexing check. Nothing can delete your data or change a site's content.
 </p>
 
 {#if form?.newKey}
 	<div class="card mb-4 border-[color:var(--good)] p-4">
-		<p class="mb-1 text-sm font-medium">Copy your key now — it is shown only once.</p>
+		<p class="mb-1 text-sm font-medium">Copy your key now — it is shown only once.{#if form.newKeyCanSubmit} <span class="chip ml-1">can submit URLs &amp; sitemaps</span>{:else} <span class="chip ml-1">read-only</span>{/if}</p>
 		<code class="block break-all rounded bg-black/5 p-2 text-sm dark:bg-white/10">{form.newKey}</code>
 		<p class="mt-3 mb-1 text-xs text-muted-foreground">Claude Code:</p>
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
@@ -34,6 +34,10 @@
 					{#each data.sites as s}<label class="flex items-center gap-2"><input type="checkbox" name="site" value={s.id} /> <span class="pii">{s.name}</span></label>{/each}
 				</div>
 			</fieldset>
+			<label class="flex items-start gap-2 rounded border p-2 text-xs" style="border-color:var(--border)">
+				<input type="checkbox" name="permission" value="submit" class="mt-0.5" disabled={data.readOnly} />
+				<span><b>Allow submitting</b> (off = read-only). With it the key can send URLs and sitemaps to search engines and start an indexing check: {data.submitTools.join(', ')}. Limited per day by <code>MCP_SUBMIT_PER_KEY_DAY</code>.{#if data.readOnly} <b class="text-warn">Disabled: this server runs with READ_ONLY=1.</b>{/if}</span>
+			</label>
 			<button class="btn btn-primary">Create key</button>
 		</form>
 	</section>
@@ -42,7 +46,7 @@
 		<h2 class="mb-2 font-medium">Endpoint</h2>
 		<code class="block break-all rounded bg-black/5 p-2 dark:bg-white/10">{data.mcpUrl}</code>
 		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address.</p>
-		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools:</b> <span class="font-mono">{data.tools.join(', ')}</span>.</p>
+		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools</b> ({data.submitTools.length} need the submit permission: <span class="font-mono">{data.submitTools.join(', ')}</span>): <span class="font-mono">{data.tools.join(', ')}</span>.</p>
 	</section>
 </div>
 
@@ -89,7 +93,7 @@ bearer_token_env_var = "OSC_MCP_KEY"</pre>
 		<tbody>
 			{#each data.keys as k (k.id)}
 				<tr>
-					<td class="td">{k.name}{#if k.signInApp}<span class="chip ml-2" title="Created when {k.signInApp} was approved with Sign in. Its token is renewed automatically; revoke it here to cut the app off.">sign-in</span>{/if}</td><td class="td"><code>{k.prefix}…</code></td>
+					<td class="td">{k.name}{#if k.permission === 'submit'}<span class="chip ml-2 !border-[color:var(--warn)]" title="This key may push URLs and sitemaps to search engines.">can submit</span>{/if}{#if k.signInApp}<span class="chip ml-2" title="Created when {k.signInApp} was approved with Sign in. Its token is renewed automatically; revoke it here to cut the app off.">sign-in</span>{/if}</td><td class="td"><code>{k.prefix}…</code></td>
 					<td class="td text-xs"><span class="pii">{k.scope ? k.scope.map(nameOf).join(', ') : 'all sites'}</span></td>
 					<td class="td text-xs text-muted-foreground">{k.lastUsedAt ? ago(k.lastUsedAt) : 'never'}</td>
 					<td class="td text-right"><form method="POST" action="?/remove" use:enhance><input type="hidden" name="id" value={k.id} /><ConfirmButton title="Revoke this API key?" description="Anything using this key (an agent, a script) loses access immediately." confirmLabel="Revoke key">Revoke</ConfirmButton></form></td>

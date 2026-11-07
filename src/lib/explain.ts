@@ -78,6 +78,7 @@ export const SITE_TABS = [
 	['/types', 'Search types', 'Search Console numbers split by search type, such as web, image and video.'],
 	['/vitals', 'Web vitals', 'Real-visitor page speed (Core Web Vitals) from Google\'s Chrome UX Report. Needs a free Google API key.'],
 	['/tests', 'Tests', 'Measure whether an SEO change worked, comparing before and after or against control pages.'],
+	['/submit', 'Submit', 'Send new or changed pages to the search engines that accept them, send sitemaps to Search Console, and see what happened to each URL.'],
 	['/indexing', 'Indexing', 'Watch whether Google has indexed your pages, using a rotating sample of URL inspections.'],
 	['/indexnow', 'IndexNow', 'Tell Bing and other IndexNow search engines the moment a page changes.'],
 	['/onpage', 'On-page', 'Checks pages for common on-page problems, such as a missing title or description.'],
@@ -99,7 +100,7 @@ export const SYNC_RUNS_EXPLAIN = 'Every run re-pulls the newest few days, becaus
 export const SITE_TAB_GROUPS = [
 	['Traffic', ['', '/queries', '/pages', '/trends', '/groups', '/segments', '/types']],
 	['Findings', ['/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/vitals', '/tests']],
-	['Indexing', ['/indexing', '/indexnow', '/sitemaps', '/inspect']],
+	['Indexing', ['/submit', '/indexing', '/indexnow', '/sitemaps', '/inspect']],
 	['Other sources', ['/bing', '/analytics', '/tags', '/clarity']],
 	['Site', ['/settings']]
 ] as const;
