@@ -81,4 +81,4 @@
 	</div>
 {/if}
 <main class="mx-auto max-w-[1400px] px-4 py-6">{#key page.url.pathname.split('/').slice(1, 3).join('/')}<div class="page-in">{@render children()}</div>{/key}</main>
-<footer class="mx-auto max-w-[1400px] px-4 pb-8 text-xs text-muted-foreground"><a class="hover:underline" href="/privacy">Privacy policy</a> · <a class="hover:underline" href="/terms">Terms of service</a></footer>
+<footer class="mx-auto max-w-[1400px] px-4 pb-8 text-xs text-muted-foreground"><a class="hover:underline" href="/compare">Compare</a> · <a class="hover:underline" href="/privacy">Privacy policy</a> · <a class="hover:underline" href="/terms">Terms of service</a></footer>

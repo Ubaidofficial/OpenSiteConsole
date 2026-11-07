@@ -69,6 +69,7 @@ export const PORTFOLIO_TAB_EXPLAIN: Record<string, string> = {
 /** The tabs on a site's page: path under /sites/<id>, label, and what the tab is for (shown on hover). One list, so the tab bar, the hover text and the browser titles cannot drift apart. */
 export const SITE_TABS = [
 	['', 'Overview', 'Traffic chart for the period, unusual days, and your change log.'],
+	['/quickwins', 'Quick wins', 'The easiest improvements first: titles to rewrite, searches one push from page 1, questions you already rank for, and quick fixes.'],
 	['/actions', 'Actions', 'This site\'s to-do list, in the order to do it.'],
 	['/queries', 'Queries', 'Search queries, with filters for brand, country and device.'],
 	['/pages', 'Pages', 'Pages with Google, Bing, GA4 and Clarity numbers side by side.'],
@@ -103,7 +104,7 @@ export const SYNC_RUNS_EXPLAIN = 'Every run re-pulls the newest few days, becaus
 /** How the site tabs are grouped in the tab bar: a caption and the tab paths under it. Every tab appears in exactly one group (a test checks it). */
 export const SITE_TAB_GROUPS = [
 	['Traffic', ['', '/queries', '/pages', '/trends', '/groups', '/segments', '/types']],
-	['Findings', ['/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/vitals', '/tests']],
+	['Findings', ['/quickwins', '/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/vitals', '/tests']],
 	['Indexing', ['/submit', '/request', '/indexing', '/indexnow', '/sitemaps', '/inspect']],
 	['Other sources', ['/bing', '/analytics', '/tags', '/clarity']],
 	['Site', ['/settings']]

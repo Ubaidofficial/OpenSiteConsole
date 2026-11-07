@@ -27,8 +27,8 @@ export const init: ServerInit = async () => {
  */
 const OAUTH_PROGRAM_ENDPOINTS = new Set(['/oauth/register', '/oauth/token']);
 const isDiscovery = (path: string) => path.startsWith('/.well-known/oauth-');
-/** The privacy policy and terms are public: Google's OAuth verification and anyone about to sign in must be able to read them. They show no data about the installation. */
-const isLegal = (path: string) => path === '/privacy' || path === '/terms';
+/** The privacy policy, terms and comparison pages are public: Google's OAuth verification and anyone about to sign in must be able to read them. They show no data about the installation. */
+const isLegal = (path: string) => path === '/privacy' || path === '/terms' || path === '/compare' || path.startsWith('/compare/');
 
 const gate: Handle = async ({ event, resolve }) => {
 	await boot();

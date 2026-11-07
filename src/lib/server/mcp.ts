@@ -26,6 +26,8 @@ import { storedChecks } from './onpage';
 import { sitemapCoverage } from './sitemapcov';
 import { portfolioQueue, queueFor } from './actions';
 import { buildDigest } from './digest';
+import { decayReport } from './decay';
+import { quickWins } from './quickwins';
 import { createKey as createIndexNowKey, getKey as getIndexNowKey, hostStatuses, indexNowStatus, setAuto as setIndexNowAuto, verifyHost } from './indexnow';
 import { CHANNELS, CHANNEL_LABEL, MAX_DRIP_DAYS, MAX_SUBMIT_URLS, RECHECK_DAYS, SubmitRefused, clearQueue, deleteSitemapFrom, presetUrls, queueStatus, quotaOverview, refreshBingQuota, resubmitSitemaps, submissionStatus, submitForIndexing, submitSitemapTo, type Channel, type Preset } from './submission';
 import { diagnoseSitemap } from './sitemapcov';
@@ -291,7 +293,7 @@ const TOOLS: Tool[] = [
 	{
 		name: 'get_opportunities',
 		description: 'SEO findings computed from stored history. type: striking (positions 4-20 ranked by estimated extra clicks, on the site\'s own fitted CTR curve), ctr_gaps (pages under-performing their position), cannibalization (queries split across competing pages), decay (statistically significant page declines, labelled page-specific vs site-wide), anomalies (unusual days).',
-		schema: { ...siteArg, ...daysArg, type: { type: 'string', enum: ['striking', 'ctr_gaps', 'cannibalization', 'decay', 'anomalies'] }, limit: { type: 'integer' } },
+		schema: { ...siteArg, ...daysArg, type: { type: 'string', enum: ['striking', 'ctr_gaps', 'cannibalization', 'decay', 'anomalies'] }, compare: { type: 'string', enum: ['previous_period', 'year_ago'], description: 'type decay only: previous_period (default) or year_ago (the same weekdays one year earlier; needs 12+ months of stored history)' }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			const n = days(a);
@@ -308,8 +310,12 @@ const TOOLS: Tool[] = [
 				case 'cannibalization':
 					return computeCannibalization(qp, curve, { limit: lim, minQueryImpressions: Math.max(20, Math.round((n / 28) * 40)) }).map((g) => ({ query: g.query, severity: g.severity, clicksAtStake: Math.round(g.potentialClicks), winner: g.winner, pages: g.pages.map((x) => ({ page: x.page, clicks: x.clicks, impressions: x.impressions, position: r2(x.position) })) }));
 				case 'decay': {
-					const delta = pctChange(summary(site.id, p.start, p.end).clicks, summary(site.id, p.prevStart, p.prevEnd).clicks) ?? 0;
-					return { siteClicksChange: delta, rows: computeDecay(pageTotals(site.id, p.start, p.end), pageTotals(site.id, p.prevStart, p.prevEnd), delta, null, { limit: lim, minPrevClicks: Math.max(10, Math.round((n / 28) * 20)) }).map((r) => ({ page: r.page, lostClicks: r.lostClicks, change: r2(r.deltaPct * 100) + '%', scope: r.scope, positionBefore: r2(r.positionPrev), positionNow: r2(r.positionNow) })) };
+					// compare: "year_ago" = the same weekdays 364 days earlier (needs 12+ months of stored history); default = the previous period.
+					const yoy = a.compare === 'year_ago';
+					const rep = decayReport(site, n, yoy ? 'yoy' : 'period');
+					if (yoy && !rep.hasYear) return { siteClicksChange: null, rows: [], note: 'The stored history does not reach back a year yet (it grows with each sync and backfill).' };
+					const delta = rep.siteDelta;
+					return { siteClicksChange: delta, compared: yoy ? 'same period one year earlier' : 'previous period', rows: rep.rows.slice(0, lim).map((r) => ({ page: r.page, lostClicks: r.lostClicks, change: r2(r.deltaPct * 100) + '%', scope: r.scope, positionBefore: r2(r.positionPrev), positionNow: r2(r.positionNow) })) };
 				}
 				case 'anomalies':
 					return detectAnomalies(dailySeries(site.id, addDays(p.end, -(n + 90)), p.end).map((d) => ({ date: d.date, value: d.clicks }))).filter((x) => x.date >= p.start).map((x) => ({ date: x.date, clicks: x.value, expected: Math.round(x.expected), change: r2(x.deltaPct * 100) + '%', direction: x.direction }));
@@ -1072,6 +1078,16 @@ const TOOLS: Tool[] = [
 				submitted = reportJson(rep);
 			}
 			return { site: displayName(site.site_url), inspected: seen.map((p) => ({ url: p.url, google: p.google, coverage: p.coverage, problem: p.problem })), notSubmitted: left, submission: submitted, note: send.length ? undefined : 'Nothing needed submitting.' };
+		}
+	},
+	{
+		name: 'get_quick_wins',
+		description: 'The low-hanging fruit for a site: the cheapest part of each finding, grouped by what you would do. ctr = top-10 pages whose click rate is far below the site\'s own curve at that position (rewrite title and description); page-one = searches at positions 8-15 (one push from page 1); questions = question-shaped searches already at positions 3-20 (add a direct answer); sitemap = pages earning clicks that no sitemap lists; onpage = titles and descriptions the checker flagged; indexing = pages worth asking Google about. Each group has why, how, the top rows and the total found. `gain` is estimated extra clicks per window on the site\'s own CTR curve (null when there is no honest number); gains are not additive because groups overlap.',
+		schema: { ...siteArg, ...daysArg },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const q = quickWins(site, days(a));
+			return { site: displayName(site.site_url), days: q.days, groups: q.groups.map((g) => ({ group: g.key, title: g.title, found: g.total, effort: 'low', why: g.why, how: g.how, tab: g.tab, top: g.rows })) };
 		}
 	}
 ];
