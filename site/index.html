@@ -103,14 +103,32 @@
   </div>
 </section>
 
-<div class="sources">
-  <div class="wrap sources-in">
-    <p class="mono">Works with</p>
-    <ul>
-      <li>Google Search Console</li><li>GA4</li><li>Tag Manager</li><li>Bing Webmaster Tools</li><li>Microsoft Clarity</li><li>Chrome UX Report</li><li>IndexNow</li><li>OpenSEO</li>
-    </ul>
+<!-- data flow: the sources it reads, the server you run, what comes out (animated beam adapted from Shadcn Space, MIT) -->
+<section class="flow" aria-label="How SEOConsole fits together">
+  <div class="wrap">
+    <p class="kicker mono rv">Works with</p>
+    <div class="beam rv" data-beam>
+      <svg class="beam-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <g class="b-in">
+          <path d="M33.3 10 C43 10 41 50 50 50"/><path d="M33.3 30 C43 30 41 50 50 50"/><path d="M33.3 50 L50 50"/><path d="M33.3 70 C43 70 41 50 50 50"/><path d="M33.3 90 C43 90 41 50 50 50"/>
+          <path class="pulse" pathLength="100" d="M33.3 10 C43 10 41 50 50 50"/><path class="pulse" pathLength="100" d="M33.3 30 C43 30 41 50 50 50"/><path class="pulse" pathLength="100" d="M33.3 50 L50 50"/><path class="pulse" pathLength="100" d="M33.3 70 C43 70 41 50 50 50"/><path class="pulse" pathLength="100" d="M33.3 90 C43 90 41 50 50 50"/>
+        </g>
+        <g class="b-out">
+          <path d="M50 50 C59 50 57 16.7 66.7 16.7"/><path d="M50 50 L66.7 50"/><path d="M50 50 C59 50 57 83.3 66.7 83.3"/>
+          <path class="pulse" pathLength="100" d="M50 50 C59 50 57 16.7 66.7 16.7"/><path class="pulse" pathLength="100" d="M50 50 L66.7 50"/><path class="pulse" pathLength="100" d="M50 50 C59 50 57 83.3 66.7 83.3"/>
+        </g>
+      </svg>
+      <ul class="beam-in" aria-label="Sources it reads">
+        <li><i></i>Google Search Console</li><li><i></i>Bing Webmaster Tools</li><li><i></i>GA4</li><li><i></i>Tag Manager</li><li><i></i>Microsoft Clarity</li>
+      </ul>
+      <div class="beam-hub"><img src="/assets/brand/mark-dark.svg" width="34" height="34" alt=""><span>SEOConsole<small>on your server</small></span></div>
+      <ul class="beam-out" aria-label="What you get">
+        <li>Ranked to-do list</li><li>Weekly digest and alerts</li><li>Your AI agent, over MCP</li>
+      </ul>
+    </div>
+    <p class="fine">Also Chrome UX Report for Core Web Vitals, IndexNow for submitting URLs, and OpenSEO if you run it.</p>
   </div>
-</div>
+</section>
 
 <!-- ───────────── HIDDEN WINS ───────────── -->
 <section class="sec wins" id="wins" aria-labelledby="h-wins">
@@ -337,7 +355,13 @@
       <article class="card c-digest rv">
         <h3>Weekly digest, urgent alerts.</h3>
         <p>A Monday summary of what to do first, plus alerts for blocking problems, sent to Slack, Discord or any webhook.</p>
-        <div class="crop"><img src="/assets/shots/digest-1080.webp" width="1080" height="675" alt="The weekly digest: a short summary, then a numbered list of what to do first with the site and estimated clicks for each." loading="lazy"></div>
+        <ol class="alist" data-alist aria-label="What to do first, from the demo digest">
+          <li><div><span class="tag block">BLOCKING</span><b>2 pages with traffic are not in Google’s index</b><small>coffeelab.example · ≈930 clicks / 28d</small></div></li>
+          <li><div><span class="tag block">BLOCKING</span><b>Tag Manager sends to a different GA4 property</b><small>pixelforge.example</small></div></li>
+          <li><div><span class="tag block">BLOCKING</span><b>The container has no published version</b><small>trailmaps.example</small></div></li>
+          <li><div><span class="tag gain">≈1,634 clicks / 28d</span><b>“best hiking maps” is at position 6.4, within reach of the top 3</b><small>trailmaps.example</small></div></li>
+        </ol>
+        <p class="fine left">From the weekly digest on the demo data.</p>
       </article>
       <article class="card c-vitals rv">
         <h3>Core Web Vitals.</h3>

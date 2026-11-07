@@ -25,6 +25,24 @@
   addEventListener('resize', onScroll);
   onScroll();
 
+  /* blur-in headings (after Shadcn Space's text reveal, MIT): split each section heading into words before the reveal
+     observer below sees it, so the words fade in one after another. Screen readers still get the plain heading text. */
+  if (!still) $$('h2.rv').forEach((h) => {
+    if (h.children.length) return; // only plain-text headings
+    const words = h.textContent.trim().split(/\s+/);
+    h.setAttribute('aria-label', words.join(' '));
+    h.textContent = '';
+    words.forEach((w, i) => {
+      const s = document.createElement('span');
+      s.className = 'wd';
+      s.setAttribute('aria-hidden', 'true');
+      s.style.setProperty('--wi', String(i));
+      s.textContent = w;
+      h.append(s, i < words.length - 1 ? ' ' : '');
+    });
+    h.classList.add('words');
+  });
+
   /* reveal on scroll, staggered among siblings */
   const reveals = $$('.rv');
   const seen = new Map();
@@ -41,6 +59,44 @@
     const spo = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('on', e.isIntersecting)), { rootMargin: '80px' });
     sprites.forEach((el) => spo.observe(el));
   } else sprites.forEach((el) => el.classList.add('on'));
+
+  /* the data-flow beam only animates while it is on screen */
+  const beam = $('[data-beam]');
+  /* The lines are written in percent (a 0-100 box). Redraw them in real pixels so each pulse is one even segment:
+     a stretched SVG would distort the stroke and break the dash lengths. */
+  const bsvg = beam && $('.beam-svg', beam);
+  if (bsvg) {
+    const paths = $$('path', bsvg);
+    paths.forEach((pa) => { pa.dataset.d = pa.getAttribute('d'); });
+    const draw = () => {
+      const w = bsvg.clientWidth, h = bsvg.clientHeight;
+      if (!w || !h) return;
+      bsvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      paths.forEach((pa) => {
+        let k = 0;
+        pa.setAttribute('d', pa.dataset.d.replace(/-?\d*\.?\d+/g, (n) => ((k++ % 2 ? h : w) * Number(n) / 100).toFixed(1)));
+      });
+    };
+    draw();
+    addEventListener('resize', draw);
+  }
+  if (beam && 'IntersectionObserver' in window) new IntersectionObserver((es) => es.forEach((e) => beam.classList.toggle('on', e.isIntersecting))).observe(beam);
+  else if (beam) beam.classList.add('on');
+
+  /* animated list (after Shadcn Space, MIT): the digest's alerts drop in at the top one by one, once, when the card is in view.
+     The list is written in its final order, so the last item arrives first and each newer one pushes the others down. */
+  const alist = $('[data-alist]');
+  if (alist && !still && 'IntersectionObserver' in window) {
+    const items = $$('li', alist).reverse();
+    alist.style.setProperty('min-height', alist.offsetHeight + 'px'); // keep the final height, so nothing below moves while the list fills (no layout shift)
+    alist.classList.add('live');
+    new IntersectionObserver((es, ob) => es.forEach(async (e) => {
+      if (!e.isIntersecting) return;
+      ob.disconnect();
+      for (const li of items) { li.classList.add('show'); await sleep(850); }
+      alist.style.removeProperty('min-height'); // full again: let it follow the card's width from here on
+    }), { threshold: 0.4 }).observe(alist);
+  }
 
   /* the eight scene cards lean toward the pointer */
   if (!still) $$('.win').forEach((c) => {

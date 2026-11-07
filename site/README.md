@@ -50,3 +50,19 @@ No customer counts, testimonials or ratings, because there are none. The hosted 
 ## The pixel art
 
 Every illustration on the page (the dig site in the hero, the eight "hidden win" scenes, the many-sites and agent pictures, the landscape behind the dashboard) is drawn by [`art/make_art.py`](art/make_art.py) with a fixed palette and seed, and written to `assets/art/`. Run `python3 site/art/make_art.py` (needs Pillow) to regenerate them. Several are sprite sheets: the stylesheet steps through their frames with `steps()`, only while they are on screen, and shows the first frame for people who ask for less motion. `tests/site.test.ts` checks that each sprite's width is a whole number of its frames and that no image goes unused.
+
+## Credits
+
+Four motion patterns are adapted from [Shadcn Space](https://github.com/shadcnspace/shadcnspace): the animated beam (the "Works with" data-flow diagram), the blur-in text reveal (section headings), the animated list (the alerts in the digest card) and the shine border (the free plan). The originals are React components built on the `motion` library; here they are rebuilt in plain CSS and a few lines of `assets/main.js`, because the page loads no framework and nothing from another site. Like the rest of the page's motion, all four stop for visitors who ask their system for reduced motion, and the beam and the list only run while they are on screen.
+
+Shadcn Space is published under the MIT License:
+
+> MIT License
+>
+> Copyright (c) 2026 Shadcn Space
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

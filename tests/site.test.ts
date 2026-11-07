@@ -231,6 +231,25 @@ describe('site: the pixel art and the animation built from it', () => {
 		// every story frame is a 16:10 capture, so object-fit: cover in the 16:10 box crops nothing
 		for (const m of html.matchAll(/<img class="frame[^"]*"[^>]*width="(\d+)" height="(\d+)"/g)) expect(Number(m[1]) / Number(m[2]), m[0].slice(0, 60)).toBeCloseTo(1.6, 2);
 	});
+	it('the motion borrowed from Shadcn Space is credited, and its MIT notice ships with the site', () => {
+		expect(css).toMatch(/adapted from Shadcn Space/);
+		const readme = readFileSync('site/README.md', 'utf8');
+		expect(readme).toMatch(/Copyright \(c\) 2026 Shadcn Space/);
+		expect(readme).toMatch(/Permission is hereby granted, free of charge/);
+	});
+	it('the data-flow beam has one pulse per line, measured in percent so the script can redraw it at real size', () => {
+		const svg = /<svg class="beam-svg"[\s\S]*?<\/svg>/.exec(html)![0];
+		const lines = [...svg.matchAll(/<path d="([^"]+)"\/>/g)].map((m) => m[1]);
+		const pulses = [...svg.matchAll(/<path class="pulse" pathLength="100" d="([^"]+)"\/>/g)].map((m) => m[1]);
+		expect(lines.length).toBe(8);
+		expect(pulses).toEqual(lines);
+		for (const d of lines) expect(d, d).toMatch(/^M[\d. ]+(?:[CL][\d. ]+)+$/); // x/y pairs only, which is what the redraw expects
+		expect(css).toMatch(/html:not\(\.js\) \.beam \.pulse \{ display: none; \}/);
+	});
+	it('the animated list keeps its final height while it fills, so nothing below it moves', () => {
+		expect(js).toMatch(/alist\.style\.setProperty\('min-height', alist\.offsetHeight \+ 'px'\)/);
+		expect(html.match(/<ol class="alist" data-alist[\s\S]*?<\/ol>/)![0].match(/<li>/g)).toHaveLength(4);
+	});
 	it('the wipe-in of the wide screenshot hides content only once the script has marked the page', () => {
 		expect(css).toMatch(/html\.js \.wipe\.rv \{ clip-path: inset\(0 100% 0 0\)/);
 		expect(css).not.toMatch(/(^|\n)\.wipe[^{]*\{[^}]*clip-path: inset\(0 100%/);
@@ -259,7 +278,7 @@ describe('site: light mode only, and gentle on people who ask for less motion', 
 	it('every animation and scroll effect has a reduced-motion fallback that shows the final state', () => {
 		const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
 		expect(block).toBeTruthy();
-		for (const sel of ['.w {', '.hl::before', 'html.js .rv', '.stack', '.frame', '.term.live .t-line', '.tl-svg .line']) expect(block, sel).toContain(sel);
+		for (const sel of ['.w {', '.hl::before', 'html.js .rv', '.stack', '.frame', '.term.live .t-line', '.tl-svg .line', '.beam-svg .pulse', 'html.js .words .wd', 'html.js .alist.live li', '.plan.on::before']) expect(block, sel).toContain(sel);
 		expect(js).toMatch(/prefers-reduced-motion: reduce/);
 		expect(js).toMatch(/still/);
 	});

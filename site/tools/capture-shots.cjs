@@ -94,7 +94,6 @@ async function seed(b) {
   if (edge) { edge.querySelectorAll('tbody tr').forEach((tr, i) => { if (i >= 6) tr.remove(); }); edge.querySelectorAll('.mt-3.flex').forEach((e)=>e.remove()); }
   const h = document.querySelector('h3'); });
   await p.addStyleTag({ content: 'section.mb-6:last-of-type{margin-bottom:0!important}' }); } }],
-    digest: ['/digest', { w: 960, start: 'main h1', ratio: 1.6 }],
     vitals: ['/sites/1/vitals', { w: 960, start: '.page-in', ratio: 1.6 }],
     sitemaps: ['/sites/4/indexing', { w: 960, start: 'text=Sitemap coverage', ratio: 1.6 }],
   };
