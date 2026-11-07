@@ -182,6 +182,10 @@ spike/workers/           feasibility spike and proof for a native Workers + D1 p
 Dockerfile, compose.yaml, Dockerfile.cloudflare, wrangler.jsonc   container and Cloudflare deploy files
 ```
 
+## Website
+
+`site/` is the marketing page for seoconsole.app: static HTML, CSS and a little vanilla JavaScript, no build step, no third-party requests, light mode only. It has its own `Dockerfile` (nginx, port 8080) and strict security headers. See [`site/README.md`](site/README.md) for previewing, deploying and refreshing the screenshots. `tests/site.test.ts` keeps it honest: links resolve, nothing loads from another origin, the tool count matches the MCP server, and no customers or ratings are claimed.
+
 ## Brand
 
 The logo is a magnifier holding three rising bars, in graphite chrome on a white tile (a dark twin exists). Files in `static/brand/`:

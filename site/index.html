@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEOConsole: your search data, your server, your agents</title>
+<meta name="description" content="Open-source SEO dashboard that syncs Search Console, GA4, Bing and Clarity into a file you own, ranks what to fix first, and lets any AI agent read it over MCP.">
+<meta name="theme-color" content="#fafaf9">
+<meta name="color-scheme" content="light">
+<link rel="canonical" href="https://seoconsole.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SEOConsole">
+<meta property="og:title" content="SEOConsole: your search data, your server, your agents">
+<meta property="og:description" content="Open-source SEO dashboard with a read-only MCP server. Self-host it, point an agent at it.">
+<meta property="og:url" content="https://seoconsole.app/">
+<meta property="og:image" content="https://seoconsole.app/assets/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="alternate icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/styles.css">
+<script src="/assets/boot.js"></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"SEOConsole","applicationCategory":"BusinessApplication","operatingSystem":"Linux, macOS, Docker","description":"Self-hosted SEO dashboard for Google Search Console, GA4, Bing and Clarity with a read-only MCP server for AI agents.","license":"https://www.gnu.org/licenses/agpl-3.0.html","url":"https://seoconsole.app/","codeRepository":"https://github.com/Ubaidofficial/OpenSiteConsole","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host. A hosted plan at $10 a month is planned but not open yet."}},
+{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read. The MCP server exposes 29 read-only tools over your stored search data. An agent cannot change your Search Console, your sites or your settings."}},
+{"@type":"Question","name":"Where does my data live?","acceptedAnswer":{"@type":"Answer","text":"In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM."}},
+{"@type":"Question","name":"How far back does history go?","acceptedAnswer":{"@type":"Answer","text":"As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has."}},
+{"@type":"Question","name":"Which AI clients work?","acceptedAnswer":{"@type":"Answer","text":"Claude's custom connector works with one-click sign-in, and Claude Code works with a command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, though not every client has been tested."}},
+{"@type":"Question","name":"How mature is it?","acceptedAnswer":{"@type":"Answer","text":"Early. It has more than 500 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed. Verification on real accounts is ongoing, so expect to find rough edges and report them."}}
+]}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="progress" aria-hidden="true"><i></i></div>
+
+<header class="top" id="top">
+  <div class="wrap bar-in">
+    <a class="brand" href="#top" aria-label="SEOConsole home"><img src="/assets/brand/mark-dark.svg" width="30" height="30" alt=""><span>SEOConsole</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="#agents">Agents</a>
+      <a href="#product">Product</a>
+      <a href="#more">Features</a>
+      <a href="#self-host">Self-host</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn small ghost" href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">GitHub<span class="arr" aria-hidden="true">↗</span></a>
+  </div>
+</header>
+
+<main id="main">
+<!-- ───────────── HERO ───────────── -->
+<section class="hero" aria-labelledby="h1">
+  <div class="wrap">
+    <p class="kicker mono"><span class="dot" aria-hidden="true"></span>Open source · AGPL-3.0 · MCP-native</p>
+    <h1 id="h1" class="h-xl">
+      <span class="ln l1"><span class="w">Your search data.</span></span>
+      <span class="ln l2"><span class="w">Your server.</span></span>
+      <span class="ln l3"><span class="w">Your <span class="hl">agents.</span></span></span>
+    </h1>
+    <p class="lead rv">SEOConsole syncs Search Console, GA4, Bing and Clarity into a SQLite file you own, ranks what to fix first, and lets any AI agent read it over MCP.</p>
+    <div class="cta rv">
+      <a class="btn primary" href="#self-host">Self-host it, free<span class="arr" aria-hidden="true">→</span></a>
+      <a class="btn ghost" href="#agents">Watch an agent use it</a>
+    </div>
+    <ul class="proof mono rv" aria-label="Highlights">
+      <li><b>29</b> read-only MCP tools</li>
+      <li><b>1-click</b> sign-in from Claude</li>
+      <li><b>0</b> third-party scripts on this page</li>
+    </ul>
+  </div>
+
+  <div class="wrap stage-wrap">
+    <div class="stage" data-stage>
+      <div class="stack">
+      <div class="layer l3" aria-hidden="true"><span class="mono"><i></i>Portfolio</span></div>
+      <div class="layer l2" aria-hidden="true"><span class="mono"><i></i>Actions</span></div>
+      <div class="device" data-device>
+        <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span class="url mono">seoconsole.app · demo data</span></div>
+        <img class="shot" src="/assets/shots/dashboard-1080.webp" srcset="/assets/shots/dashboard-1080.webp 1080w, /assets/shots/dashboard.webp 2160w" sizes="(min-width: 1240px) 1240px, 94vw" width="2160" height="1350" alt="The SEOConsole dashboard: six Search Console properties with clicks, impressions, CTR and average position, sparklines and change against the previous period." fetchpriority="high">
+        <span class="glare" aria-hidden="true"></span>
+      </div>
+      </div>
+      <div class="hud-row mono" aria-hidden="true">
+        <span class="hud"><i></i>6 properties · 2 accounts · one view</span>
+        <span class="hud"><i></i>change vs previous period on every number</span>
+        <span class="hud"><i></i>Bing · GA4 · Tag Manager · Clarity linked</span>
+      </div>
+    </div>
+    <p class="fine mono">Screenshots in this page are the real app running on its built-in demo data.</p>
+  </div>
+</section>
+
+<div class="marquee">
+  <p class="sr">Connects to Search Console, GA4, Tag Manager, Bing Webmaster, Clarity, Chrome UX Report, IndexNow and OpenSEO.</p>
+  <div class="track mono" aria-hidden="true">
+    <span>Google Search Console</span><span>GA4</span><span>Tag Manager</span><span>Bing Webmaster</span><span>Microsoft Clarity</span><span>Chrome UX Report</span><span>IndexNow</span><span>OpenSEO</span><span>Model Context Protocol</span>
+    <span>Google Search Console</span><span>GA4</span><span>Tag Manager</span><span>Bing Webmaster</span><span>Microsoft Clarity</span><span>Chrome UX Report</span><span>IndexNow</span><span>OpenSEO</span><span>Model Context Protocol</span>
+  </div>
+</div>
+
+<!-- ───────────── AGENTS ───────────── -->
+<section class="sec agents" id="agents" aria-labelledby="h-agents">
+  <div class="wrap">
+    <p class="kicker mono rv"><span class="idx">01</span>Agents</p>
+    <h2 id="h-agents" class="h-lg rv">Give your agent the whole picture.</h2>
+    <p class="sub rv">SEOConsole is a Model Context Protocol server. Your agent calls 29 read-only tools and answers from your own stored data, so it can reason over every site, every source and the history you have kept.</p>
+
+    <div class="agent-grid">
+      <div class="term rv" data-term role="group" aria-label="Example conversation with an agent connected to SEOConsole">
+        <div class="term-bar mono"><i></i><i></i><i></i><span>agent · seoconsole</span><em>live demo data</em></div>
+        <div class="term-body mono">
+          <p class="t-line t-user" data-step="user"><span class="pr">›</span> What should I fix first across my sites?</p>
+          <p class="t-line t-tool" data-step="tool"><span class="bul">●</span> seoconsole · <b>get_action_queue</b> <span class="args">{ limit: 5 }</span></p>
+          <p class="t-line t-ok" data-step="ok"><span class="chk">✓</span> 5 findings, 2 blocking</p>
+          <p class="t-line t-say" data-step="say">Two things stop you earning or measuring, then the biggest ranking prize:</p>
+          <p class="t-line t-row" data-step="row"><span class="n">1</span><span class="tag block">BLOCKING</span><span class="site">pixelforge</span><span class="msg">Tag Manager sends to a different GA4 property</span></p>
+          <p class="t-line t-row" data-step="row"><span class="n">2</span><span class="tag block">BLOCKING</span><span class="site">trailmaps</span><span class="msg">The container has no published version</span></p>
+          <p class="t-line t-row" data-step="row"><span class="n">3</span><span class="tag gain">≈1,634 clicks / 28d</span><span class="site">trailmaps</span><span class="msg">“best hiking maps” sits at position 6.4</span></p>
+          <p class="t-line t-user" data-step="user"><span class="pr">›</span> How big is that prize, really?</p>
+          <p class="t-line t-tool" data-step="tool"><span class="bul">●</span> seoconsole · <b>get_opportunities</b> <span class="args">{ site: "trailmaps", type: "striking", limit: 2 }</span></p>
+          <p class="t-line t-ok" data-step="ok"><span class="chk">✓</span> CTR curve fitted to this site, not an industry average</p>
+          <p class="t-line t-say" data-step="say">13,350 impressions at position 6.4 and 457 clicks today. On this site’s own curve, position 3 would be worth about 1,634 more clicks a month. That is the size of the prize, not a forecast.</p>
+        </div>
+        <p class="term-note">Tool names and results come from the demo dataset. The assistant’s wording is an example.</p>
+      </div>
+
+      <div class="connect rv" data-tabs>
+        <div class="tablist" role="tablist" aria-label="Connect a client">
+          <button role="tab" id="tab-claude" aria-controls="panel-claude" aria-selected="true" class="mono">Claude</button>
+          <button role="tab" id="tab-code" aria-controls="panel-code" aria-selected="false" tabindex="-1" class="mono">Claude Code</button>
+          <button role="tab" id="tab-other" aria-controls="panel-other" aria-selected="false" tabindex="-1" class="mono">Any MCP client</button>
+        </div>
+        <div class="panel" role="tabpanel" id="panel-claude" aria-labelledby="tab-claude">
+          <ol class="steps-list">
+            <li>In Claude, open <b>Customize → Connectors → Add custom connector</b>.</li>
+            <li>Paste your server address: <code>https://your-server/api/mcp</code></li>
+            <li>Authentication: <b>Sign in now</b>. OAuth client: <b>Register automatically</b>.</li>
+            <li>Click Connect, sign in on your own SEOConsole, choose which sites it can read, and Allow.</li>
+          </ol>
+          <p class="note">No key to paste. The token renews itself and shows up on your Agents page, where one click revokes it.</p>
+        </div>
+        <div class="panel" role="tabpanel" id="panel-code" aria-labelledby="tab-code" hidden>
+          <div class="code"><button class="copy mono" type="button" data-copy="claude mcp add --scope user --transport http seoconsole https://your-server/api/mcp --header &quot;Authorization: Bearer osc_YOUR_KEY&quot;">Copy</button><pre class="mono" tabindex="0"><code>claude mcp add --scope user --transport http seoconsole \
+  https://your-server/api/mcp \
+  --header "Authorization: Bearer osc_YOUR_KEY"</code></pre></div>
+          <p class="note">Create the key on the Agents page, optionally limited to some sites. <code>--scope user</code> makes it available in every project.</p>
+        </div>
+        <div class="panel" role="tabpanel" id="panel-other" aria-labelledby="tab-other" hidden>
+          <div class="code"><button class="copy mono" type="button" data-copy="{ &quot;mcpServers&quot;: { &quot;seoconsole&quot;: { &quot;url&quot;: &quot;https://your-server/api/mcp&quot;, &quot;headers&quot;: { &quot;Authorization&quot;: &quot;Bearer osc_YOUR_KEY&quot; } } } }">Copy</button><pre class="mono" tabindex="0"><code>{
+  "mcpServers": {
+    "seoconsole": {
+      "url": "https://your-server/api/mcp",
+      "headers": { "Authorization": "Bearer osc_YOUR_KEY" }
+    }
+  }
+}</code></pre></div>
+          <p class="note">Any client that speaks HTTP MCP with a bearer token or OAuth. Claude is the one confirmed so far.</p>
+        </div>
+      </div>
+    </div>
+
+    <ul class="stats mono rv" aria-label="MCP server facts">
+      <li><b data-count="29">29</b><span>read-only tools</span></li>
+      <li><b>OAuth</b><span>or API key, per site scope</span></li>
+      <li><b>Rate-limited</b><span>per key, with a daily inspection budget</span></li>
+      <li><b>No writes</b><span>agents cannot change your Search Console</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ───────────── PRODUCT (pinned story) ───────────── -->
+<section class="sec product" id="product" aria-labelledby="h-product">
+  <div class="wrap">
+    <p class="kicker mono rv"><span class="idx">02</span>Product</p>
+    <h2 id="h-product" class="h-lg rv">Not another dashboard to stare at.</h2>
+    <p class="sub rv">Every screen is built to end in a decision: what to fix, what changed, whether it worked.</p>
+
+    <div class="story" data-story>
+      <ol class="steps">
+        <li class="step" data-i="0">
+          <span class="num mono">01</span>
+          <h3>A ranked to-do list.</h3>
+          <p>Broken tracking, blocked or de-indexed pages, traffic collapses, cannibalisation, CTR gaps, striking distance: every finding in one list. Blocking items first, then by estimated clicks times confidence. Hover any chip to see what it means.</p>
+          <p class="src mono">ranked · explained · per site or across all</p>
+          <img class="inline" src="/assets/shots/actions-1080.webp" width="1080" height="675" alt="The action queue: a ranked list of findings with type, estimated clicks, confidence and effort chips." loading="lazy">
+        </li>
+        <li class="step" data-i="1">
+          <span class="num mono">02</span>
+          <h3>Every site, one list.</h3>
+          <p>Portfolio merges striking distance, cannibalisation, decay and anomalies across all your properties and Google accounts. Each site is judged on its own data first, then merged.</p>
+          <p class="src mono">many accounts · duplicates counted once</p>
+          <img class="inline" src="/assets/shots/portfolio-1080.webp" width="1080" height="675" alt="Portfolio view: striking-distance queries across several sites, ranked by estimated extra clicks." loading="lazy">
+        </li>
+        <li class="step" data-i="2">
+          <span class="num mono">03</span>
+          <h3>Every source, side by side.</h3>
+          <p>Google, Bing, GA4 and Clarity joined on the page’s URL path, with www, http and https counted as one page. Each metric carries its change against the previous period.</p>
+          <p class="src mono">Search Console · Bing · GA4 · Clarity</p>
+          <img class="inline" src="/assets/shots/pages-1080.webp" width="1080" height="675" alt="One table with a band per source: Google, Bing, GA4 and Clarity metrics for each page." loading="lazy">
+        </li>
+        <li class="step" data-i="3">
+          <span class="num mono">04</span>
+          <h3>Numbers fitted to your site.</h3>
+          <p>Striking-distance queries ranked by estimated extra clicks, using a click-through curve fitted to your own data instead of an industry average. Bold means measured on your site; grey means a fallback.</p>
+          <p class="src mono">your CTR curve · not a benchmark</p>
+          <img class="inline" src="/assets/shots/opportunities-1080.webp" width="1080" height="675" alt="Opportunities: the site's own CTR by position, and striking-distance queries ranked by estimated gain." loading="lazy">
+        </li>
+        <li class="step" data-i="4">
+          <span class="num mono">05</span>
+          <h3>Test what you change.</h3>
+          <p>Before and after, split with control pages, or redirect tests, with a 95% interval, a p-value and a plain verdict. A test that wins on clicks but loses key events is flagged, not celebrated.</p>
+          <p class="src mono">clicks and GA4 key events</p>
+          <img class="inline" src="/assets/shots/tests-1080.webp" width="1080" height="675" alt="SEO tests: setting up a before/after or split test and reading the result." loading="lazy">
+        </li>
+        <li class="step" data-i="5">
+          <span class="num mono">06</span>
+          <h3>Know when Google forgets a page.</h3>
+          <p>An opt-in monitor re-inspects your biggest pages every day and logs de-indexed, newly indexed, canonical changes and robots blocks, so a quiet drop does not stay quiet.</p>
+          <p class="src mono">URL Inspection · daily · opt-in</p>
+          <img class="inline" src="/assets/shots/indexing-1080.webp" width="1080" height="675" alt="The indexing monitor: index status of the biggest pages and the changes it has logged." loading="lazy">
+        </li>
+      </ol>
+
+      <div class="pin" aria-hidden="true">
+        <div class="pin-card">
+          <div class="chrome"><i></i><i></i><i></i><span class="url mono" data-pin-url>seoconsole.app/actions</span></div>
+          <div class="frames">
+            <img class="frame f0 on" src="/assets/shots/actions-1080.webp" srcset="/assets/shots/actions-1080.webp 1080w, /assets/shots/actions.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
+            <img class="frame f1" src="/assets/shots/portfolio-1080.webp" srcset="/assets/shots/portfolio-1080.webp 1080w, /assets/shots/portfolio.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
+            <img class="frame f2" src="/assets/shots/pages-1080.webp" srcset="/assets/shots/pages-1080.webp 1080w, /assets/shots/pages.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
+            <img class="frame f3" src="/assets/shots/opportunities-1080.webp" srcset="/assets/shots/opportunities-1080.webp 1080w, /assets/shots/opportunities.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
+            <img class="frame f4" src="/assets/shots/tests-1080.webp" srcset="/assets/shots/tests-1080.webp 1080w, /assets/shots/tests.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
+            <img class="frame f5" src="/assets/shots/indexing-1080.webp" srcset="/assets/shots/indexing-1080.webp 1080w, /assets/shots/indexing.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
+          </div>
+        </div>
+        <ol class="dots" aria-hidden="true"><li class="on"></li><li></li><li></li><li></li><li></li><li></li></ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── MORE (bento) ───────────── -->
+<section class="sec more" id="more" aria-labelledby="h-more">
+  <div class="wrap">
+    <p class="kicker mono rv"><span class="idx">03</span>And the rest</p>
+    <h2 id="h-more" class="h-lg rv">The boring parts, done properly.</h2>
+
+    <div class="bento">
+      <article class="card c-history rv">
+        <h3>History past 16 months.</h3>
+        <p>Search Console keeps 16 months. SEOConsole keeps everything it has synced, in a file you own, so last year is still there next year.</p>
+        <svg class="tl-svg" viewBox="0 0 600 190" role="img" aria-label="Illustration: your archive reaches far back, while Search Console's own window covers only the last 16 months.">
+          <defs><clipPath id="gwin"><rect x="388" y="0" width="212" height="190"/></clipPath></defs>
+          <path class="area" d="M0 190 L0 128 C40 118 62 84 104 94 S166 52 208 72 S268 108 310 82 S366 40 408 60 S478 102 530 66 S578 44 600 54 L600 190 Z"/>
+          <path class="line" pathLength="1200" d="M0 128 C40 118 62 84 104 94 S166 52 208 72 S268 108 310 82 S366 40 408 60 S478 102 530 66 S578 44 600 54"/>
+          <path class="line hot" pathLength="1200" clip-path="url(#gwin)" d="M0 128 C40 118 62 84 104 94 S166 52 208 72 S268 108 310 82 S366 40 408 60 S478 102 530 66 S578 44 600 54"/>
+          <line class="cut" x1="388" y1="8" x2="388" y2="190"/>
+        </svg>
+        <ul class="legend mono" aria-hidden="true"><li><i class="k a"></i>your archive</li><li><i class="k g"></i>Search Console: last 16 months</li></ul>
+        <p class="fine left mono">Illustration, not real data.</p>
+      </article>
+      <article class="card c-privacy rv">
+        <h3>Privacy mode.</h3>
+        <p>One click blurs site names, accounts and URLs for screenshots and screen-shares. The numbers stay.</p>
+        <div class="crop"><img src="/assets/shots/privacy-1080.webp" width="1080" height="675" alt="The dashboard with every site name blurred and the numbers still visible." loading="lazy"></div>
+      </article>
+      <article class="card c-gtm rv">
+        <h3>Tracking audit.</h3>
+        <p>Cross-checks Search Console, GA4 and Tag Manager. In the demo it catches a container sending to the wrong GA4 property, and one that was never published.</p>
+        <p class="chipline mono"><span class="tag block">BLOCKING</span> Tag Manager sends to a different GA4 property</p>
+      </article>
+      <article class="card c-digest rv">
+        <h3>Weekly digest, urgent alerts.</h3>
+        <p>A Monday summary and alerts for blocking problems, sent to a webhook. Every item says what to do first.</p>
+        <div class="crop"><img src="/assets/shots/digest-1080.webp" width="1080" height="675" alt="The weekly digest page: headline, top actions and what moved." loading="lazy"></div>
+      </article>
+      <article class="card c-vitals rv">
+        <h3>Core Web Vitals.</h3>
+        <p>LCP, INP and CLS from real Chrome users, rated good, needs improvement or poor, with a snapshot stored every day.</p>
+        <div class="crop"><img src="/assets/shots/vitals-1080.webp" width="1080" height="675" alt="Core Web Vitals for phone and desktop, each rated good, needs improvement or poor." loading="lazy"></div>
+      </article>
+      <article class="card c-sitemap rv">
+        <h3>Sitemap coverage.</h3>
+        <p>Which sitemap URLs Google has never shown, and which pages earn clicks but are missing from your sitemaps.</p>
+        <div class="crop"><img src="/assets/shots/sitemaps-1080.webp" width="1080" height="675" alt="Sitemaps for a site: what is submitted, last read and any problems." loading="lazy"></div>
+      </article>
+      <article class="card c-small rv">
+        <h3>IndexNow.</h3>
+        <p>Tells Bing and other IndexNow engines the moment a page changes. Google does not take part in IndexNow.</p>
+      </article>
+      <article class="card c-small rv">
+        <h3>Google update markers.</h3>
+        <p>Ranking-update dates on your charts, your tests and your digest, so a drop gets an honest explanation first.</p>
+      </article>
+      <article class="card c-small rv">
+        <h3>Locked down by default.</h3>
+        <p>Tokens encrypted at rest with AES-256-GCM, password login, read-only agent access scoped per site, rate limits, an audit log.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── SELF-HOST ───────────── -->
+<section class="sec host" id="self-host" aria-labelledby="h-host">
+  <div class="wrap">
+    <p class="kicker mono rv"><span class="idx">04</span>Self-host</p>
+    <h2 id="h-host" class="h-lg rv">Run it where your data already lives.</h2>
+    <p class="sub rv">Free and open source. Try it on built-in demo data in three commands, then connect your own Google account when you are ready.</p>
+
+    <div class="price-grid">
+      <article class="plan on rv">
+        <p class="plan-k mono">Self-host</p>
+        <p class="plan-p"><b>Free</b><span>AGPL-3.0, forever</span></p>
+        <div class="code"><button class="copy mono" type="button" data-copy="git clone https://github.com/Ubaidofficial/OpenSiteConsole
+cd OpenSiteConsole &amp;&amp; pnpm install
+cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm serve">Copy</button><pre class="mono" tabindex="0"><code>git clone https://github.com/Ubaidofficial/OpenSiteConsole
+cd OpenSiteConsole &amp;&amp; pnpm install
+cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm serve</code></pre></div>
+        <ul class="plan-l">
+          <li>Your SQLite file, your server, your keys</li>
+          <li>Guides for Docker, Coolify and Cloudflare in the README</li>
+          <li>Every feature on this page, no tiers</li>
+        </ul>
+        <a class="btn primary" href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">Open the repository<span class="arr" aria-hidden="true">↗</span></a>
+      </article>
+      <article class="plan rv">
+        <p class="plan-k mono">Hosted <em>planned</em></p>
+        <p class="plan-p"><b>$10</b><span>per month, when it opens</span></p>
+        <p class="plan-d">Your own isolated instance, set up for you, with sign-in and billing handled. It is still being prepared and is <b>not open yet</b>; Google’s OAuth review has to come first.</p>
+        <ul class="plan-l">
+          <li>One private instance per customer</li>
+          <li>Same app, same MCP server</li>
+          <li>Leave any time; your data stays yours</li>
+        </ul>
+        <a class="btn ghost" href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">Follow the repository<span class="arr" aria-hidden="true">↗</span></a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── FAQ ───────────── -->
+<section class="sec faq" id="faq" aria-labelledby="h-faq">
+  <div class="wrap narrow">
+    <p class="kicker mono rv"><span class="idx">05</span>Questions</p>
+    <h2 id="h-faq" class="h-lg rv">Straight answers.</h2>
+    <div class="qa rv">
+      <details><summary>Is it really free?</summary><p>Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $10 a month is planned, and the page above says plainly that it is not open yet.</p></details>
+      <details><summary>What can an AI agent do with it?</summary><p>Read. The MCP server exposes 29 read-only tools over your stored search data: performance, opportunities, indexing, tracking health and more. An agent cannot change your Search Console, your sites or your settings. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
+      <details><summary>Where does my data live?</summary><p>In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM. Whatever an agent reads is sent to that agent’s provider, so connect only agents you trust with that data.</p></details>
+      <details><summary>How far back does history go?</summary><p>As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has.</p></details>
+      <details><summary>Which AI clients work?</summary><p>Claude’s custom connector works with one-click sign-in, and Claude Code works with a single command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, but only Claude has been confirmed.</p></details>
+      <details><summary>How mature is it?</summary><p>Early. It has more than 500 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed end to end. Verification on real accounts is ongoing, so expect rough edges and please report them.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── FINAL CTA ───────────── -->
+<section class="sec final" aria-labelledby="h-final">
+  <div class="wrap">
+    <h2 id="h-final" class="h-xl rv">Point an agent at your search data.</h2>
+    <div class="cta rv">
+      <a class="btn primary" href="#self-host">Self-host it, free<span class="arr" aria-hidden="true">→</span></a>
+      <a class="btn ghost" href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">Star on GitHub<span class="arr" aria-hidden="true">↗</span></a>
+    </div>
+  </div>
+</section>
+</main>
+
+<nav aria-label="Shortcut"><a class="pill-cta" href="#agents" data-pill aria-label="Connect Claude with one-click sign-in: jump to the setup steps"><img src="/assets/brand/mark-dark.svg" width="30" height="30" alt=""><span>Connect Claude<small>one-click sign-in</small></span><span class="arr" aria-hidden="true">→</span></a></nav>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <a class="brand" href="#top"><img src="/assets/brand/mark-dark.svg" width="26" height="26" alt=""><span>SEOConsole</span></a>
+    <nav aria-label="Footer" class="mono">
+      <a href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">GitHub</a>
+      <a href="https://github.com/Ubaidofficial/OpenSiteConsole#readme" rel="noopener">Docs</a>
+      <a href="https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>
+    </nav>
+    <p class="mono">© 2026 SEOConsole. Google, GA4, Bing, Clarity and the other names here belong to their owners; SEOConsole is not affiliated with them.</p>
+  </div>
+</footer>
+
+<script src="/assets/main.js" defer></script>
+</body>
+</html>
