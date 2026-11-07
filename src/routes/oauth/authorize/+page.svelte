@@ -41,7 +41,11 @@
 					</div>
 				{/if}
 			</fieldset>
-			<p class="text-xs text-muted-foreground">Access is read-only: it can look at your Search Console, GA4, Bing and indexing data, and cannot change anything. You can remove it any time on the Agents page.</p>
+			<label class="flex items-start gap-2 rounded-md border p-3 text-sm">
+				<input type="checkbox" name="changes" class="mt-1" />
+				<span><b>Also let it make changes</b> <span class="text-muted-foreground">(optional, off by default)</span><br /><span class="text-xs text-muted-foreground">Mark findings done or snoozed, log a change, start an SEO test, refresh data, run page checks, send URLs to Bing through IndexNow, submit a sitemap, set brand terms, and watch URLs. It can never delete anything, connect or disconnect accounts, or touch keys and passwords. Every change is written to the audit log.</span></span>
+			</label>
+			<p class="text-xs text-muted-foreground">Without the box ticked, access is read-only: it can look at your Search Console, GA4, Bing and indexing data and cannot change anything. You can remove it, or turn changes on or off, any time on the Agents page.</p>
 			{#if form?.error}<p class="text-sm text-bad">{form.error}</p>{/if}
 			<div class="flex gap-2">
 				<button class="btn btn-primary">Allow</button>

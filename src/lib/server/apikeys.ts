@@ -4,14 +4,17 @@ import { db } from './db';
 export const KEY_PREFIX = 'osc_';
 const hash = (k: string) => createHash('sha256').update(k).digest('hex');
 
-export interface ApiKeyRow { id: number; name: string; prefix: string; site_ids: string | null; created_at: number; last_used_at: number | null; expires_at: number | null }
+export interface ApiKeyRow { id: number; name: string; prefix: string; site_ids: string | null; created_at: number; last_used_at: number | null; expires_at: number | null; can_write: number }
 
-/** The plaintext key is returned once; only its SHA-256 is stored. `expiresAt` is for OAuth access tokens; keys made by hand never expire. */
-export function createApiKey(name: string, siteIds: number[] | null, expiresAt: number | null = null): { id: number; key: string } {
+/**
+ * The plaintext key is returned once; only its SHA-256 is stored. `expiresAt` is for OAuth access tokens; keys made by hand never expire.
+ * `canWrite` lets the key use the MCP tools that change things (mark done, log a change, send URLs to Bing...). It is off unless asked for.
+ */
+export function createApiKey(name: string, siteIds: number[] | null, expiresAt: number | null = null, canWrite = false): { id: number; key: string } {
 	const key = KEY_PREFIX + randomBytes(24).toString('base64url');
 	const r = db()
-		.prepare('INSERT INTO api_keys (name, prefix, hash, site_ids, created_at, expires_at) VALUES (?,?,?,?,?,?)')
-		.run(name.trim().slice(0, 60) || 'API key', key.slice(0, 8), hash(key), siteIds && siteIds.length ? JSON.stringify(siteIds) : null, Date.now(), expiresAt);
+		.prepare('INSERT INTO api_keys (name, prefix, hash, site_ids, created_at, expires_at, can_write) VALUES (?,?,?,?,?,?,?)')
+		.run(name.trim().slice(0, 60) || 'API key', key.slice(0, 8), hash(key), siteIds && siteIds.length ? JSON.stringify(siteIds) : null, Date.now(), expiresAt, canWrite ? 1 : 0);
 	return { id: Number(r.lastInsertRowid), key };
 }
 
@@ -22,7 +25,10 @@ export function rotateApiKey(id: number, expiresAt: number): string | undefined 
 	return r.changes === 1 ? key : undefined;
 }
 
-export const listApiKeys = () => db().prepare('SELECT id, name, prefix, site_ids, created_at, last_used_at, expires_at FROM api_keys ORDER BY id DESC').all() as ApiKeyRow[];
+export const listApiKeys = () => db().prepare('SELECT id, name, prefix, site_ids, created_at, last_used_at, expires_at, can_write FROM api_keys ORDER BY id DESC').all() as ApiKeyRow[];
+
+/** Turn the "may make changes" permission on or off for an existing key (an OAuth sign-in's token keeps it when it renews). */
+export const setKeyCanWrite = (id: number, on: boolean) => db().prepare('UPDATE api_keys SET can_write = ? WHERE id = ?').run(on ? 1 : 0, id).changes === 1;
 /**
  * Take a deleted site out of every key's scope. SQLite reuses the id of the newest site once it is deleted, so a key scoped to
  * that id would otherwise silently start seeing whatever site is added next. A key left with no sites sees nothing (an empty
@@ -42,13 +48,13 @@ export const deleteApiKey = (id: number) => void db().prepare('DELETE FROM api_k
 /** The credential a request carries, if any (an X-API-Key header or a bearer token), whether or not it is valid. */
 export const presentedKey = (request: Request): string => request.headers.get('x-api-key') ?? request.headers.get('authorization')?.replace(/^Bearer /i, '') ?? '';
 
-/** Returns the key's site scope (null = all sites) or undefined if the key is unknown or has expired. */
-export function authenticate(request: Request, now = Date.now()): { id: number; scope: number[] | null } | undefined {
+/** Returns the key's site scope (null = all sites) and whether it may make changes, or undefined if the key is unknown or has expired. */
+export function authenticate(request: Request, now = Date.now()): { id: number; scope: number[] | null; canWrite: boolean; name: string } | undefined {
 	const header = presentedKey(request);
 	if (!header.startsWith(KEY_PREFIX)) return undefined;
-	const row = db().prepare('SELECT id, site_ids, expires_at FROM api_keys WHERE hash = ?').get(hash(header)) as { id: number; site_ids: string | null; expires_at: number | null } | undefined;
+	const row = db().prepare('SELECT id, name, site_ids, expires_at, can_write FROM api_keys WHERE hash = ?').get(hash(header)) as { id: number; name: string; site_ids: string | null; expires_at: number | null; can_write: number } | undefined;
 	if (!row) return undefined;
 	if (row.expires_at != null && row.expires_at <= now) return undefined;
 	db().prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?').run(Date.now(), row.id);
-	return { id: row.id, scope: row.site_ids ? (JSON.parse(row.site_ids) as number[]) : null };
+	return { id: row.id, scope: row.site_ids ? (JSON.parse(row.site_ids) as number[]) : null, canWrite: row.can_write === 1, name: row.name };
 }

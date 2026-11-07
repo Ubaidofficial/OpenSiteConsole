@@ -25,7 +25,8 @@ export const actions: Actions = {
 			siteIds = [...new Set(f.getAll('site').map(Number).filter((n) => Number.isInteger(n) && known.has(n)))];
 			if (!siteIds.length) return fail(400, { error: 'Pick at least one site, or choose all sites.' });
 		}
-		const r = approveRequest(id, siteIds);
+		// Changes are opt-in: only an explicitly ticked box lets this app use the tools that change things.
+		const r = approveRequest(id, siteIds, Date.now(), f.get('changes') === 'on');
 		return r ? { redirect: r.location } : fail(400, { error: expired });
 	},
 	deny: async ({ request }) => {

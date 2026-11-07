@@ -8,9 +8,9 @@
 
 <h1 class="mb-1 text-lg font-semibold">Agents &amp; MCP</h1>
 <p class="mb-4 max-w-3xl text-sm text-muted-foreground">
-	SEOConsole exposes a <b>read-only</b> MCP server, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Google Tag Manager, Bing, Clarity and Core Web Vitals data in one place. <code>get_tracking_health</code> cross-checks Search Console, GA4 and Tag Manager for a site, <code>get_trends</code> and <code>get_content_groups</code> cover movement and structure, <code>get_seo_tests</code> reads test results, and <code>get_connections</code> shows which tools are connected.
+	SEOConsole exposes an MCP server that <b>reads by default</b> ({data.tools.length - data.changeTools.length} of its tools only read; the other {data.changeTools.length} can change things, but only for a key or sign-in you allowed to, and never delete anything), so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Google Tag Manager, Bing, Clarity and Core Web Vitals data in one place. <code>get_tracking_health</code> cross-checks Search Console, GA4 and Tag Manager for a site, <code>get_trends</code> and <code>get_content_groups</code> cover movement and structure, <code>get_seo_tests</code> reads test results, and <code>get_connections</code> shows which tools are connected.
 	Connect it alongside OpenSEO's MCP: ask the agent for a site's <code>get_openseo_project</code> and it can hand that project id to OpenSEO's keyword, rank-tracking and audit tools.
-	Nothing here can change a site or spend money.
+	Changes are refused unless you allowed them for that key, nothing can delete data or touch accounts and credentials, and the activity table at the bottom shows every change an agent made.
 </p>
 
 {#if form?.newKey}
@@ -34,6 +34,10 @@
 					{#each data.sites as s}<label class="flex items-center gap-2"><input type="checkbox" name="site" value={s.id} /> <span class="pii">{s.name}</span></label>{/each}
 				</div>
 			</fieldset>
+			<label class="flex items-start gap-2 text-xs">
+				<input type="checkbox" name="changes" class="mt-0.5" />
+				<span><b>Allow this key to make changes</b> (off by default). Lets an agent mark findings done, log changes, start tests, refresh data, run page checks and send URLs to IndexNow. It can never delete or connect anything. Leave it off for a read-only key.</span>
+			</label>
 			<button class="btn btn-primary">Create key</button>
 		</form>
 	</section>
@@ -42,7 +46,8 @@
 		<h2 class="mb-2 font-medium">Endpoint</h2>
 		<code class="block break-all rounded bg-black/5 p-2 dark:bg-white/10">{data.mcpUrl}</code>
 		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address.</p>
-		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools:</b> <span class="font-mono">{data.tools.join(', ')}</span>.</p>
+		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools:</b> <span class="font-mono">{data.tools.filter((t) => !data.changeTools.includes(t)).join(', ')}</span>.</p>
+		<p class="mt-2 text-xs text-muted-foreground"><b>{data.changeTools.length} that can change things</b> (refused unless the key is allowed to make changes; none can delete): <span class="font-mono">{data.changeTools.join(', ')}</span>.</p>
 	</section>
 </div>
 
@@ -85,16 +90,35 @@ bearer_token_env_var = "OSC_MCP_KEY"</pre>
 <h2 class="mt-6 mb-2 font-medium">Keys</h2>
 <div class="card overflow-x-auto">
 	<table class="w-full">
-		<thead><tr><th class="th">Name</th><th class="th">Key</th><th class="th">Scope</th><th class="th">Last used</th><th class="th relative"><span class="sr-only">Actions</span></th></tr></thead>
+		<thead><tr><th class="th">Name</th><th class="th">Key</th><th class="th">Scope</th><th class="th">Can change things</th><th class="th">Last used</th><th class="th relative"><span class="sr-only">Actions</span></th></tr></thead>
 		<tbody>
 			{#each data.keys as k (k.id)}
 				<tr>
 					<td class="td">{k.name}{#if k.signInApp}<span class="chip ml-2" title="Created when {k.signInApp} was approved with Sign in. Its token is renewed automatically; revoke it here to cut the app off.">sign-in</span>{/if}</td><td class="td"><code>{k.prefix}…</code></td>
 					<td class="td text-xs"><span class="pii">{k.scope ? k.scope.map(nameOf).join(', ') : 'all sites'}</span></td>
+					<td class="td text-xs"><form method="POST" action="?/changes" use:enhance class="flex items-center gap-2"><input type="hidden" name="id" value={k.id} /><input type="hidden" name="on" value={k.canWrite ? '0' : '1'} /><span class={k.canWrite ? 'chip' : 'text-muted-foreground'}>{k.canWrite ? 'yes' : 'read-only'}</span><button class="btn text-xs" title={k.canWrite ? 'Make this key read-only again' : 'Let this key make changes through the MCP tools'}>{k.canWrite ? 'Turn off' : 'Turn on'}</button></form></td>
 					<td class="td text-xs text-muted-foreground">{k.lastUsedAt ? ago(k.lastUsedAt) : 'never'}</td>
 					<td class="td text-right"><form method="POST" action="?/remove" use:enhance><input type="hidden" name="id" value={k.id} /><ConfirmButton title="Revoke this API key?" description="Anything using this key (an agent, a script) loses access immediately." confirmLabel="Revoke key">Revoke</ConfirmButton></form></td>
 				</tr>
-			{:else}<tr><td class="td text-muted-foreground" colspan="5">No keys yet.</td></tr>{/each}
+			{:else}<tr><td class="td text-muted-foreground" colspan="6">No keys yet.</td></tr>{/each}
+		</tbody>
+	</table>
+</div>
+
+<h2 class="mt-8 mb-1 font-medium">Agent activity</h2>
+<p class="mb-2 text-xs text-muted-foreground">Every change an agent made through the MCP, and every time a key or sign-in was given or taken away the right to make changes. Newest first.</p>
+<div class="card overflow-x-auto">
+	<table class="w-full">
+		<thead><tr><th class="th">When</th><th class="th">What</th><th class="th">Site</th><th class="th">Details</th></tr></thead>
+		<tbody>
+			{#each data.activity as a}
+				<tr>
+					<td class="td whitespace-nowrap text-xs text-muted-foreground">{ago(a.at)}</td>
+					<td class="td text-xs"><code>{a.action.replace(/^mcp\./, '')}</code></td>
+					<td class="td text-xs"><span class="pii">{a.siteId ? nameOf(a.siteId) : ''}</span></td>
+					<td class="td max-w-[40rem] truncate text-xs text-muted-foreground"><span class="pii" title={a.detail ?? ''}>{a.detail ?? ''}</span></td>
+				</tr>
+			{:else}<tr><td class="td text-muted-foreground" colspan="4">Nothing yet.</td></tr>{/each}
 		</tbody>
 	</table>
 </div>

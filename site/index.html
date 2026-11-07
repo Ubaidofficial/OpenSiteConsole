@@ -11,7 +11,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SEOConsole">
 <meta property="og:title" content="SEOConsole: your search data, your server, your agents">
-<meta property="og:description" content="Open-source SEO dashboard with a read-only MCP server. Self-host it, point an agent at it.">
+<meta property="og:description" content="Open-source SEO dashboard with an MCP server that reads by default. Self-host it, point an agent at it.">
 <meta property="og:url" content="https://seoconsole.app/">
 <meta property="og:image" content="https://seoconsole.app/assets/og.png">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
@@ -24,12 +24,12 @@
 <link rel="stylesheet" href="/assets/styles.css">
 <script src="/assets/boot.js"></script>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"SEOConsole","applicationCategory":"BusinessApplication","operatingSystem":"Linux, macOS, Docker","description":"Self-hosted SEO dashboard for Google Search Console, GA4, Bing and Clarity with a read-only MCP server for AI agents.","license":"https://www.gnu.org/licenses/agpl-3.0.html","url":"https://seoconsole.app/","codeRepository":"https://github.com/Ubaidofficial/OpenSiteConsole","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"SEOConsole","applicationCategory":"BusinessApplication","operatingSystem":"Linux, macOS, Docker","description":"Self-hosted SEO dashboard for Google Search Console, GA4, Bing and Clarity with an MCP server for AI agents that reads by default.","license":"https://www.gnu.org/licenses/agpl-3.0.html","url":"https://seoconsole.app/","codeRepository":"https://github.com/Ubaidofficial/OpenSiteConsole","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host. A hosted plan at $10 a month is planned but not open yet."}},
-{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read. The MCP server exposes 29 read-only tools over your stored search data. An agent cannot change your Search Console, your sites or your settings."}},
+{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 33 tools that read your stored search data, and 10 that can change things in SEOConsole: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow, submit a sitemap, set brand terms, watch URLs. Those 10 refuse unless you allowed changes for that connection, which is off by default. None can delete data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
 {"@type":"Question","name":"Where does my data live?","acceptedAnswer":{"@type":"Answer","text":"In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM."}},
 {"@type":"Question","name":"How far back does history go?","acceptedAnswer":{"@type":"Answer","text":"As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has."}},
 {"@type":"Question","name":"Which AI clients work?","acceptedAnswer":{"@type":"Answer","text":"Claude's custom connector works with one-click sign-in, and Claude Code works with a command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, though not every client has been tested."}},
@@ -71,7 +71,7 @@
       <a class="btn ghost" href="#agents">Watch an agent use it</a>
     </div>
     <ul class="proof mono rv" aria-label="Highlights">
-      <li><b>29</b> read-only MCP tools</li>
+      <li><b>43</b> MCP tools, read-only until you allow changes</li>
       <li><b>1-click</b> sign-in from Claude</li>
       <li><b>0</b> third-party scripts on this page</li>
     </ul>
@@ -111,7 +111,7 @@
   <div class="wrap">
     <p class="kicker mono rv"><span class="idx">01</span>Agents</p>
     <h2 id="h-agents" class="h-lg rv">Give your agent the whole picture.</h2>
-    <p class="sub rv">SEOConsole is a Model Context Protocol server. Your agent calls 29 read-only tools and answers from your own stored data, so it can reason over every site, every source and the history you have kept.</p>
+    <p class="sub rv">SEOConsole is a Model Context Protocol server. Your agent calls 33 tools that read your own stored data, so it can reason over every site, every source and the history you have kept. If you allow it, 10 more let it act on what it finds.</p>
 
     <div class="agent-grid">
       <div class="term rv" data-term role="group" aria-label="Example conversation with an agent connected to SEOConsole">
@@ -168,10 +168,10 @@
     </div>
 
     <ul class="stats mono rv" aria-label="MCP server facts">
-      <li><b data-count="29">29</b><span>read-only tools</span></li>
+      <li><b data-count="33">33</b><span>tools that read</span></li>
+      <li><b>10</b><span>that act, only if you allow it; none can delete</span></li>
       <li><b>OAuth</b><span>or API key, per site scope</span></li>
-      <li><b>Rate-limited</b><span>per key, with a daily inspection budget</span></li>
-      <li><b>No writes</b><span>agents cannot change your Search Console</span></li>
+      <li><b>Rate-limited</b><span>per key, with an audit log of every change</span></li>
     </ul>
   </div>
 </section>
@@ -302,7 +302,7 @@
       </article>
       <article class="card c-small rv">
         <h3>Locked down by default.</h3>
-        <p>Tokens encrypted at rest with AES-256-GCM, password login, read-only agent access scoped per site, rate limits, an audit log.</p>
+        <p>Tokens encrypted at rest with AES-256-GCM, password login, agent access scoped per site and read-only unless you allow changes, rate limits, an audit log of every change.</p>
       </article>
     </div>
   </div>
@@ -353,7 +353,7 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
     <h2 id="h-faq" class="h-lg rv">Straight answers.</h2>
     <div class="qa rv">
       <details><summary>Is it really free?</summary><p>Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $10 a month is planned, and the page above says plainly that it is not open yet.</p></details>
-      <details><summary>What can an AI agent do with it?</summary><p>Read. The MCP server exposes 29 read-only tools over your stored search data: performance, opportunities, indexing, tracking health and more. An agent cannot change your Search Console, your sites or your settings. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
+      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 33 tools that read your stored search data, and 10 that can change things in SEOConsole: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow, submit a sitemap, set brand terms, watch URLs. Those 10 refuse unless you allowed changes for that connection, which is off by default. None can delete data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
       <details><summary>Where does my data live?</summary><p>In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM. Whatever an agent reads is sent to that agent’s provider, so connect only agents you trust with that data.</p></details>
       <details><summary>How far back does history go?</summary><p>As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has.</p></details>
       <details><summary>Which AI clients work?</summary><p>Claude’s custom connector works with one-click sign-in, and Claude Code works with a single command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, but only Claude has been confirmed.</p></details>
