@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ActionCard from '$lib/components/ActionCard.svelte';
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { TYPE_LABEL } from '$lib/explain';
 	let { data } = $props();
 	let type = $state('all');
@@ -8,15 +9,14 @@
 	const types = $derived([...new Set(data.open.map((a) => a.type))]);
 	const count = (f: (a: (typeof data.open)[number]) => boolean) => data.open.filter(f).length;
 	const rows = $derived(data.open.filter((a) => (type === 'all' || a.type === type) && (only === 'all' || (only === 'blocking' ? a.blocking : a.effort === 'low' && !a.blocking))));
-	const shown = $derived(showAll ? rows : rows.slice(0, 15));
+	const shown = $derived(showAll ? rows : rows.slice(0, 10));
 	const blocking = $derived(count((a) => a.blocking));
 	const quick = $derived(count((a) => a.effort === 'low' && !a.blocking));
 </script>
 
-<p class="mb-3 max-w-3xl text-sm text-muted-foreground">
-	Everything the app found for this site, in the order to do it. <b>Blocking</b> items come first (they stop the site earning or stop you measuring it), then the rest by estimated clicks per 28 days weighted by confidence.
-	The estimates come from this site's own click-through curve and history; they are model figures, not promises, and they are <b>not added up</b> because findings overlap (one page can be a CTR gap and a decay at once).
-</p>
+<Explainer lead="Everything found for this site, in the order to do it: blocking items first, then by estimated gain.">
+	<p><b>Blocking</b> items stop the site earning or stop you measuring it. The rest are ranked by estimated clicks per 28 days weighted by confidence. The estimates come from this site's own click-through curve and history; they are model figures, not promises, and are <b>not added up</b> because findings overlap (one page can be a CTR gap and a decay at once).</p>
+</Explainer>
 
 {#if data.open.length === 0}
 	<div class="card p-6 text-center text-sm"><p class="mb-1 font-medium text-good">Nothing to do right now.</p><p class="text-muted-foreground">Either the site is healthy, or there is not enough data yet. Connect GA4 and Tag Manager, read the sitemaps and run the on-page check to widen what is looked at.</p></div>
@@ -33,7 +33,7 @@
 	<div class="stagger space-y-3">
 		{#each shown as a, i (a.key)}<ActionCard {a} rank={i + 1} />{/each}
 	</div>
-	{#if rows.length > 15}<button class="btn mt-3" onclick={() => (showAll = !showAll)}>{showAll ? 'Show fewer' : `Show all ${rows.length}`}</button>{/if}
+	{#if rows.length > 10}<button class="btn mt-3" onclick={() => (showAll = !showAll)}>{showAll ? 'Show fewer' : `Show all ${rows.length}`}</button>{/if}
 {/if}
 
 {#if data.hidden.length}

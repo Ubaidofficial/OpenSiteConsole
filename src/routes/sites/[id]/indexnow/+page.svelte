@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
@@ -14,10 +15,10 @@
 
 <section class="card mb-4 p-4">
 	<h2 class="mb-1 font-medium">IndexNow: tell search engines the moment a page changes</h2>
-	<p class="max-w-3xl text-sm text-muted-foreground">
-		IndexNow is an open protocol: one notification reaches the engines that take part, instead of waiting for them to crawl. indexnow.org lists <b>Bing, Naver, Seznam.cz, Yandex and Yep</b>.
-		<b class="text-foreground">Google does not take part in IndexNow</b>, so this does nothing for Google; for Google, your sitemap and the Indexing tab are what matter. And a notification is a hint: the engines say it does not guarantee indexing.
-	</p>
+	<Explainer lead="Tell Bing and other IndexNow engines the moment a page changes. Google does not take part.">
+	<p>IndexNow is an open protocol: one notification reaches the engines that take part, instead of waiting for them to crawl. indexnow.org lists <b>Bing, Naver, Seznam.cz, Yandex and Yep</b>.
+		<b class="text-foreground">Google does not take part in IndexNow</b>, so this does nothing for Google; for Google, your sitemap and the Indexing tab are what matter. And a notification is a hint: the engines say it does not guarantee indexing.</p>
+</Explainer>
 	<p class="mt-2 text-sm">
 		{#if s.clicks28d.bing == null}Bing is not connected here, so I cannot show how much traffic it sends you. <a class="underline" href="/connect">Connect Bing Webmaster</a> to see whether this is worth the effort.
 		{:else}Over the last 28 days <b>Bing sent {s.clicks28d.bing.toLocaleString('en-US')} clicks against Google's {s.clicks28d.google.toLocaleString('en-US')}</b> ({s.clicks28d.bingShare != null ? (s.clicks28d.bingShare * 100).toFixed(1) : '0'}% of the two). {s.clicks28d.bingShare != null && s.clicks28d.bingShare < 0.05 ? 'A small share: IndexNow is cheap to set up, but do not expect much from it.' : 'Enough to make it worthwhile.'}{/if}
@@ -64,7 +65,9 @@
 			<form method="POST" action="?/presetRecent" use:enhance={run}><button class="btn !h-8 text-xs" disabled={busy || !verified || !data.presets.recent} title="Sitemap URLs whose date is within the last 7 days">Sitemap URLs from the last 7 days ({data.presets.recent})</button></form>
 			<form method="POST" action="?/presetRemoved" use:enhance={run}><button class="btn !h-8 text-xs" disabled={busy || !verified || !data.presets.removed} title="Pages the indexing monitor saw return 404">Pages that now 404 ({data.presets.removed})</button></form>
 		</div>
-		<p class="mt-3 text-xs text-muted-foreground">Safeguards, because the protocol warns against spam: a URL is not resent within 24 hours (unless you force it), at most {s.dailyCap.toLocaleString('en-US')} URLs a day per site (<code>INDEXNOW_MAX_PER_DAY</code>), and nothing is sent for an hour after an engine says “too many requests”. Sent in the last 24 hours: <b>{s.usedToday.toLocaleString('en-US')}</b>.{#if s.backoffUntil} <b class="text-warn">Paused until {new Date(s.backoffUntil).toLocaleTimeString()}.</b>{/if}</p>
+		<Explainer lead="Safeguards keep this from spamming the engines.">
+	<p>Safeguards, because the protocol warns against spam: a URL is not resent within 24 hours (unless you force it), at most {s.dailyCap.toLocaleString('en-US')} URLs a day per site (<code>INDEXNOW_MAX_PER_DAY</code>), and nothing is sent for an hour after an engine says “too many requests”. Sent in the last 24 hours: <b>{s.usedToday.toLocaleString('en-US')}</b>.{#if s.backoffUntil} <b class="text-warn">Paused until {new Date(s.backoffUntil).toLocaleTimeString()}.</b>{/if}</p>
+</Explainer>
 		<form method="POST" action="?/auto" use:enhance class="mt-3 flex items-center gap-3 border-t pt-3" style="border-color:var(--border)">
 			<input type="hidden" name="on" value={s.auto ? '0' : '1'} />
 			<button class="btn !h-8 text-xs {s.auto ? '' : 'btn-primary'}">{s.auto ? 'Turn automatic submission off' : 'Turn automatic submission on'}</button>

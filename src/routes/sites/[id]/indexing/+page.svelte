@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import DataTable from '$lib/components/DataTable.svelte';
 	import { ago } from '$lib/format';
@@ -29,10 +30,10 @@
 			<form method="POST" action="?/toggle" use:enhance><input type="hidden" name="on" value={data.monitoring ? '0' : '1'} /><button class="btn {data.monitoring ? '' : 'btn-primary'}">{data.monitoring ? 'Switch off' : 'Monitor daily'}</button></form>
 		</div>
 	</div>
-	<p class="mt-2 max-w-3xl text-xs text-muted-foreground">
-		Re-inspects this site's biggest pages (plus pages that lost their visibility) with Google's URL Inspection and records what changed: de-indexed, newly indexed, canonical swapped, blocked by robots.txt, page fetch errors.
-		Each run checks up to {data.perRun} URLs, the least recently checked first, so coverage rotates through the site. URL Inspection has a daily quota (set <code>INDEX_MONITOR_URLS</code> to change the number; I am not certain of Google's current limit), which is why daily monitoring is opt-in per site.
-	</p>
+	<Explainer lead="Re-checks your biggest pages with Google and records what changed: de-indexed, newly indexed, blocked.">
+	<p>Re-inspects this site's biggest pages (plus pages that lost their visibility) with Google's URL Inspection and records what changed: de-indexed, newly indexed, canonical swapped, blocked by robots.txt, page fetch errors.
+		Each run checks up to {data.perRun} URLs, the least recently checked first, so coverage rotates through the site. URL Inspection has a daily quota (set <code>INDEX_MONITOR_URLS</code> to change the number; I am not certain of Google's current limit), which is why daily monitoring is opt-in per site.</p>
+</Explainer>
 	{#if data.message}<p class="mt-2 rounded-md border border-[color:var(--warn)] p-2 text-xs text-warn">{data.message}{#if data.nextAt && data.nextAt > Date.now()} Next attempt {new Date(data.nextAt).toLocaleTimeString()}.{/if}</p>{/if}
 	{#if form?.ok}<p class="mt-2 text-sm text-good">{form.ok}</p>{/if}{#if form?.error}<p class="mt-2 text-sm text-bad">{form.error}</p>{/if}
 	<div class="mt-3 flex flex-wrap gap-3 text-sm">
@@ -80,7 +81,9 @@
 		<span class="text-xs text-muted-foreground">{data.coverage.fetchedAt ? 'sitemaps read ' + ago(data.coverage.fetchedAt) : 'not read yet'}</span>
 		<form method="POST" action="?/sitemapRefresh" use:enhance class="ml-auto"><button class="btn">Read sitemaps now</button></form>
 	</div>
-	<p class="mb-2 max-w-3xl text-xs text-muted-foreground">Compares the URLs in your submitted sitemaps with the pages Search Console has shown in the last {data.coverage.window.days} days. A sitemap URL that never got a single impression is where indexing problems hide: Google may not have indexed it, or indexed it and found it useless. The first group is checked first by the indexing monitor.</p>
+	<Explainer lead="Sitemap URLs that never got an impression are where indexing problems hide.">
+	<p>Compares the URLs in your submitted sitemaps with the pages Search Console has shown in the last {data.coverage.window.days} days. A sitemap URL that never got a single impression is where indexing problems hide: Google may not have indexed it, or indexed it and found it useless. The first group is checked first by the indexing monitor.</p>
+</Explainer>
 	{#if data.coverage.error}<p class="mb-2 text-xs text-warn">{data.coverage.error}</p>{/if}
 	{#if !data.coverage.synced}
 		<div class="card p-4 text-sm text-muted-foreground">No sitemap has been read yet. Submit one in Search Console (see the Sitemaps tab) and click “Read sitemaps now”.</div>

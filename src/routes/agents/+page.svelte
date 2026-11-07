@@ -2,16 +2,16 @@
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { enhance } from '$app/forms';
 	import { ago } from '$lib/format';
+	import Explainer from '$lib/components/Explainer.svelte';
 	let { data, form } = $props();
 	const nameOf = (id: number) => data.sites.find((s) => s.id === id)?.name ?? `#${id}`;
 </script>
 
 <h1 class="mb-1 text-lg font-semibold">Agents &amp; MCP</h1>
-<p class="mb-4 max-w-3xl text-sm text-muted-foreground">
-	SEOConsole exposes an MCP server that is <b>read-only by default</b>, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Google Tag Manager, Bing, Clarity and Core Web Vitals data in one place. <code>get_tracking_health</code> cross-checks Search Console, GA4 and Tag Manager for a site, <code>get_trends</code> and <code>get_content_groups</code> cover movement and structure, <code>get_seo_tests</code> reads test results, and <code>get_connections</code> shows which tools are connected.
-	Connect it alongside OpenSEO's MCP: ask the agent for a site's <code>get_openseo_project</code> and it can hand that project id to OpenSEO's keyword, rank-tracking and audit tools.
-	A key can optionally be given the <b>submit</b> permission, which lets an agent push URLs and sitemaps to search engines (IndexNow, Bing, Search Console, and Google's Indexing API for job and livestream pages) and start an indexing check, or <b>submit and delete</b>, which adds the few actions that cannot be undone (and need a confirming second call). Nothing can delete your data or change a site's content.
-</p>
+<Explainer lead="Let an AI agent read your search data, and only if you allow it, send URLs and sitemaps to search engines.">
+	<p>It is an MCP server, <b>read-only by default</b>, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Tag Manager, Bing, Clarity and Core Web Vitals data in one place. Connect it next to OpenSEO's MCP: <code>get_openseo_project</code> hands a site's project id to OpenSEO's keyword, rank-tracking and audit tools.</p>
+	<p>A key can also be given the <b>submit</b> permission (push URLs and sitemaps to IndexNow, Bing, Search Console and, for job and livestream pages, Google's Indexing API; start an indexing check), or <b>submit and delete</b>, which adds the few actions that cannot be undone and need a confirming second call. Nothing can delete your data or change a site's content.</p>
+</Explainer>
 
 {#if form?.newKey}
 	<div class="card mb-4 border-[color:var(--good)] p-4">
@@ -53,7 +53,9 @@
 	</section>
 </div>
 
-<h2 class="mt-6 mb-2 font-medium">Connect your AI client</h2>
+<details class="mt-6">
+<summary class="cursor-pointer select-none font-medium">Connect your AI client (Claude Code, Claude, ChatGPT, Cursor…)</summary>
+<div class="mt-2">
 <p class="mb-3 max-w-3xl text-xs text-muted-foreground">Replace <code>osc_YOUR_KEY</code> with a key from above. The key is a bearer token. Claude (the apps) and ChatGPT reach the server from the internet, so for them the app needs a public https address; Claude Code and Codex run on your computer and can use <code>http://localhost</code>.</p>
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<section class="card p-4 text-sm">
@@ -88,6 +90,9 @@ bearer_token_env_var = "OSC_MCP_KEY"</pre>
 		<pre tabindex="0" class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">{`{ "mcpServers": { "seoconsole": { "url": "${data.mcpUrl}", "headers": { "Authorization": "Bearer osc_YOUR_KEY" } } } }`}</pre>
 	</section>
 </div>
+
+</div>
+</details>
 
 <h2 class="mt-6 mb-2 font-medium">Keys</h2>
 <div class="card overflow-x-auto">

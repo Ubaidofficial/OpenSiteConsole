@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { LoaderCircle } from '@lucide/svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { enhance } from '$app/forms';
@@ -34,7 +35,7 @@
 
 	<section class="card overflow-x-auto lg:col-span-2">
 		<h2 class="p-4 pb-1 font-medium">Recent syncs</h2>
-		<p class="max-w-3xl px-4 pb-2 text-xs text-muted-foreground">{SYNC_RUNS_EXPLAIN}</p>
+		<div class="px-4 pb-2"><Explainer lead="Each run re-pulls the newest days, and pulls more history until it is complete."><p>{SYNC_RUNS_EXPLAIN}</p></Explainer></div>
 		<table class="w-full">
 			<thead><tr><th class="th">Started</th><th class="th">Mode</th><th class="th text-right">Days</th><th class="th text-right">Rows</th><th class="th">Result</th></tr></thead>
 			<tbody>

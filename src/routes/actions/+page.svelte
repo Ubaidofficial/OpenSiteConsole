@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ActionCard from '$lib/components/ActionCard.svelte';
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { TYPE_LABEL } from '$lib/explain';
 	let { data } = $props();
 	let site = $state('all');
@@ -12,16 +13,15 @@
 	const rows = $derived(
 		data.items.filter((a) => (site === 'all' || String(a.siteId) === site) && (type === 'all' || a.type === type) && (only === 'all' || (only === 'blocking' ? a.blocking : a.effort === 'low' && !a.blocking)))
 	);
-	const shown = $derived(showAll ? rows : rows.slice(0, 20));
+	const shown = $derived(showAll ? rows : rows.slice(0, 10));
 	const blocking = $derived(count((a) => a.blocking));
 	const quick = $derived(count((a) => a.effort === 'low' && !a.blocking));
 </script>
 
 <div class="mb-1 flex items-center gap-3"><h1 class="text-lg font-semibold">What to do first</h1><a class="btn ml-auto" href="/updates">Google updates</a></div>
-<p class="mb-4 max-w-3xl text-sm text-muted-foreground">
-	The most important open items across all your sites. Blocking problems first, then the biggest estimated gains weighted by confidence. Open a site's <b>Actions</b> tab for its full list and to mark things done.
-	Estimates are model figures from each site's own data, not promises, and larger sites naturally outrank smaller ones.
-</p>
+<Explainer lead="What to fix first across all your sites: blocking problems, then the biggest estimated gains.">
+	<p>Open a site's <b>Actions</b> tab for its full list and to mark things done. Estimates are model figures from each site's own data, not promises, and larger sites naturally outrank smaller ones.</p>
+</Explainer>
 {#if data.items.length === 0}
 	<div class="card p-6 text-center text-sm text-muted-foreground">Nothing to do across your sites right now, or no data has synced yet.</div>
 {:else}
@@ -45,13 +45,13 @@
 			{#each types as t}<button class="chip {type === t ? 'chip-on' : ''}" onclick={() => (type = t)}>{TYPE_LABEL[t]} ({count((a) => a.type === t)})</button>{/each}
 		</div>
 	</div>
-	<p class="mb-3 text-sm"><b>{rows.length}</b> shown{#if blocking && only !== 'blocking'} · <b class="text-bad">{blocking} blocking</b>{/if}</p>
+	<p class="mb-3 text-sm"><b>{shown.length}</b> of <b>{rows.length}</b> shown{#if blocking && only !== 'blocking'} · <b class="text-bad">{blocking} blocking</b>{/if}</p>
 	{#if rows.length === 0}
 		<div class="card p-6 text-center text-sm text-muted-foreground">Nothing matches these filters. <button class="underline" onclick={() => ((site = 'all'), (type = 'all'), (only = 'all'))}>Clear them</button></div>
 	{:else}
 		<div class="stagger space-y-3">
 			{#each shown as a, i (a.siteId + ':' + a.key)}<ActionCard {a} rank={i + 1} site={a.site} siteHref="/sites/{a.siteId}/actions" />{/each}
 		</div>
-		{#if rows.length > 20}<button class="btn mt-3" onclick={() => (showAll = !showAll)}>{showAll ? 'Show fewer' : `Show all ${rows.length}`}</button>{/if}
+		{#if rows.length > 10}<button class="btn mt-3" onclick={() => (showAll = !showAll)}>{showAll ? 'Show fewer' : `Show all ${rows.length}`}</button>{/if}
 	{/if}
 {/if}

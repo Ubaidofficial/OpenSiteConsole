@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -25,14 +26,14 @@
 
 <section class="card mb-4 p-4">
 	<h2 class="mb-1 font-medium">Request indexing: the one fast, official way to ask Google</h2>
-	<p class="max-w-3xl text-sm text-muted-foreground">
-		Search Console's <b class="text-foreground">Request Indexing</b> button is the one official way to ask Google to look at a page soon, and it has <b class="text-foreground">no API</b>, so no tool can press it for you. What this page does is the slow part: it picks the few pages worth asking about,
-		skips what Google already has, sets aside pages where asking is pointless, links you straight to each, and keeps track of what you asked and whether it worked. It asks Google about the candidates first, which uses URL Inspection quota.
-	</p>
+	<Explainer lead="Search Console's Request Indexing button has no API, so no tool can press it. This page prepares the list and tracks the result.">
+	<p>Search Console's <b class="text-foreground">Request Indexing</b> button is the one official way to ask Google to look at a page soon, and it has <b class="text-foreground">no API</b>, so no tool can press it for you. What this page does is the slow part: it picks the few pages worth asking about,
+		skips what Google already has, sets aside pages where asking is pointless, links you straight to each, and keeps track of what you asked and whether it worked. It asks Google about the candidates first, which uses URL Inspection quota.</p>
+</Explainer>
 	<p class="mt-2 text-sm">
 		<b>{q.budget.usedLast24h}</b> asked in the last 24 hours of about <b>{q.budget.perDay}</b> a day.
 		{#if q.budget.left === 0}<span class="text-warn"> Allowance used up{q.budget.nextSlotAt ? `: next slot ${until(q.budget.nextSlotAt)}` : ''}.</span>{:else}<span class="text-good"> {q.budget.left} left.</span>{/if}
-		<span class="text-xs text-muted-foreground"> Google does not publish its limit; third-party sources say about 10 to 12 a day, which is unverified. Change it with <code>REQUEST_INDEXING_PER_DAY</code>.</span>
+		<span class="text-xs text-muted-foreground"> <span title="Google does not publish its limit. Third-party sources say about 10 to 12 a day, which is unverified. Change it with REQUEST_INDEXING_PER_DAY.">(Google does not publish its limit)</span></span>
 	</p>
 </section>
 
@@ -62,7 +63,9 @@
 				</li>
 			{/each}
 		</ol>
-		<p class="mt-3 text-xs text-muted-foreground">In Search Console the inspection of that URL opens: press <b>Request indexing</b> there (Google may run a live test first), then come back and press <i>I requested it</i> so the result is tracked. Pressing the button does not guarantee indexing: Google still decides.</p>
+		<Explainer lead="Open each link, press Request indexing there, then mark it done.">
+	<p>In Search Console the inspection of that URL opens: press <b>Request indexing</b> there (Google may run a live test first), then come back and press <i>I requested it</i> so the result is tracked. Pressing the button does not guarantee indexing: Google still decides.</p>
+</Explainer>
 	{:else}
 		<p class="text-sm text-muted-foreground">{q.builtAt ? 'Nothing is worth asking about right now: what Google has not indexed is blocked or already requested, or everything is indexed.' : 'No list yet. Build it to ask Google about your best candidates.'}</p>
 	{/if}
@@ -85,5 +88,7 @@
 				<td class="td whitespace-nowrap text-xs text-muted-foreground">{r.nextCheckAt ? (r.nextCheckAt <= Date.now() ? 'due' : until(r.nextCheckAt)) : r.verdict === 'indexed' ? 'done' : 'none left'}</td></tr>
 		{:else}<tr><td class="td text-muted-foreground" colspan="4">Nothing recorded yet.</td></tr>{/each}
 	</tbody></table></div>
-	<p class="mt-2 text-xs text-muted-foreground">Each request is checked with Google again at day 1, 3 and 5 (see also the Submit tab). A URL you asked about stays off the list for {data.cooldownDays} days, so you are not asked to repeat it.</p>
+	<Explainer lead="Each request is re-checked with Google at day 1, 3 and 5.">
+	<p>Each request is checked with Google again at day 1, 3 and 5 (see also the Submit tab). A URL you asked about stays off the list for {data.cooldownDays} days, so you are not asked to repeat it.</p>
+</Explainer>
 </section>

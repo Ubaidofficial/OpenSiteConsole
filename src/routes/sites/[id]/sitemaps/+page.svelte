@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { enhance } from '$app/forms';
 	import { LoaderCircle, Send } from '@lucide/svelte';
@@ -54,13 +55,17 @@
 		<ul class="space-y-1.5">{#each c.notes as n}<li class="flex gap-2 text-xs"><span class={n.level === 'bad' ? 'text-bad' : n.level === 'warn' ? 'text-warn' : 'text-muted-foreground'}>{n.level === 'bad' ? '✕' : n.level === 'warn' ? '⚠' : 'ℹ'}</span><span>{n.text}</span></li>{/each}</ul>
 	</section>
 {/if}
-{#if data.sitemaps.some((s) => s.isPending)}<p class="mt-3 max-w-3xl text-xs text-muted-foreground"><b>Pending</b> means Google has accepted the submission and has not processed the file yet. After a resubmit it is normal: “Last read” and the URL count stay at their old values until Google fetches the sitemap again, which Google decides. Use <b>Check</b> to confirm the file itself is fine.</p>{/if}
+{#if data.sitemaps.some((s) => s.isPending)}<Explainer lead="Pending: Google has the submission and has not processed it yet.">
+	<p><b>Pending</b> means Google has accepted the submission and has not processed the file yet. After a resubmit it is normal: “Last read” and the URL count stay at their old values until Google fetches the sitemap again, which Google decides. Use <b>Check</b> to confirm the file itself is fine.</p>
+</Explainer>{/if}
 <section class="card mt-6 p-4 text-sm">
 	<div class="mb-1 flex flex-wrap items-center gap-2">
 		<h2 class="font-medium">Are the dates in your sitemap believable?</h2>
 		{#if r.verdict !== 'unknown'}<span class="chip {r.verdict === 'bad' ? 'border-[color:var(--bad)] text-bad' : r.verdict === 'warn' ? 'text-warn' : 'text-good'}">{r.verdict === 'good' ? 'looks good' : r.verdict === 'warn' ? 'worth a look' : 'needs fixing'}</span>{/if}
 	</div>
-	<p class="mb-2 max-w-3xl text-xs text-muted-foreground">Google uses each URL's <code>lastmod</code> to decide what to re-crawl, but only when the date is valid and it can trust it: dates that keep claiming changes that did not happen get ignored. This checks yours from the last sitemap read{r.readAt ? ` (${ago(r.readAt)})` : ''}. The thresholds are this app's own rules of thumb, not Google's.</p>
+	<Explainer lead="Google re-crawls using each URL's lastmod, but only if it can trust it.">
+	<p>Google uses each URL's <code>lastmod</code> to decide what to re-crawl, but only when the date is valid and it can trust it: dates that keep claiming changes that did not happen get ignored. This checks yours from the last sitemap read{r.readAt ? ` (${ago(r.readAt)})` : ''}. The thresholds are this app's own rules of thumb, not Google's.</p>
+</Explainer>
 	{#if r.synced}
 		<div class="mb-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
 			<span><b class="tnum text-foreground">{fmtInt(r.total)}</b> URLs</span><span><b class="tnum text-foreground">{fmtInt(r.withDate)}</b> with a date</span>
@@ -85,4 +90,6 @@
 		{/if}
 	</div>
 </section>
-<p class="mt-3 text-xs text-muted-foreground">Live from Search Console — not cached. Google reads a sitemap on its own schedule; resubmitting nudges it but does not guarantee immediate indexing.</p>
+<Explainer lead="Live from Search Console, not cached.">
+	<p>Live from Search Console — not cached. Google reads a sitemap on its own schedule; resubmitting nudges it but does not guarantee immediate indexing.</p>
+</Explainer>

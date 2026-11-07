@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import { ago } from '$lib/format';
 	import { isBranded } from '$lib/analytics';
@@ -17,10 +18,10 @@
 
 <section class="card mb-4 p-4">
 	<h2 class="mb-1 font-medium">On-page check</h2>
-	<p class="mb-3 max-w-3xl text-xs text-muted-foreground">
-		Fetches a page from this site and checks its title, meta description and H1 against the queries it already earns clicks for: does the page say what people search for? Also flags a missing or very long title, no description, no or several H1s, noindex and a canonical pointing elsewhere.
-		Only this site's own pages are fetched, JavaScript is not run (a title or H1 added by script reads as missing), and the 60 / 155-character lengths are folk rules, since Google truncates by pixel width.
-	</p>
+	<Explainer lead="Checks a page's title, description and H1 against the queries it earns clicks for.">
+	<p>Fetches a page from this site and checks its title, meta description and H1 against the queries it already earns clicks for: does the page say what people search for? Also flags a missing or very long title, no description, no or several H1s, noindex and a canonical pointing elsewhere.
+		Only this site's own pages are fetched, JavaScript is not run (a title or H1 added by script reads as missing), and the 60 / 155-character lengths are folk rules, since Google truncates by pixel width.</p>
+</Explainer>
 	<div class="flex flex-wrap items-start gap-3">
 		<form method="POST" action="?/top" use:enhance={submit('top')}><button class="btn btn-primary" disabled={busy !== null}>{busy === 'top' ? 'Checking…' : 'Check top 15 pages'}</button></form>
 		<form method="POST" action="?/urls" use:enhance={submit('urls')} class="flex min-w-64 flex-1 gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" placeholder="…or paste full URLs, one per line (up to 25)"></textarea><button class="btn" disabled={busy !== null}>{busy === 'urls' ? 'Checking…' : 'Check'}</button></form>

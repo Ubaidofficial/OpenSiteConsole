@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import LineChart from '$lib/components/LineChart.svelte';
@@ -17,10 +18,9 @@
 	};
 </script>
 
-<p class="mb-3 max-w-3xl text-sm text-muted-foreground">
-	Did a change move the pages it touched? Each test compares the <b>test pages</b> before and after the change date against <b>control pages</b> over the same days, so a site-wide rise, a season or a Google update does not get credited to your change.
-	It is observational, not randomised: a significant result means “unlikely to be noise given the control”, not proof that the change caused it. Traffic drifts on its own, so the noise level is measured on this site's own earlier windows of the same length; that takes at least four windows of history before the change (112 days for 28-day windows, 56 for 14-day ones). With less, you get an estimate and no verdict. Real changes of around 40% are detectable on steady sites; on very drifty traffic only larger ones are.
-</p>
+<Explainer lead="Did a change move the pages it touched? Each test compares them with control pages over the same days.">
+	<p>It is observational, not randomised: a significant result means “unlikely to be noise given the control”, not proof that the change caused it. Traffic drifts on its own, so the noise level is measured on this site's own earlier windows of the same length; that takes at least four windows of history before the change (112 days for 28-day windows, 56 for 14-day ones). With less, you get an estimate and no verdict. Real changes of around 40% are detectable on steady sites; on very drifty traffic only larger ones are.</p>
+</Explainer>
 
 <section class="card mb-5 p-4">
 	<h2 class="mb-2 font-medium">New test</h2>

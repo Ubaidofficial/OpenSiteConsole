@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import { ago, fmtInt, fmtSigned } from '$lib/format';
 	import { NAMES_TARGETS, type ActionType } from '$lib/actions';
@@ -12,10 +13,10 @@
 	<span class="chip {data.webhook.configured ? 'chip-on' : ''}" title={data.webhook.configured ? `Sent to your webhook (${data.webhook.format} format)` : 'Set DIGEST_WEBHOOK_URL in .env to send digests and alerts to Slack, Discord or any webhook'}>{data.webhook.configured ? 'webhook on' : 'no webhook'}</span>
 	<form method="POST" action="?/generate" use:enhance class="ml-auto"><button class="btn btn-primary">Generate now</button></form>
 </div>
-<p class="mb-4 max-w-3xl text-sm text-muted-foreground">
-	What changed this week and what to do first, made automatically once a week (Monday by default; <code>DIGEST_DAY</code>) and sent to your webhook if one is set. Blocking problems are also announced as <b>alerts</b> as soon as they are found, once each.
-	There is no email: set <code>DIGEST_WEBHOOK_URL</code> for Slack or Discord, or use the raw JSON format with a service that forwards to email.
-</p>
+<Explainer lead="What changed this week and what to do first.">
+	<p>What changed this week and what to do first, made automatically once a week (Monday by default; <code>DIGEST_DAY</code>) and sent to your webhook if one is set. Blocking problems are also announced as <b>alerts</b> as soon as they are found, once each.
+	There is no email: set <code>DIGEST_WEBHOOK_URL</code> for Slack or Discord, or use the raw JSON format with a service that forwards to email.</p>
+</Explainer>
 {#if form?.ok}<p class="mb-3 text-sm text-good">{form.ok}</p>{/if}{#if form?.error}<p class="mb-3 text-sm text-bad">{form.error}</p>{/if}
 
 {#if !d}

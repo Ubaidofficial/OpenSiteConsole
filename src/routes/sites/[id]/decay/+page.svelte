@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
 	import { fmtSigned } from '$lib/format';
 	import { page } from '$app/state';
@@ -24,11 +25,11 @@
 	<a class="chip {yoy ? '' : 'chip-on'}" href={link('period')}>vs the previous period</a>
 	<a class="chip {yoy ? 'chip-on' : ''}" href={link('yoy')} title="The same weekdays one year earlier: catches the slow slide a month-on-month view misses">vs the same time last year</a>
 </div>
-<p class="mb-3 text-xs text-muted-foreground">
-	Pages that lost 25%+ of clicks versus the {yoy ? 'same period a year earlier' : 'previous period'} <i>and</i> pass a significance test (a ±2σ Poisson check), so ordinary noise on low-traffic pages is ignored.
+<Explainer lead="Pages that lost clicks, and passed a significance test.">
+	<p>Pages that lost 25%+ of clicks versus the {yoy ? 'same period a year earlier' : 'previous period'} <i>and</i> pass a significance test (a ±2σ Poisson check), so ordinary noise on low-traffic pages is ignored.
 	Whole-site change over the period: <b class="text-[color:var(--foreground)]">{fmtSigned(data.siteDelta)}</b>.
 	“site-wide” means the page fell with the whole site (look at seasonality or a site-level issue); “page-specific” means it fell more than the site did.
-	{#if !data.hasYear}{yoy ? 'The year view' : 'Year-over-year'} needs 12+ months of stored history; it will appear once the backfill reaches that far.{/if}
-</p>
+	{#if !data.hasYear}{yoy ? 'The year view' : 'Year-over-year'} needs 12+ months of stored history; it will appear once the backfill reaches that far.{/if}</p>
+</Explainer>
 <p class="mb-2 text-sm"><b>{data.rows.length}</b> decaying pages · <b>{specific}</b> page-specific</p>
 <DataTable rows={data.rows} {cols} sortKey="lostClicks" empty="No significant decay. Nothing lost more than 25% with statistical confidence." />

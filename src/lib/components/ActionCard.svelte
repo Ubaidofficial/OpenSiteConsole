@@ -15,13 +15,14 @@
 		<Tip text={TYPE_EXPLAIN[a.type]}><span class="chip">{TYPE_LABEL[a.type]}</span></Tip>
 		{#if site}<a class="chip pii" href={siteHref ?? '#'}>{site}</a>{/if}
 		{#if a.impact != null}<Tip text={IMPACT_EXPLAIN}><span class="chip">≈ {Math.round(a.impact).toLocaleString('en-US')} clicks / 28d</span></Tip>{:else}<Tip text={NO_IMPACT_EXPLAIN}><span class="chip">no click estimate</span></Tip>{/if}
-		<Tip text={CONFIDENCE_EXPLAIN[a.confidence]}><span class="chip {conf[a.confidence]}">{a.confidence} confidence</span></Tip>
-		<Tip text={EFFORT_EXPLAIN[a.effort]}><span class="chip">{a.effort} effort</span></Tip>
+		<span class="text-muted-foreground"><Tip text={CONFIDENCE_EXPLAIN[a.confidence]}><span class={conf[a.confidence]}>{a.confidence} confidence</span></Tip> · <Tip text={EFFORT_EXPLAIN[a.effort]}><span>{a.effort} effort</span></Tip></span>
 	</div>
 	<h2 class="mt-2 font-medium" class:pii={names}>{a.title}</h2>
-	<p class="mt-1 text-sm text-muted-foreground" class:pii={names}>{a.why}</p>
 	<p class="mt-1.5 text-sm" class:pii={names}><b>What to do:</b> {a.how}</p>
-	{#if a.evidence.length}<details class="mt-2 text-xs text-muted-foreground"><summary class="cursor-pointer select-none">Evidence ({a.evidence.length})</summary><ul class="pii mt-1 space-y-0.5">{#each a.evidence as e}<li>· {e}</li>{/each}</ul></details>{/if}
+	<details class="mt-1.5 text-xs text-muted-foreground"><summary class="cursor-pointer select-none">Why{a.evidence.length ? ` and evidence (${a.evidence.length})` : ''}</summary>
+		<p class="mt-1 leading-relaxed" class:pii={names}>{a.why}</p>
+		{#if a.evidence.length}<ul class="pii mt-1 space-y-0.5">{#each a.evidence as e}<li>· {e}</li>{/each}</ul>{/if}
+	</details>
 	<div class="mt-3 flex flex-wrap items-center gap-2">
 		<Tip interactive text={BUTTON_EXPLAIN.open}><a class="btn !h-8 text-xs {a.blocking ? 'btn-primary' : ''}" href={a.href}>Open</a></Tip>
 		{#if !hideControls}

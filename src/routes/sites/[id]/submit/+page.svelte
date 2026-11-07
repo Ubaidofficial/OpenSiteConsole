@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { ago } from '$lib/format';
@@ -33,11 +34,11 @@
 
 <section class="card mb-4 p-4">
 	<h2 class="mb-1 font-medium">Submit for indexing</h2>
-	<p class="max-w-3xl text-sm text-muted-foreground">
-		One place to tell the search engines that accept it about new or changed pages. <b class="text-foreground">Google has no "request indexing" button for ordinary pages that a tool can press</b>:
+	<Explainer lead="Send new or changed pages to the search engines that take them. For Google, keep your sitemap current and watch the table below.">
+	<p>One place to tell the search engines that accept it about new or changed pages. <b class="text-foreground">Google has no "request indexing" button for ordinary pages that a tool can press</b>:
 		for Google, keep your sitemap current (below), then watch whether each page got indexed in the table at the bottom. Google's Indexing API exists, but Google documents it for <b>job-posting and livestream pages only</b>, so every other page is refused, not sent.
-		A channel saying <i>accepted</i> means it received the URL, not that the page is indexed.
-	</p>
+		A channel saying <i>accepted</i> means it received the URL, not that the page is indexed.</p>
+</Explainer>
 	{#if data.readOnly}<p class="mt-2 text-sm text-warn">This server runs with READ_ONLY=1: only dry runs and checks work.</p>{/if}
 </section>
 
@@ -128,7 +129,9 @@
 			<form method="POST" action="?/clearQueue" use:enhance={run} class="ml-auto"><button class="btn !h-8 text-xs" disabled={busy || data.readOnly}>Clear the queue</button></form>
 		{:else}<span class="text-muted-foreground">Nothing is waiting in the queue.</span>{/if}
 	</div>
-	<p class="mt-2 text-xs text-muted-foreground">URLs that do not fit a channel's daily limit, or that you chose to spread over several days, wait here and go automatically (every 15 minutes the server looks; the app must be running). Anything still unsent 7 days after it was due is dropped, and the log says so. The Google inspection limit is the figure Google documents as I understand it: verify it if it matters to you.</p>
+	<Explainer lead="Over-limit or spread-out URLs wait here and go automatically.">
+	<p>URLs that do not fit a channel's daily limit, or that you chose to spread over several days, wait here and go automatically (every 15 minutes the server looks; the app must be running). Anything still unsent 7 days after it was due is dropped, and the log says so. The Google inspection limit is the figure Google documents as I understand it: verify it if it matters to you.</p>
+</Explainer>
 </section>
 
 <section class="card mb-4 p-4">
@@ -155,7 +158,8 @@
 		<a class="btn !h-8 text-xs ml-auto" href="submit/export" download title="The table below as a spreadsheet">Download CSV</a>
 		<form method="POST" action="?/check" use:enhance={run}><button class="btn !h-8 text-xs" disabled={busy || data.readOnly} title="Re-inspect the watch list now (spends URL Inspection quota)">Check now</button></form>
 	</div>
-	{#if stillNot}<p class="mb-2 text-sm text-warn"><b>{stillNot}</b> URL{stillNot === 1 ? '' : 's'} still not indexed after {data.recheckDays[data.recheckDays.length - 1]} days: Google was asked again and said no. The coverage text says why (for example <i>Crawled – currently not indexed</i> usually means Google saw the page and did not think it worth keeping yet: improve the content and link to it from other pages).</p>{/if}
+	{#if stillNot}<div class="mb-2 text-sm text-warn"><p><b>{stillNot}</b> URL{stillNot === 1 ? '' : 's'} still not indexed after {data.recheckDays[data.recheckDays.length - 1]} days. The coverage text below says why.</p>
+		<details class="mt-1 text-xs text-muted-foreground"><summary class="cursor-pointer select-none">What do these mean?</summary><p class="mt-1 max-w-2xl">“Crawled – currently not indexed” usually means Google saw the page and did not think it worth keeping yet: improve the content and link to it from other pages. “Discovered – currently not indexed” means it knows the address but has not crawled it.</p></details></div>{/if}
 	<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="th">URL</th><th class="th">Sent</th><th class="th">Channels</th><th class="th">Google says</th><th class="th">Next check</th></tr></thead><tbody>
 		{#each data.submissions as s (s.url)}
 			<tr>
@@ -172,5 +176,7 @@
 			</tr>
 		{:else}<tr><td class="td text-muted-foreground" colspan="5">Nothing submitted yet.</td></tr>{/each}
 	</tbody></table></div>
-	<p class="mt-2 text-xs text-muted-foreground">Each accepted URL is checked with Google again at day {data.recheckDays.join(', ')} automatically (and sits on the indexing monitor's watch list until then). "Not indexed" soon after sending is normal: Google decides on its own time, and the reason (such as "Crawled – currently not indexed") shows here once it is inspected.</p>
+	<Explainer lead="Each accepted URL is re-checked with Google at day 1, 3 and 5.">
+	<p>Each accepted URL is checked with Google again at day {data.recheckDays.join(', ')} automatically (and sits on the indexing monitor's watch list until then). "Not indexed" soon after sending is normal: Google decides on its own time, and the reason (such as "Crawled – currently not indexed") shows here once it is inspected.</p>
+</Explainer>
 </section>

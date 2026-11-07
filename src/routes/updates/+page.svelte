@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { ago } from '$lib/format';
@@ -7,11 +8,11 @@
 </script>
 
 <h1 class="mb-1 text-lg font-semibold">Google ranking updates</h1>
-<p class="mb-4 max-w-3xl text-sm text-muted-foreground">
-	Core, spam and Discover updates are marked on every site's chart and flagged on any SEO test that overlaps one, because an update can move a section of a site for reasons unrelated to your change.
+<Explainer lead="Google's ranking updates, marked on every chart and flagged on any SEO test they overlap.">
+	<p>Core, spam and Discover updates are marked on every site's chart and flagged on any SEO test that overlaps one, because an update can move a section of a site for reasons unrelated to your change.
 	The list is read from Google's own <a class="underline" href="https://status.search.google.com/" target="_blank" rel="noreferrer noopener">Search Status Dashboard</a> once a day. That dashboard keeps only recent history, so the app keeps every update it has seen; add older ones by hand.
-	Dates are the UTC date of Google's timestamp; Search Console days are Pacific time, so an update can look a day off.
-</p>
+	Dates are the UTC date of Google's timestamp; Search Console days are Pacific time, so an update can look a day off.</p>
+</Explainer>
 
 <section class="card mb-5 p-4">
 	<div class="flex flex-wrap items-center gap-3">

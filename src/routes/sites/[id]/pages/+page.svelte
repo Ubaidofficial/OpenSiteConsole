@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { page } from '$app/state';
 	import DataTable from '$lib/components/DataTable.svelte';
 	import Chart from '$lib/components/Chart.svelte';
@@ -64,7 +65,9 @@
 </script>
 
 <div class="mb-3 flex"><a class="btn ml-auto" href="/sites/{page.params.id}/export?dim=page&days={page.url.searchParams.get('days') ?? 28}">Export CSV</a></div>
-<p class="mb-2 text-xs text-muted-foreground">Every source side by side, joined on the page's path (so www, http and https variants count as one page). Arrows show the change against the previous period; a dash means that source has nothing for the page. GA4 counts Google-organic sessions only: sessions and clicks are different measurements, so expect them close, not equal. The AI group counts GA4 sessions whose referrer is an AI assistant; an assistant that sends no referrer shows up as Direct and is not counted, so treat it as a floor. It does not include citations or bot crawls.</p>
+<Explainer lead="Every source side by side, joined on the page. Arrows show the change against the previous period; a dash means no data.">
+	<p>Every source side by side, joined on the page's path (so www, http and https variants count as one page). Arrows show the change against the previous period; a dash means that source has nothing for the page. GA4 counts Google-organic sessions only: sessions and clicks are different measurements, so expect them close, not equal. The AI group counts GA4 sessions whose referrer is an AI assistant; an assistant that sends no referrer shows up as Direct and is not counted, so treat it as a floor. It does not include citations or bot crawls.</p>
+</Explainer>
 {#each notes as n}<p class="mb-1 text-xs text-muted-foreground">{n}</p>{/each}
 <div class="mt-2"></div>
 <DataTable rows={data.rows} {cols} sortKey="gClicks" onRowClick={toggle} empty="No page data yet." />

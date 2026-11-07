@@ -572,6 +572,6 @@ describe('the Actions pages', () => {
 		}
 		expect(g).toMatch(/All sites/);
 		expect(s).not.toMatch(/\{t\}<\/button>/); // the raw type slug is no longer the label
-		expect(readFileSync('src/lib/components/ActionCard.svelte', 'utf8')).toMatch(/<details[^>]*>.*Evidence \(/s);
+		expect(readFileSync('src/lib/components/ActionCard.svelte', 'utf8')).toMatch(/<details[^>]*>.*evidence \(/s);
 	});
 });
