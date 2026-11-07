@@ -132,6 +132,37 @@ describe('site: honest and in step with the app', () => {
 	});
 });
 
+describe('site: the titles and descriptions that search results and link previews show', () => {
+	const tag = (re: RegExp) => re.exec(html)?.[1] ?? '';
+	const title = tag(/<title>([^<]+)<\/title>/);
+	const desc = tag(/<meta name="description" content="([^"]+)">/);
+	const ogTitle = tag(/<meta property="og:title" content="([^"]+)">/);
+	it('the page title is catchy, names both ideas, carries the brand and fits in a search result', () => {
+		expect(title).toBe('Find Hidden SEO Opportunities in One Dashboard | SEOConsole');
+		expect(title.length).toBeLessThanOrEqual(60);
+		expect(title).toMatch(/hidden SEO opportunities/i);
+		expect(title).toMatch(/one dashboard/i);
+		expect(title).toMatch(/SEOConsole$/);
+	});
+	it('the description fits in a search result and says what the tool finds, from where, and for how many sites', () => {
+		expect(desc.length).toBeGreaterThanOrEqual(120);
+		expect(desc.length).toBeLessThanOrEqual(160);
+		for (const w of ['hidden SEO opportunities', 'Search Console', 'Bing', 'GA4', 'Clarity', 'all your websites', 'open-source']) expect(desc, w).toContain(w);
+	});
+	it('link previews (Open Graph and Twitter) use the same message, and the structured data describes the same thing', () => {
+		expect(ogTitle).toBe('Find hidden SEO opportunities. Manage all your websites in one dashboard.');
+		expect(tag(/<meta name="twitter:title" content="([^"]+)">/)).toBe(ogTitle);
+		expect(tag(/<meta property="og:description" content="([^"]+)">/)).toBe(desc);
+		expect(tag(/<meta name="twitter:description" content="([^"]+)">/)).toBe(desc);
+		const ld = JSON.parse(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)![1]);
+		expect(ld.description).toMatch(/hidden SEO opportunities/);
+		expect(html).toContain('<p class="lead rv">Find hidden SEO opportunities across all your websites in one dashboard.'); // the page says what its title promises
+	});
+	it('promises nothing the tool cannot keep: no instant or guaranteed rankings in any title, description or preview', () => {
+		for (const text of [title, desc, ogTitle, html.slice(0, html.indexOf('</head>'))]) expect(text).not.toMatch(/instant|guarantee|overnight|same day|#1\b|rank (first|fast|now)|first page|\bin minutes\b|\bin 24 hours\b/i);
+	});
+});
+
 describe('site: light mode only, and gentle on people who ask for less motion', () => {
 	it('declares itself light and has no dark scheme', () => {
 		expect(html).toMatch(/<meta name="color-scheme" content="light">/);
