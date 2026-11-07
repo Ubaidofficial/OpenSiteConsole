@@ -1,5 +1,5 @@
 /**
- * Runs OpenSiteConsole in a Cloudflare Container.
+ * Runs SEOConsole in a Cloudflare Container.
  *
  * Why a container and not plain Worker code: the app is a Node server that keeps its data in a SQLite file and runs its own
  * background scheduler (syncs, digests, alerts, indexing checks). Workers cannot load that native database module or keep a
@@ -88,7 +88,7 @@ function missingSetup(env: Env): string | null {
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const problem = missingSetup(env);
-		if (problem) return new Response(`OpenSiteConsole is not configured yet.\n\n${problem}\n`, { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+		if (problem) return new Response(`SEOConsole is not configured yet.\n\n${problem}\n`, { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
 		// Pass the visitor's address on in a header only this Worker sets (any copy sent by the visitor is dropped first).
 		const headers = new Headers(request.headers);
 		headers.delete('x-client-ip');

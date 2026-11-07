@@ -1,4 +1,4 @@
-# The hosted-plan control app (sign-up, Stripe, instance provisioning). Not the OpenSiteConsole app itself: build from the repo root,
+# The hosted-plan control app (sign-up, Stripe, instance provisioning). Not the SEOConsole app itself: build from the repo root,
 #   docker build -f cloud/Dockerfile -t osc-control .
 # Written but NOT built or run in the environment where it was authored (no Docker there).
 FROM --platform=linux/amd64 node:22-slim AS build

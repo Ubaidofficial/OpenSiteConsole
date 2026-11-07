@@ -55,7 +55,7 @@ describe('MCP server', () => {
 
 	it('speaks the MCP handshake and advertises read-only tools', async () => {
 		const init = await call(key, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
-		expect(init.json.result.serverInfo.name).toBe('opensiteconsole');
+		expect(init.json.result.serverInfo.name).toBe('seoconsole');
 		expect(init.json.result.capabilities.tools).toBeDefined();
 		expect((await call(key, { jsonrpc: '2.0', method: 'notifications/initialized' })).status).toBe(202);
 		const list = await call(key, { jsonrpc: '2.0', id: 2, method: 'tools/list' });

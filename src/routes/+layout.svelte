@@ -49,7 +49,7 @@
 	<div class="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
 		<a href="/" class="flex items-center gap-2 font-semibold tracking-tight whitespace-nowrap">
 			<span class="grid size-6 place-items-center rounded-md bg-primary text-primary-foreground"><LayoutDashboard class="size-3.5" /></span>
-			OpenSiteConsole
+			SEOConsole
 		</a>
 		<nav class="order-last flex w-full gap-0.5 overflow-x-auto sm:order-none sm:w-auto" aria-label="Main">
 			{#each links as [href, label, Icon]}

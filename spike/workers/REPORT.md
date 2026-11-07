@@ -1,4 +1,4 @@
-# Feasibility spike: a native Cloudflare Workers + D1 port of OpenSiteConsole
+# Feasibility spike: a native Cloudflare Workers + D1 port of SEOConsole
 
 **Verdict: staged go, gated on a sizing decision. The Workers free plan is not possible.**
 This is a spike, not a port. Nothing under `src/` was changed.

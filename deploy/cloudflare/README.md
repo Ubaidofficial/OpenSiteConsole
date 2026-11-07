@@ -1,4 +1,4 @@
-# Deploy OpenSiteConsole on Cloudflare
+# Deploy SEOConsole on Cloudflare
 
 A Worker sits in front of a **Cloudflare Container** that runs the app exactly as it runs on your own machine. The SQLite database is copied to an **R2 bucket** by [Litestream](https://litestream.io) and restored whenever the container starts on a fresh disk.
 

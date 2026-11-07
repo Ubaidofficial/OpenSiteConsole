@@ -153,7 +153,7 @@ export async function fetchBytes(url: string, siteUrl: string, o: { fetchImpl?: 
 		if (!hostAllowed(current, siteUrl)) return fail(0, current, hop ? `Redirects to ${u.host}, which is not part of this site; not followed.` : 'That URL is not on this site.');
 		let res: Response;
 		try {
-			res = await fetchImpl(current, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': 'OpenSiteConsole/1.0 (+self-hosted)', accept } });
+			res = await fetchImpl(current, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': 'SEOConsole/1.0 (+self-hosted)', accept } });
 		} catch (e) {
 			const code = (e as { code?: string; cause?: { code?: string } }).code ?? (e as { cause?: { code?: string } }).cause?.code;
 			return fail(0, current, e instanceof Error && e.name === 'TimeoutError' ? 'Timed out after 10 seconds.' : code === 'EPRIVATE' || (e instanceof Error && /Private address/.test(e.message)) ? 'That address is private, so it is not fetched (set ONPAGE_ALLOW_PRIVATE=1 if this site really lives on your own network).' : 'Could not fetch it.');

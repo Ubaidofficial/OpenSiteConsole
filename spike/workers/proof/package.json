@@ -2,7 +2,7 @@
 	"name": "osc-workers-proof",
 	"private": true,
 	"type": "module",
-	"description": "Feasibility spike: a plain Worker + D1 proof for OpenSiteConsole. Not part of the app build.",
+	"description": "Feasibility spike: a plain Worker + D1 proof for SEOConsole. Not part of the app build.",
 	"scripts": {
 		"migrate": "wrangler d1 migrations apply DB --local --persist-to .wrangler-state",
 		"extract-schema": "node scripts/extract-schema.mjs",

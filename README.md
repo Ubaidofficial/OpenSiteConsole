@@ -1,4 +1,6 @@
-# OpenSiteConsole
+# SEOConsole
+
+> Formerly **OpenSiteConsole**. Only the name changed: the repository path, the default database file (`data/opensiteconsole.db`), the Docker service name and the `osc_` API-key prefix keep their old names on purpose, so existing installs, volumes and keys keep working. The on-page checker's user agent is now `SEOConsole/1.0`; if you had allowed the old one in a firewall rule, add the new one.
 
 A self-hosted SEO dashboard for **all your Google Search Console properties across many Google accounts**.
 It syncs your data into a local SQLite warehouse (so history is kept beyond Google's 16 months), joins it with GA4, Tag Manager,
@@ -86,7 +88,7 @@ All are optional except where noted; copy `.env.example` to `.env`. On Cloudflar
 - *API key (simplest, no registration):* sign in at bing.com/webmasters, verify your sites, **Settings → API Access → API Key → Generate API Key**. One key per Bing user, covering all their verified sites. Paste it on the **Connect** page.
 - *OAuth (one-click for your users):* in the same **API Access** section choose **OAuth Client**, register a name and the redirect URI `<ORIGIN>/auth/bing/callback`, then set `BING_CLIENT_ID` / `BING_CLIENT_SECRET`. Scope used: `webmaster.read`.
 
-**Microsoft Clarity** — per project: open the project → **Settings → Data Export → Generate new API token** (project admins only). Paste it on the **Connect** page for that site. Limits (Microsoft docs): 10 API calls per project per day, data for the last 1–3 days only, 1,000 rows, no paging — so OpenSiteConsole stores one snapshot a day.
+**Microsoft Clarity** — per project: open the project → **Settings → Data Export → Generate new API token** (project admins only). Paste it on the **Connect** page for that site. Limits (Microsoft docs): 10 API calls per project per day, data for the last 1–3 days only, 1,000 rows, no paging — so SEOConsole stores one snapshot a day.
 
 ## Connecting sources (the "Connect" page)
 
@@ -96,7 +98,7 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 
 ## OpenSEO and AI agents
 
-- **Agents page** → create an API key (optionally limited to some sites) → add OpenSiteConsole as an MCP server next to OpenSEO's. Twenty-nine read-only tools covering every connected source (Search Console, GA4, Tag Manager, Bing, Clarity, Core Web Vitals, OpenSEO link) and every analysis below (trends, content groups, SEO tests, indexing, on-page, AI traffic, the action queue, the weekly digest, sitemap coverage, IndexNow and Google updates), almost all answered from stored data; nothing can write or spend money. Three tools reach Google live: `get_sitemaps` (Google's own sitemap status), `inspect_url` (URL Inspection for up to 5 URLs of the property; answers are reused for 12 hours, `refresh` spends URL Inspection quota) and the sync itself. `get_page_insights` returns the same combined per-page view as the Pages tab (below). `get_performance` answers questions like "mobile in the US last month against the month before": one dimension (query, page, country, device or date), any date range, an optional comparison window (a change is only claimed when the stored history covers it), and country, device and text filters. The **Agents** page has copy-paste setup for Claude Code, Claude (custom connector with a header credential), Codex and generic clients; ChatGPT's connectors are reported to expect OAuth, which this server does not implement, so it may not work there (unverified). `get_connections` tells an agent which sources are connected, and `get_tracking_health` cross-checks Search Console, GA4 and Tag Manager.
+- **Agents page** → create an API key (optionally limited to some sites) → add SEOConsole as an MCP server next to OpenSEO's. Twenty-nine read-only tools covering every connected source (Search Console, GA4, Tag Manager, Bing, Clarity, Core Web Vitals, OpenSEO link) and every analysis below (trends, content groups, SEO tests, indexing, on-page, AI traffic, the action queue, the weekly digest, sitemap coverage, IndexNow and Google updates), almost all answered from stored data; nothing can write or spend money. Three tools reach Google live: `get_sitemaps` (Google's own sitemap status), `inspect_url` (URL Inspection for up to 5 URLs of the property; answers are reused for 12 hours, `refresh` spends URL Inspection quota) and the sync itself. `get_page_insights` returns the same combined per-page view as the Pages tab (below). `get_performance` answers questions like "mobile in the US last month against the month before": one dimension (query, page, country, device or date), any date range, an optional comparison window (a change is only claimed when the stored history covers it), and country, device and text filters. The **Agents** page has copy-paste setup for Claude Code, Claude (custom connector with a header credential), Codex and generic clients; ChatGPT's connectors are reported to expect OAuth, which this server does not implement, so it may not work there (unverified). `get_connections` tells an agent which sources are connected, and `get_tracking_health` cross-checks Search Console, GA4 and Tag Manager.
 - Connect OpenSEO on the Connect page and each site is linked to its OpenSEO project by domain. An agent calls `get_openseo_project` to obtain the project id, then uses OpenSEO's own tools (keyword research, rank tracking, audits) on it — first-party history from here, third-party data from there.
 
 ## Using the dashboard
@@ -176,7 +178,7 @@ Dockerfile, compose.yaml, Dockerfile.cloudflare, wrangler.jsonc   container and 
 
 ## License
 
-OpenSiteConsole is free software under the **GNU Affero General Public License v3.0** (AGPL-3.0-only). See [LICENSE](LICENSE).
+SEOConsole is free software under the **GNU Affero General Public License v3.0** (AGPL-3.0-only). See [LICENSE](LICENSE).
 In short: you may use, study, modify and share it. If you modify it and let other people use your version over a network
 (for example as a hosted service), the AGPL requires you to offer those users the corresponding source code. This summary is
 not legal advice; the license text is what applies.

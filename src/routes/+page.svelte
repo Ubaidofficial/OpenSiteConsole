@@ -156,7 +156,7 @@
 								<input type="hidden" name="id" value={c.id} />
 								<ConfirmButton
 									title="Delete this removed property?"
-									description="Search Console no longer lists it. This deletes its stored history from OpenSiteConsole (your Search Console data is not touched). It cannot be undone, and you can re-add the property later to download it again."
+									description="Search Console no longer lists it. This deletes its stored history from SEOConsole (your Search Console data is not touched). It cannot be undone, and you can re-add the property later to download it again."
 									confirmLabel="Delete stored data"
 									class="grid size-8 place-items-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-destructive/10 hover:text-destructive"
 								><Trash2 class="size-4" /></ConfirmButton>
