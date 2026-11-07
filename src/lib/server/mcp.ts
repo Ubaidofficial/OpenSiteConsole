@@ -25,6 +25,7 @@ import { indexHistory, indexSummary, recentEvents, watchList } from './indexmon'
 import { storedChecks } from './onpage';
 import { sitemapCoverage } from './sitemapcov';
 import { portfolioQueue, queueFor } from './actions';
+import { hiddenReport } from './hidden';
 import { buildDigest } from './digest';
 import { indexNowStatus } from './indexnow';
 import { scoreOf } from '../actions';
@@ -232,11 +233,44 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_opportunities',
-		description: 'SEO findings computed from stored history. type: striking (positions 4-20 ranked by estimated extra clicks, on the site\'s own fitted CTR curve), ctr_gaps (pages under-performing their position), cannibalization (queries split across competing pages), decay (statistically significant page declines, labelled page-specific vs site-wide), anomalies (unusual days).',
-		schema: { ...siteArg, ...daysArg, type: { type: 'string', enum: ['striking', 'ctr_gaps', 'cannibalization', 'decay', 'anomalies'] }, limit: { type: 'integer' } },
+		description: 'SEO findings computed from stored history. Google-only: striking (positions 4-20 ranked by estimated extra clicks, on the site\'s own fitted CTR curve), ctr_gaps (pages under-performing their position), cannibalization (queries split across competing pages), decay (statistically significant page declines, labelled page-specific vs site-wide), anomalies (unusual days). Hidden opportunities that join several sources or periods: lost_queries (searches that used to bring clicks), rising_queries (fast-growing searches not yet won), pages_on_the_edge (one page just below the top for many searches), question_gaps (question searches ranked low), bing_gaps (Bing ranks you top 5, Google does not), not_in_bing (pages with Google clicks and no Bing impressions), hidden_gems (pages that convert better than average but rank 4-20, from GA4), engagement_leaks and conversion_leaks (Google landing pages that lose visitors or produce no key events, from GA4), friction (rage and dead clicks on landing pages, from Clarity), mobile_gaps (rank much worse on phones). hidden_overview counts every one of them and says which sources are missing. Estimates use the site\'s own click curve; null means there is no honest figure.',
+		schema: { ...siteArg, ...daysArg, type: { type: 'string', enum: ['striking', 'ctr_gaps', 'cannibalization', 'decay', 'anomalies', 'hidden_overview', 'lost_queries', 'rising_queries', 'pages_on_the_edge', 'question_gaps', 'bing_gaps', 'not_in_bing', 'hidden_gems', 'engagement_leaks', 'conversion_leaks', 'friction', 'mobile_gaps'] }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			const n = days(a);
+			if (String(a.type).match(/^(hidden_overview|lost_queries|rising_queries|pages_on_the_edge|question_gaps|bing_gaps|not_in_bing|hidden_gems|engagement_leaks|conversion_leaks|friction|mobile_gaps)$/)) {
+				const h = hiddenReport(site, n);
+				const L = limit(a);
+				const why: Record<string, string> = { 'no-previous-period': 'The previous period is not downloaded yet, so changes cannot be claimed. Run a full history sync.', 'not-connected': 'Not connected: add it on the Connect page.', 'no-data': 'Connected but no data stored for this window yet.' };
+				const src = Object.fromEntries(Object.entries(h.sources).map(([k, v]) => [k, v === 'ok' ? 'ok' : why[v]]));
+				const pct1 = (x: number) => r2(x * 100) + '%';
+				switch (a.type) {
+					case 'hidden_overview':
+						return { period: h.period, sources: src, found: { lost_queries: h.lost.length, rising_queries: h.rising.length, pages_on_the_edge: h.pageEdge.length, question_gaps: h.questions.length, bing_gaps: h.bingGaps.length, not_in_bing: h.notInBing.length, hidden_gems: h.gems.length, engagement_leaks: h.engagement.length, conversion_leaks: h.conversions.length, friction: h.friction.length, mobile_gaps: h.device.length }, next: 'Call get_opportunities again with any of the keys above as `type`, or get_action_queue for the ranked to-do list.' };
+					case 'lost_queries':
+						return { sources: { previousPeriod: src.previousPeriod }, note: 'Some searches may simply have dropped out of the data Google shares (rare ones are hidden), or be seasonal.', rows: h.lost.slice(0, L).map((r) => ({ query: r.query, clicksBefore: r.prevClicks, clicksNow: r.clicks, lostClicks: r.lostClicks, positionBefore: r2(r.positionPrev), positionNow: r.positionNow == null ? null : r2(r.positionNow) })) };
+					case 'rising_queries':
+						return { sources: { previousPeriod: src.previousPeriod }, rows: h.rising.slice(0, L).map((r) => ({ query: r.query, impressions: r.impressions, impressionsBefore: r.prevImpressions, isNew: r.isNew, position: r2(r.position), estimatedExtraClicksAtPos5: Math.round(r.gain) })) };
+					case 'pages_on_the_edge':
+						return { note: 'The estimate assumes every listed search reaches position 5 at once, so it is a ceiling.', rows: h.pageEdge.slice(0, L).map((r) => ({ page: r.page, searchesNearTheTop: r.queries, impressions: r.impressions, estimatedExtraClicksAtPos5: Math.round(r.gain), topSearches: r.top.map((t) => ({ query: t.query, position: r2(t.position), impressions: t.impressions })) })) };
+					case 'question_gaps':
+						return { rows: h.questions.slice(0, L).map((r) => ({ query: r.query, position: r2(r.position), impressions: r.impressions, clicks: r.clicks, estimatedExtraClicksAtPos5: Math.round(r.gain) })) };
+					case 'bing_gaps':
+						return { sources: { bing: src.bing }, note: 'Bing ranks the page near the top where Google ranks it at 11 or lower, or not at all (then there is no honest click estimate).', rows: h.bingGaps.slice(0, L).map((r) => ({ query: r.query, bingPosition: r2(r.bingPosition), bingImpressions: r.bingImpressions, googlePosition: r.googlePosition == null ? null : r2(r.googlePosition), googleImpressions: r.googleImpressions, estimatedExtraGoogleClicksAtPos5: r.gain == null ? null : Math.round(r.gain) })) };
+					case 'not_in_bing':
+						return { sources: { bing: src.bing }, note: 'Bing shows no impressions for these pages, so they are probably not indexed there. IndexNow or Bing Webmaster Tools submits them.', rows: h.notInBing.slice(0, L).map((r) => ({ page: r.page, googleClicks: r.clicks })) };
+					case 'hidden_gems':
+						return { sources: { ga4: src.ga4 }, rows: h.gems.slice(0, L).map((r) => ({ page: r.page, organicSessions: r.sessions, engagementRate: pct1(r.engagementRate), keyEventsPer100Sessions: r2(r.keyEventRate * 100), position: r2(r.position), impressions: r.impressions, estimatedExtraClicksAtPos3: Math.round(r.gain) })) };
+					case 'engagement_leaks':
+						return { sources: { ga4: src.ga4 }, rows: h.engagement.slice(0, L).map((r) => ({ page: r.page, organicSessions: r.sessions, engagementRate: pct1(r.engagementRate), siteEngagementRate: pct1(r.siteRate), visitsThatWouldHaveEngaged: Math.round(r.lostEngagedSessions) })) };
+					case 'conversion_leaks':
+						return { sources: { ga4: src.ga4 }, note: 'Check the key event can fire on the page before changing content.', rows: h.conversions.slice(0, L).map((r) => ({ page: r.page, organicSessions: r.sessions, keyEvents: 0, expectedAtSiteAverage: r2(r.expectedKeyEvents) })) };
+					case 'friction':
+						return { sources: { clarity: src.clarity }, note: 'Clarity only exposes the last day, so this is a lead, not a verdict.', rows: h.friction.slice(0, L).map((r) => ({ page: r.page, sessions: r.sessions, sessionsWithRageOrDeadClicks: r.frictionSessions, share: pct1(r.rate), googleClicks: r.googleClicks })) };
+					default:
+						return { note: 'Google ranks the phone version of a page; results can also differ by device on their own.', rows: h.device.slice(0, L).map((r) => ({ query: r.query, phonePosition: r2(r.mobilePosition), desktopPosition: r2(r.desktopPosition), phoneImpressions: r.mobileImpressions, estimatedExtraClicks: Math.round(r.gain) })) };
+				}
+			}
 			const p = periodFor(site, n);
 			const terms = brandTerms(site);
 			const qp = queryPageRows(site.id, p.start, p.end);
@@ -256,7 +290,7 @@ const TOOLS: Tool[] = [
 				case 'anomalies':
 					return detectAnomalies(dailySeries(site.id, addDays(p.end, -(n + 90)), p.end).map((d) => ({ date: d.date, value: d.clicks }))).filter((x) => x.date >= p.start).map((x) => ({ date: x.date, clicks: x.value, expected: Math.round(x.expected), change: r2(x.deltaPct * 100) + '%', direction: x.direction }));
 				default:
-					throw new Error('`type` must be one of striking, ctr_gaps, cannibalization, decay, anomalies');
+					throw new Error('`type` must be one of striking, ctr_gaps, cannibalization, decay, anomalies, hidden_overview, lost_queries, rising_queries, pages_on_the_edge, question_gaps, bing_gaps, not_in_bing, hidden_gems, engagement_leaks, conversion_leaks, friction, mobile_gaps');
 			}
 		}
 	},
