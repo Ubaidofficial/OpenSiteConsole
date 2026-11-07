@@ -15,7 +15,7 @@
 <section class="card mb-4 p-4">
 	<h2 class="mb-1 font-medium">IndexNow: tell search engines the moment a page changes</h2>
 	<p class="max-w-3xl text-sm text-muted-foreground">
-		IndexNow is an open protocol: one notification reaches <b>Bing, Yandex, Naver, Seznam, Yep, Amazon and the Internet Archive</b>, instead of waiting for them to crawl.
+		IndexNow is an open protocol: one notification reaches the engines that take part, instead of waiting for them to crawl. indexnow.org lists <b>Bing, Naver, Seznam.cz, Yandex and Yep</b>.
 		<b class="text-foreground">Google does not take part in IndexNow</b>, so this does nothing for Google; for Google, your sitemap and the Indexing tab are what matter. And a notification is a hint: the engines say it does not guarantee indexing.
 	</p>
 	<p class="mt-2 text-sm">

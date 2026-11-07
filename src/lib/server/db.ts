@@ -248,6 +248,29 @@ CREATE TABLE IF NOT EXISTS index_submissions (
 	source TEXT NOT NULL,               -- app | mcp
 	key_id INTEGER                      -- the API key, for source = mcp
 );
+-- URLs waiting to be sent to a channel: over today's limit, or deliberately spread over several days ("drip"). release_at is when each may go.
+CREATE TABLE IF NOT EXISTS index_queue (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	channel TEXT NOT NULL,
+	added_at INTEGER NOT NULL,
+	release_at INTEGER NOT NULL,        -- when it may go next (pushed back after a channel failure)
+	first_release_at INTEGER NOT NULL,  -- when it was first meant to go: a row is dropped 7 days after this, however a drip spaced it
+	source TEXT NOT NULL,
+	key_id INTEGER,
+	UNIQUE (site_id, url, channel)
+);
+-- After a URL is accepted somewhere, Google is asked again at day 1, 3 and 5 (step 0, 1, 2) whether it is indexed; the row goes when it is, or after the last step.
+CREATE TABLE IF NOT EXISTS index_rechecks (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	submitted_at INTEGER NOT NULL,
+	step INTEGER NOT NULL,
+	due_at INTEGER NOT NULL,
+	attempts INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS idx_index_submissions_site ON index_submissions (site_id, at DESC);
 CREATE INDEX IF NOT EXISTS idx_index_submissions_url ON index_submissions (site_id, url);
 CREATE TABLE IF NOT EXISTS seo_tests (
@@ -388,6 +411,7 @@ CREATE TABLE IF NOT EXISTS index_watch (
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
 	url TEXT NOT NULL,
 	added_at INTEGER NOT NULL,
+	source TEXT,                        -- NULL: pinned by the owner; 'submit': put there by a submission (removed again once its re-checks are done)
 	PRIMARY KEY (site_id, url)
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS index_history (
@@ -454,6 +478,7 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('index_message')) db.exec('ALTER TABLE sites ADD COLUMN index_message TEXT');
 	if (!cols('sites').includes('index_next_at')) db.exec('ALTER TABLE sites ADD COLUMN index_next_at INTEGER');
 	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
+	if (!cols('index_watch').includes('source')) db.exec('ALTER TABLE index_watch ADD COLUMN source TEXT');
 	if (!cols('api_keys').includes('permission')) db.exec("ALTER TABLE api_keys ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'"); // read | submit
 	if (!cols('oauth_codes').includes('permission')) db.exec("ALTER TABLE oauth_codes ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'");
 	if (!cols('api_keys').includes('expires_at')) db.exec('ALTER TABLE api_keys ADD COLUMN expires_at INTEGER'); // NULL = never (keys made by hand)

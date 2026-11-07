@@ -21,6 +21,13 @@
 	};
 	const LABEL: Record<string, string> = { indexnow: 'IndexNow', bing: 'Bing', google_indexing_api: 'Google Indexing API' };
 	const count = $derived(urls.split(/\s+/).filter(Boolean).length);
+	// `ago` is for the past; these are for a time still to come.
+	const until = (t: number) => {
+		const h = Math.round((t - Date.now()) / 3600_000);
+		return h < 1 ? 'within the hour' : h < 48 ? `in ${h} h` : `in ${Math.round(h / 24)} days`;
+	};
+	const q = $derived(data.quota);
+	const stillNot = $derived(data.submissions.filter((x) => x.verdict === 'still_not_indexed').length);
 	const stateText = { indexed: 'indexed', not_indexed: 'not indexed', unknown: 'unknown' } as const;
 </script>
 
@@ -66,6 +73,10 @@
 			<label class="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" name="dry" /> dry run (show what would happen, send nothing)</label>
 			<label class="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" name="force" /> IndexNow: even if sent in the last 24 hours</label>
 		</div>
+		<div class="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+			<label class="flex items-center gap-1.5">Spread over <input class="input !h-7 w-16" type="number" name="drip" min="1" max={data.maxDrip} value="1" aria-label="Days to spread the list over" /> day(s) <span>(1 = all now; otherwise an even share goes each day)</span></label>
+			<label class="flex items-center gap-1.5"><input type="checkbox" name="queue" checked /> queue what does not fit today's limits and send it on the following days</label>
+		</div>
 	</form>
 
 	{#if form?.report}
@@ -79,6 +90,7 @@
 						{#if !c.available}<span class="text-warn">not used: {c.reason}</span>
 						{:else if r.dryRun}would take {c.attempted}
 						{:else}<span class={c.accepted ? 'text-good' : 'text-bad'}>{c.accepted} of {c.attempted} accepted</span>{/if}
+						{#if c.available && c.queued}<span class="text-xs text-muted-foreground"> · {c.queued} {r.dryRun ? 'would be ' : ''}queued for later</span>{/if}
 						{#each c.skipped as s}<span class="text-xs text-muted-foreground"> · {s.count} skipped: {s.reason}</span>{/each}
 						{#if c.error}<span class="text-xs text-bad"> · {c.error}</span>{/if}
 						{#each c.notes as n}<div class="text-xs text-muted-foreground">{n}</div>{/each}
@@ -89,6 +101,34 @@
 			{#if !r.dryRun && r.watching}<p class="mt-2 text-xs text-muted-foreground">{r.watching} URL{r.watching === 1 ? '' : 's'} added to the indexing monitor's watch list: it checks them first on its next run (or press <i>Check now</i> below).</p>{/if}
 		</div>
 	{/if}
+</section>
+
+<section class="card mb-4 p-4">
+	<div class="mb-2 flex items-center gap-3">
+		<h2 class="font-medium">Limits and queue</h2>
+		{#if q.bing.linked}<form method="POST" action="?/refreshQuota" use:enhance={run} class="ml-auto"><button class="btn !h-8 text-xs" disabled={busy} title="Ask Bing now how many URLs it still takes (read-only)">Refresh Bing's figure</button></form>{/if}
+	</div>
+	<div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+		<div><div class="text-xs text-muted-foreground">IndexNow, last 24 h</div><div class="tnum font-medium">{q.indexnow.used24h.toLocaleString('en-US')} of {q.indexnow.cap.toLocaleString('en-US')}</div>
+			<div class="text-xs {q.indexnow.pausedUntil ? 'text-warn' : q.indexnow.ready ? 'text-good' : 'text-muted-foreground'}">{q.indexnow.pausedUntil ? 'paused: the engines asked us to slow down' : q.indexnow.ready ? 'ready' : 'not set up'}</div></div>
+		<div><div class="text-xs text-muted-foreground">Bing, still allowed</div>
+			{#if !q.bing.linked}<div class="text-xs text-muted-foreground">Bing not linked</div>
+			{:else if q.bing.checkedAt == null}<div class="text-xs text-muted-foreground">not read yet: refresh, or send once</div>
+			{:else}<div class="tnum font-medium">{q.bing.daily == null ? 'unknown' : q.bing.daily.toLocaleString('en-US')} today</div><div class="text-xs text-muted-foreground">{q.bing.monthly == null ? '' : q.bing.monthly.toLocaleString('en-US') + ' this month · '}read {ago(q.bing.checkedAt)}</div>{/if}</div>
+		<div><div class="text-xs text-muted-foreground">Google Indexing API, today</div>
+			{#if q.googleIndexingApi.enabled}<div class="tnum font-medium">{q.googleIndexingApi.usedToday} of {q.googleIndexingApi.cap}</div><div class="text-xs text-muted-foreground">job and livestream pages only</div>
+			{:else}<div class="text-xs text-muted-foreground">off on this server</div>{/if}</div>
+		<div><div class="text-xs text-muted-foreground">Google URL Inspection, today (UTC)</div><div class="tnum font-medium">{q.urlInspection.storedToday.toLocaleString('en-US')} of about {q.urlInspection.approxDailyLimit.toLocaleString('en-US')}</div>
+			<div class="text-xs text-muted-foreground">shared by this page, the monitor ({q.urlInspection.monitorPerRun} a run) and re-checks ({q.urlInspection.rechecksPerRun} a run)</div></div>
+	</div>
+	<div class="mt-3 flex flex-wrap items-center gap-3 border-t pt-3 text-sm" style="border-color:var(--border)">
+		{#if q.queue.total}
+			<span><b>{q.queue.total.toLocaleString('en-US')}</b> URL{q.queue.total === 1 ? '' : 's'} waiting to be sent{#each Object.entries(q.queue.byChannel) as [ch, n]}{#if n} · {LABEL[ch]} {n}{/if}{/each}.
+				{#if q.queue.releasableNow}{q.queue.releasableNow} may go at the next run (every 15 minutes).{:else if q.queue.nextReleaseAt}Next release {until(q.queue.nextReleaseAt)}.{/if}</span>
+			<form method="POST" action="?/clearQueue" use:enhance={run} class="ml-auto"><button class="btn !h-8 text-xs" disabled={busy || data.readOnly}>Clear the queue</button></form>
+		{:else}<span class="text-muted-foreground">Nothing is waiting in the queue.</span>{/if}
+	</div>
+	<p class="mt-2 text-xs text-muted-foreground">URLs that do not fit a channel's daily limit, or that you chose to spread over several days, wait here and go automatically (every 15 minutes the server looks; the app must be running). Anything still unsent 7 days after it was due is dropped, and the log says so. The Google inspection limit is the figure Google documents as I understand it: verify it if it matters to you.</p>
 </section>
 
 <section class="card mb-4 p-4">
@@ -112,21 +152,25 @@
 <section class="card p-4">
 	<div class="mb-2 flex items-center gap-3">
 		<h2 class="font-medium">What happened to submitted URLs</h2>
-		<form method="POST" action="?/check" use:enhance={run} class="ml-auto"><button class="btn !h-8 text-xs" disabled={busy || data.readOnly} title="Re-inspect the watch list now (spends URL Inspection quota)">Check now</button></form>
+		<a class="btn !h-8 text-xs ml-auto" href="submit/export" download title="The table below as a spreadsheet">Download CSV</a>
+		<form method="POST" action="?/check" use:enhance={run}><button class="btn !h-8 text-xs" disabled={busy || data.readOnly} title="Re-inspect the watch list now (spends URL Inspection quota)">Check now</button></form>
 	</div>
-	<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="th">URL</th><th class="th">Sent</th><th class="th">Channels</th><th class="th">Google says</th></tr></thead><tbody>
+	{#if stillNot}<p class="mb-2 text-sm text-warn"><b>{stillNot}</b> URL{stillNot === 1 ? '' : 's'} still not indexed after {data.recheckDays[data.recheckDays.length - 1]} days: Google was asked again and said no. The coverage text says why (for example <i>Crawled – currently not indexed</i> usually means Google saw the page and did not think it worth keeping yet: improve the content and link to it from other pages).</p>{/if}
+	<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="th">URL</th><th class="th">Sent</th><th class="th">Channels</th><th class="th">Google says</th><th class="th">Next check</th></tr></thead><tbody>
 		{#each data.submissions as s (s.url)}
 			<tr>
 				<td class="td pii max-w-80 truncate text-xs" title={s.url}>{s.url}</td>
 				<td class="td whitespace-nowrap text-xs text-muted-foreground">{ago(s.submittedAt)}</td>
 				<td class="td text-xs">{#each s.channels as c}<span class="mr-2 whitespace-nowrap {c.ok ? 'text-good' : 'text-bad'}" title={c.message}>{c.ok ? '✓' : '✕'} {LABEL[c.channel]}</span>{/each}</td>
 				<td class="td text-xs">
+					{#if s.verdict === 'still_not_indexed'}<span class="chip mr-1 !border-[color:var(--bad)] text-bad">still not indexed</span>{:else if s.verdict === 'indexed'}<span class="chip mr-1 text-good">indexed</span>{/if}
 					{#if !s.google}<span class="text-muted-foreground">not inspected yet</span>
 					{:else}<span class={s.google.state === 'indexed' ? 'text-good' : s.google.state === 'not_indexed' ? 'text-warn' : 'text-muted-foreground'}>{stateText[s.google.state as keyof typeof stateText]}</span>{#if s.google.coverage}<span class="text-muted-foreground"> · {s.google.coverage}</span>{/if}
 						<span class="text-muted-foreground"> · checked {ago(s.google.checkedAt)}{s.google.checkedAfterSubmit ? '' : ' (before this submission)'}</span>{/if}
 				</td>
+				<td class="td whitespace-nowrap text-xs text-muted-foreground">{s.nextCheckAt ? (s.nextCheckAt <= Date.now() ? 'due' : until(s.nextCheckAt)) : s.verdict === 'indexed' ? 'done' : 'none left'}</td>
 			</tr>
-		{:else}<tr><td class="td text-muted-foreground" colspan="4">Nothing submitted yet.</td></tr>{/each}
+		{:else}<tr><td class="td text-muted-foreground" colspan="5">Nothing submitted yet.</td></tr>{/each}
 	</tbody></table></div>
-	<p class="mt-2 text-xs text-muted-foreground">Submitted URLs are put on the indexing monitor's watch list. "Not indexed" soon after sending is normal: Google decides on its own time, and the reason (such as "Crawled – currently not indexed") shows here once it is inspected.</p>
+	<p class="mt-2 text-xs text-muted-foreground">Each accepted URL is checked with Google again at day {data.recheckDays.join(', ')} automatically (and sits on the indexing monitor's watch list until then). "Not indexed" soon after sending is normal: Google decides on its own time, and the reason (such as "Crawled – currently not indexed") shows here once it is inspected.</p>
 </section>

@@ -66,7 +66,7 @@ const addUsed = (siteId: number, n: number, now: number) => {
 	if (n > 0) db().prepare('INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = CAST(value AS INTEGER) + ?').run(usedKey(siteId, new Date(now).toISOString().slice(0, 10)), String(n), n);
 };
 
-export interface PublishOutcome { url: string; ok: boolean; message: string }
+export interface PublishOutcome { url: string; ok: boolean; message: string; /** not sent only because today's limit was reached: it can go later */ overflow?: boolean }
 
 /** What a refusal from Google means for the person, not the raw error. */
 export function explainIndexingError(e: unknown): string {
@@ -85,7 +85,7 @@ export async function publishUrls(site: SiteRow, urls: string[], o: { fetchImpl?
 	let sent = 0;
 	for (const url of urls) {
 		if (budget <= 0) {
-			out.push({ url, ok: false, message: `Daily limit of ${indexingApiDailyCap()} Indexing API notifications reached for this site.` });
+			out.push({ url, ok: false, overflow: true, message: `Daily limit of ${indexingApiDailyCap()} Indexing API notifications reached for this site.` });
 			continue;
 		}
 		if (o.demo) {

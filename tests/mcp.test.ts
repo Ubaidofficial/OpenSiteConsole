@@ -62,7 +62,7 @@ describe('MCP server', () => {
 		const names = list.json.result.tools.map((t: { name: string }) => t.name);
 		expect(names).toEqual(expect.arrayContaining(['list_sites', 'get_overview', 'get_search_types', 'get_opportunities', 'get_bing_performance', 'get_ga4_summary', 'get_clarity_snapshot', 'get_openseo_project']));
 		const notReadOnly = list.json.result.tools.filter((t: { annotations: { readOnlyHint: boolean } }) => !t.annotations.readOnlyHint).map((t: { name: string }) => t.name).sort();
-		expect(notReadOnly).toEqual(['delete_sitemap', 'get_site_verification_token', 'run_indexing_check', 'setup_indexnow', 'submit_sitemap', 'submit_urls_for_indexing', 'verify_site_ownership']); // and those need a key with the submit permission
+		expect(notReadOnly).toEqual(['cancel_indexing_queue', 'delete_sitemap', 'get_site_verification_token', 'run_indexing_check', 'setup_indexnow', 'submit_sitemap', 'submit_urls_for_indexing', 'verify_site_ownership']); // and those need a key with the submit permission
 		expect((await call(key, { jsonrpc: '2.0', id: 3, method: 'nope' })).json.error.code).toBe(-32601);
 	});
 

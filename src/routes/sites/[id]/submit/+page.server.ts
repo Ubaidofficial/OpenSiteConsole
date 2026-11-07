@@ -10,7 +10,7 @@ import { clientForSite } from '$lib/server/clients';
 import { diagnoseSitemap } from '$lib/server/sitemapcov';
 import { demoSitemapFetch } from '$lib/server/demo-channels';
 import { enqueueIndexMonitor } from '$lib/server/jobs';
-import { CHANNELS, MAX_SUBMIT_URLS, SubmitRefused, presetUrls, resubmitSitemaps, submissionStatus, submitForIndexing, submitSitemapTo, type Channel, type Preset } from '$lib/server/submission';
+import { CHANNELS, MAX_DRIP_DAYS, MAX_SUBMIT_URLS, RECHECK_DAYS, SubmitRefused, clearQueue, presetUrls, quotaOverview, refreshBingQuota, resubmitSitemaps, submissionStatus, submitForIndexing, submitSitemapTo, type Channel, type Preset } from '$lib/server/submission';
 
 export const load: PageServerLoad = ({ params }) => {
 	const site = getSite(Number(params.id))!;
@@ -18,6 +18,9 @@ export const load: PageServerLoad = ({ params }) => {
 	return {
 		readOnly: config.readOnly,
 		maxUrls: MAX_SUBMIT_URLS,
+		maxDrip: MAX_DRIP_DAYS,
+		recheckDays: RECHECK_DAYS,
+		quota: quotaOverview(site),
 		channels: {
 			indexnow: { hasKey: !!getKey(site.id), verifiedHosts: hosts.filter((h) => h.ok).length },
 			bing: { linked: !!linksFor(site.id).bing },
@@ -45,7 +48,9 @@ export const actions: Actions = {
 		const channels = f.getAll('channel').map(String).filter((c): c is Channel => (CHANNELS as string[]).includes(c));
 		if (!channels.length) return fail(400, { error: 'Tick at least one channel.' });
 		try {
-			return { report: await submitForIndexing(site, readUrls(f.get('urls')), { channels, dryRun: f.get('dry') === 'on', force: f.get('force') === 'on', source: 'app' }) };
+			const dripDays = Number(f.get('drip') || 1);
+			if (!Number.isInteger(dripDays) || dripDays < 1 || dripDays > MAX_DRIP_DAYS) return fail(400, { error: `"Spread over" must be a whole number of days from 1 to ${MAX_DRIP_DAYS}.` });
+			return { report: await submitForIndexing(site, readUrls(f.get('urls')), { channels, dryRun: f.get('dry') === 'on', force: f.get('force') === 'on', source: 'app', dripDays, queueOverflow: f.get('queue') === 'on' }) };
 		} catch (e) {
 			if (e instanceof SubmitRefused) return fail(400, { error: e.message });
 			throw e;
@@ -80,6 +85,21 @@ export const actions: Actions = {
 		const google = (await client.listSitemaps(site.site_url).catch(() => [])).find((s) => s.path === feed);
 		const demo = !!(db().prepare('SELECT is_demo FROM accounts WHERE id = ?').get(site.account_id) as { is_demo: number }).is_demo;
 		return { check: await diagnoseSitemap(feed, site.site_url, google, demo ? demoSitemapFetch(site.id) : undefined) };
+	},
+	/** Ask Bing now how many URLs it still takes (read-only), so the overview shows a fresh figure. */
+	refreshQuota: async ({ params }) => {
+		const site = getSite(Number(params.id))!;
+		try {
+			const q = await refreshBingQuota(site);
+			return { ok: `Bing still takes ${q.daily == null ? 'an unknown number of' : q.daily.toLocaleString('en-US')} URLs today${q.monthly == null ? '' : ` and ${q.monthly.toLocaleString('en-US')} this month`}.` };
+		} catch (e) {
+			if (e instanceof SubmitRefused) return fail(400, { error: e.message });
+			throw e;
+		}
+	},
+	clearQueue: async ({ params }) => {
+		const n = clearQueue(Number(params.id), 'app');
+		return { ok: n ? `Removed ${n} queued URL${n === 1 ? '' : 's'}. Nothing already sent is affected.` : 'The queue was already empty.' };
 	},
 	check: async ({ params }) => {
 		if (config.readOnly) return fail(403, { error: 'READ_ONLY=1: starting checks is disabled.' });

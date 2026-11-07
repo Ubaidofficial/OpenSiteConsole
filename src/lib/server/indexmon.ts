@@ -20,9 +20,10 @@ export interface MonitorRun { checked: number; events: number; errors: number; s
 
 // ── watch list: URLs that must always be checked first ───────────────────────
 export const watchList = (siteId: number) => (db().prepare('SELECT url FROM index_watch WHERE site_id = ? ORDER BY added_at').all(siteId) as { url: string }[]).map((r) => r.url);
-export const addWatch = (siteId: number, urls: string[]) => {
-	const ins = db().prepare('INSERT OR IGNORE INTO index_watch (site_id, url, added_at) VALUES (?,?,?)');
-	for (const u of urls.slice(0, 200)) ins.run(siteId, u, Date.now());
+/** `source` 'submit' marks URLs put here by a submission, so they can be taken off again; a URL the owner pinned stays pinned (INSERT OR IGNORE keeps its NULL source). */
+export const addWatch = (siteId: number, urls: string[], source: 'submit' | null = null) => {
+	const ins = db().prepare('INSERT OR IGNORE INTO index_watch (site_id, url, added_at, source) VALUES (?,?,?,?)');
+	for (const u of urls.slice(0, 200)) ins.run(siteId, u, Date.now(), source);
 };
 export const removeWatch = (siteId: number, url: string) => void db().prepare('DELETE FROM index_watch WHERE site_id = ? AND url = ?').run(siteId, url);
 

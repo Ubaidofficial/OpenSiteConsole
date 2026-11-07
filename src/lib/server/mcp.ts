@@ -27,7 +27,7 @@ import { sitemapCoverage } from './sitemapcov';
 import { portfolioQueue, queueFor } from './actions';
 import { buildDigest } from './digest';
 import { createKey as createIndexNowKey, getKey as getIndexNowKey, hostStatuses, indexNowStatus, setAuto as setIndexNowAuto, verifyHost } from './indexnow';
-import { CHANNELS, CHANNEL_LABEL, MAX_SUBMIT_URLS, SubmitRefused, deleteSitemapFrom, presetUrls, resubmitSitemaps, submissionStatus, submitForIndexing, submitSitemapTo, type Channel, type Preset } from './submission';
+import { CHANNELS, CHANNEL_LABEL, MAX_DRIP_DAYS, MAX_SUBMIT_URLS, RECHECK_DAYS, SubmitRefused, clearQueue, deleteSitemapFrom, presetUrls, queueStatus, quotaOverview, refreshBingQuota, resubmitSitemaps, submissionStatus, submitForIndexing, submitSitemapTo, type Channel, type Preset } from './submission';
 import { diagnoseSitemap } from './sitemapcov';
 import { enqueueIndexMonitor } from './jobs';
 import { audit } from './db';
@@ -764,12 +764,16 @@ const TOOLS: Tool[] = [
 			const site = resolveSite(sites, a.site);
 			const rows = submissionStatus(site.id, limit(a, 50));
 			const when = (t: number) => new Date(t).toISOString();
+			const q = queueStatus(site.id);
 			return {
 				site: displayName(site.site_url),
 				count: rows.length,
-				indexedAfterSubmission: rows.filter((r) => r.google?.checkedAfterSubmit && r.google.state === 'indexed').length,
+				indexedAfterSubmission: rows.filter((r) => r.verdict === 'indexed').length,
+				stillNotIndexedAfter5Days: rows.filter((r) => r.verdict === 'still_not_indexed').length,
 				waitingForACheck: rows.filter((r) => !r.google || !r.google.checkedAfterSubmit).length,
-				submissions: rows.map((r) => ({ url: r.url, submittedAt: when(r.submittedAt), channels: r.channels.map((c) => ({ channel: c.channel, accepted: c.ok, answer: c.message })), google: r.google && { state: r.google.state, coverage: r.google.coverage, checkedAt: when(r.google.checkedAt), checkedAfterSubmission: r.google.checkedAfterSubmit } }))
+				queue: { waiting: q.total, byChannel: q.byChannel, nextRelease: q.nextReleaseAt ? when(q.nextReleaseAt) : null },
+				note: `Each accepted URL is re-checked with Google at day ${RECHECK_DAYS.join(', ')} after sending (automatically, through URL Inspection). "still_not_indexed" means 5 or more days have passed and the latest check, made after the submission, says it is not indexed: look at its coverage text for why.`,
+				submissions: rows.map((r) => ({ url: r.url, submittedAt: when(r.submittedAt), daysSince: r.daysSince, verdict: r.verdict, nextCheck: r.nextCheckAt ? when(r.nextCheckAt) : null, channels: r.channels.map((c) => ({ channel: c.channel, accepted: c.ok, answer: c.message })), google: r.google && { state: r.google.state, coverage: r.google.coverage, checkedAt: when(r.google.checkedAt), checkedAfterSubmission: r.google.checkedAfterSubmit } }))
 			};
 		}
 	},
@@ -793,10 +797,12 @@ const TOOLS: Tool[] = [
 	{
 		name: 'submit_urls_for_indexing',
 		needs: 'submit',
-		description: `Push up to ${MAX_SUBMIT_URLS} URLs of one site to the channels that take them: indexnow (Bing, Yandex, Naver, Seznam, Yep; needs the IndexNow key verified; NOT Google), bing (Bing's URL submission API; needs Bing linked), google_indexing_api (Google's Indexing API: only for pages with JobPosting or BroadcastEvent structured data, every other page is refused; off unless the server enables it). Google has no "request indexing" call for ordinary pages: for those use submit_sitemap and get_submission_status. Defaults to every channel; a channel that cannot be used says why. dry_run: true sends nothing and shows the plan. Submitted URLs go on the indexing monitor's watch list. Needs a key with the submit permission; limited per key per day.`,
-		schema: { ...siteArg, urls: { type: 'array', items: { type: 'string' }, description: `Full URLs inside the site (max ${MAX_SUBMIT_URLS})` }, channels: { type: 'array', items: { type: 'string', enum: CHANNELS }, description: 'Default: all' }, dry_run: { type: 'boolean' }, force: { type: 'boolean', description: 'IndexNow only: resend even if sent in the last 24 hours' } },
+		description: `Push up to ${MAX_SUBMIT_URLS} URLs of one site to the channels that take them: indexnow (Bing, Yandex, Naver, Seznam, Yep; needs the IndexNow key verified; NOT Google), bing (Bing's URL submission API; needs Bing linked), google_indexing_api (Google's Indexing API: only for pages with JobPosting or BroadcastEvent structured data, every other page is refused; off unless the server enables it). Google has no "request indexing" call for ordinary pages: for those use submit_sitemap and get_submission_status. Defaults to every channel; a channel that cannot be used says why. dry_run: true sends nothing and shows the plan. What does not fit a channel's daily limit is queued and sent on later days (queue_overflow, default true); drip_days (1-30) spreads the list over that many days, an even share a day. Each accepted URL is re-checked with Google at day 1, 3 and 5 (see get_submission_status). Needs a key with the submit permission; limited per key per day.`,
+		schema: { ...siteArg, urls: { type: 'array', items: { type: 'string' }, description: `Full URLs inside the site (max ${MAX_SUBMIT_URLS})` }, channels: { type: 'array', items: { type: 'string', enum: CHANNELS }, description: 'Default: all' }, dry_run: { type: 'boolean' }, force: { type: 'boolean', description: 'IndexNow only: resend even if sent in the last 24 hours' }, drip_days: { type: 'integer', description: `Spread the list over this many days (1-${MAX_DRIP_DAYS}); default 1 = all now` }, queue_overflow: { type: 'boolean', description: "Queue what does not fit today's limit and send it later (default true)" } },
 		run: async (a, sites, ctx) => {
 			const site = resolveSite(sites, a.site);
+			const dripDays = a.drip_days === undefined ? 1 : Number(a.drip_days);
+			if (!Number.isInteger(dripDays) || dripDays < 1 || dripDays > MAX_DRIP_DAYS) throw new Error(`\`drip_days\` must be a whole number from 1 to ${MAX_DRIP_DAYS}.`);
 			const list = (Array.isArray(a.urls) ? a.urls : a.url ? [a.url] : []).map((u) => String(u));
 			if (!list.length) throw new Error('`urls` is required: one or more full URLs of this site.');
 			if (list.length > MAX_SUBMIT_URLS) throw new Error(`At most ${MAX_SUBMIT_URLS} URLs per call.`);
@@ -805,14 +811,14 @@ const TOOLS: Tool[] = [
 			const dry = a.dry_run === true;
 			const budget = submitBudget();
 			if (!dry && submittedToday(ctx.keyId) + list.length > budget) throw new Error(`This key may submit ${budget} URLs a day (UTC) and has used ${submittedToday(ctx.keyId)}. Try fewer URLs, or tomorrow.`);
-			const rep = await submitForIndexing(site, list, { channels, dryRun: dry, force: a.force === true, source: 'mcp', keyId: ctx.keyId }).catch(refuse);
+			const rep = await submitForIndexing(site, list, { channels, dryRun: dry, force: a.force === true, source: 'mcp', keyId: ctx.keyId, dripDays, queueOverflow: a.queue_overflow !== false }).catch(refuse);
 			if (!dry) addSubmitted(ctx.keyId, rep.urls.length);
 			return {
 				site: displayName(site.site_url),
 				dryRun: rep.dryRun,
 				urls: rep.urls.length,
 				rejected: rep.rejected,
-				channels: rep.channels.map((c) => ({ channel: c.channel, label: CHANNEL_LABEL[c.channel], usable: c.available, whyNot: c.reason, attempted: c.attempted, accepted: c.accepted, skipped: c.skipped, error: c.error, notes: c.notes })),
+				channels: rep.channels.map((c) => ({ channel: c.channel, label: CHANNEL_LABEL[c.channel], usable: c.available, whyNot: c.reason, attempted: c.attempted, accepted: c.accepted, queuedForLater: c.queued, skipped: c.skipped, error: c.error, notes: c.notes })),
 				addedToWatchList: rep.watching,
 				note: rep.note
 			};
@@ -915,6 +921,37 @@ const TOOLS: Tool[] = [
 			if (config.readOnly) throw new Error('READ_ONLY=1: verifying and adding sites is disabled on this server.');
 			const r = await verifyAndAdd(acct, String(a.site ?? ''), methodArg(a.method));
 			return { account: acct.email, property: r.property.gscUrl, verified: r.verified, addedToSearchConsole: r.added, note: 'Data syncs in the background; use list_sites in a few minutes (a key limited to some sites will not see the new site).' };
+		}
+	},
+	{
+		name: 'get_indexing_quotas',
+		description: 'Everything that limits how much can be sent or checked for one site, from stored data: IndexNow (sent in the last 24 hours against its cap, and whether the engines asked us to pause), Bing\'s URL submission allowance (as last read; refresh_bing: true asks Bing now), the Google Indexing API (used today against its cap; only for job and livestream pages), URL Inspection (inspections stored today against the roughly 2,000 a day per property that Google allows, as the app assumes; verify) and how many URLs wait in the submission queue.',
+		schema: { ...siteArg, refresh_bing: { type: 'boolean', description: 'Ask Bing for its current allowance (a read-only call)' } },
+		run: async (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			if (a.refresh_bing === true) await refreshBingQuota(site).catch(refuse);
+			const q = quotaOverview(site);
+			const iso = (t: number | null) => (t ? new Date(t).toISOString() : null);
+			return {
+				site: displayName(site.site_url),
+				indexnow: { ready: q.indexnow.ready, sentLast24h: q.indexnow.used24h, dailyCap: q.indexnow.cap, pausedUntil: iso(q.indexnow.pausedUntil) },
+				bing: q.bing.linked ? { urlsLeftToday: q.bing.daily, urlsLeftThisMonth: q.bing.monthly, readAt: iso(q.bing.checkedAt) } : { linked: false },
+				googleIndexingApi: { enabled: q.googleIndexingApi.enabled, sentToday: q.googleIndexingApi.usedToday, dailyCap: q.googleIndexingApi.cap },
+				urlInspection: { inspectionsStoredToday: q.urlInspection.storedToday, approxDailyLimit: q.urlInspection.approxDailyLimit, monitorUrlsPerRun: q.urlInspection.monitorPerRun, recheckUrlsPerRun: q.urlInspection.rechecksPerRun },
+				queue: { waiting: q.queue.total, byChannel: q.queue.byChannel, releasableNow: q.queue.releasableNow, nextRelease: iso(q.queue.nextReleaseAt) }
+			};
+		}
+	},
+	{
+		name: 'cancel_indexing_queue',
+		needs: 'submit',
+		description: 'Throw away the URLs waiting in the submission queue for one site (all of them, or one channel\'s share). Nothing already sent is affected. Needs a key with the submit permission.',
+		schema: { ...siteArg, channel: { type: 'string', enum: CHANNELS, description: 'Only this channel; default all' } },
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			if (a.channel !== undefined && !CHANNELS.includes(a.channel as Channel)) throw new Error(`\`channel\` must be one of ${CHANNELS.join(', ')}.`);
+			const n = clearQueue(site.id, 'mcp', a.channel as Channel | undefined);
+			return { site: displayName(site.site_url), removed: n, remaining: queueStatus(site.id).total };
 		}
 	}
 ];
