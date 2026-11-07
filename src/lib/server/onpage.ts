@@ -131,7 +131,7 @@ export const guardedFetch = ((input: RequestInfo | URL, init: RequestInit = {}) 
 		req.end();
 	})) as typeof fetch;
 
-export interface FetchedBytes { status: number; finalUrl: string; body: Buffer | null; contentType: string; error?: string }
+export interface FetchedBytes { status: number; finalUrl: string; body: Buffer | null; contentType: string; /** the response's Last-Modified header, as sent */ lastModified?: string | null; error?: string }
 
 /**
  * The one hardened fetch used for pages AND sitemaps: only the site's own host (see hostAllowed, checked again on every
@@ -173,7 +173,8 @@ export async function fetchBytes(url: string, siteUrl: string, o: { fetchImpl?: 
 		if (htmlOnly && !/html|xml/i.test(contentType || 'text/html')) { drop(); return fail(res.status, current, 'Not an HTML page.'); }
 		try {
 			const reader = res.body?.getReader();
-			if (!reader) return { status: res.status, finalUrl: current, contentType, body: Buffer.from(await res.arrayBuffer()).subarray(0, max) };
+			const lastModified = res.headers.get('last-modified');
+			if (!reader) return { status: res.status, finalUrl: current, contentType, lastModified, body: Buffer.from(await res.arrayBuffer()).subarray(0, max) };
 			const chunks: Uint8Array[] = [];
 			let size = 0;
 			for (;;) {
@@ -186,7 +187,7 @@ export async function fetchBytes(url: string, siteUrl: string, o: { fetchImpl?: 
 					break;
 				}
 			}
-			return { status: res.status, finalUrl: current, contentType, body: Buffer.concat(chunks).subarray(0, max) };
+			return { status: res.status, finalUrl: current, contentType, lastModified, body: Buffer.concat(chunks).subarray(0, max) };
 		} catch (e) {
 			return fail(res.status, current, e instanceof Error && e.name === 'TimeoutError' ? 'Timed out reading it.' : 'The connection broke while reading it.');
 		}

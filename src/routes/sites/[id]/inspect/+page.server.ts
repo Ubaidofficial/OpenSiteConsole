@@ -5,6 +5,9 @@ import { db } from '$lib/server/db';
 import { inspectUrls, MAX_INSPECT_URLS } from '$lib/server/inspect';
 import { periodFor, topPages } from '$lib/server/queries';
 import type { InspectionResult } from '$lib/server/google';
+import { getSite } from '$lib/server/clients';
+import { CHANNEL_LABEL, SubmitRefused, submitForIndexing } from '$lib/server/submission';
+import { addPending } from '$lib/server/requestindex';
 
 const MAX_URLS = MAX_INSPECT_URLS;
 
@@ -16,6 +19,27 @@ export const load: PageServerLoad = ({ params }) => {
 };
 
 export const actions: Actions = {
+	/** Send the ticked URLs to the channels that take them (IndexNow, Bing, and Google's Indexing API for job and livestream pages). */
+	submitSelected: async ({ params, request }) => {
+		const urls = (await request.formData()).getAll('url').map(String).filter(Boolean);
+		if (!urls.length) return fail(400, { error: 'Tick at least one URL.' });
+		try {
+			const r = await submitForIndexing(getSite(Number(params.id))!, urls, { source: 'app' });
+			const line = r.channels.map((c) => `${CHANNEL_LABEL[c.channel].split(' (')[0]}: ${c.available ? `${c.accepted} of ${c.attempted} accepted${c.queued ? `, ${c.queued} queued` : ''}` : 'not used'}`).join(' · ');
+			return { submitted: `${line}. Details and re-checks are on the Submit tab.` };
+		} catch (e) {
+			if (e instanceof SubmitRefused) return fail(400, { error: e.message });
+			throw e;
+		}
+	},
+	/** Put the ticked URLs on the Request indexing list (the Search Console button has no API, so that list is where you press it). */
+	addToRequests: async ({ params, request }) => {
+		const urls = (await request.formData()).getAll('url').map(String).filter(Boolean);
+		if (!urls.length) return fail(400, { error: 'Tick at least one URL.' });
+		const r = addPending(getSite(Number(params.id))!, urls);
+		const parts = [`${r.added} added to the Request list`, r.problems && `${r.problems} need fixing first`, r.alreadyIndexed && `${r.alreadyIndexed} already indexed`, r.recentlyAsked && `${r.recentlyAsked} asked about recently`, r.rejected && `${r.rejected} not on this site`].filter(Boolean);
+		return { submitted: parts.join(', ') + '. Open the Request tab to ask Google.' };
+	},
 	inspect: async ({ params, request }) => {
 		const f = await request.formData();
 		const urls = String(f.get('urls') ?? '')

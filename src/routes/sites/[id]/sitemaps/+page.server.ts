@@ -5,14 +5,17 @@ import { config } from '$lib/server/config';
 import { audit, db } from '$lib/server/db';
 import { diagnoseSitemap } from '$lib/server/sitemapcov';
 import { demoSitemapFetch } from '$lib/server/demo-channels';
+import { compareWithPages, lastLiveCompare, lastmodReport, LIVE_SAMPLE } from '$lib/server/lastmod';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { client, site } = clientForSite(Number(params.id));
-	if (['siteUnverifiedUser', 'none'].includes(site.permission)) return { sitemaps: [], error: 'This property is not verified for this account.' };
+	// The lastmod check works from the stored sitemap read, so it needs neither Google nor the network.
+	const lastmod = { report: lastmodReport(site), live: lastLiveCompare(site.id), sample: LIVE_SAMPLE };
+	if (['siteUnverifiedUser', 'none'].includes(site.permission)) return { sitemaps: [], error: 'This property is not verified for this account.', lastmod };
 	try {
-		return { sitemaps: await client.listSitemaps(site.site_url), error: null };
+		return { sitemaps: await client.listSitemaps(site.site_url), error: null, lastmod };
 	} catch (e) {
-		return { sitemaps: [], error: e instanceof Error ? e.message : 'Could not load sitemaps' };
+		return { sitemaps: [], error: e instanceof Error ? e.message : 'Could not load sitemaps', lastmod };
 	}
 };
 
@@ -21,6 +24,13 @@ function guard() {
 }
 
 export const actions: Actions = {
+	/** Fetch a sample of dated pages and compare their Last-Modified header with the sitemap dates. Reads only, so allowed in READ_ONLY mode. */
+	lastmodCompare: async ({ params }) => {
+		const site = getSite(Number(params.id));
+		if (!site) return fail(404, { error: 'Unknown site.' });
+		const r = await compareWithPages(site);
+		return { ok: r.findings[0]?.text ?? 'Compared.' };
+	},
 	/** Fetch the sitemap like a crawler and compare it with what Google last reported. Read-only, so allowed in READ_ONLY mode. */
 	check: async ({ params, request }) => {
 		const feed = String((await request.formData()).get('feed') ?? '').trim();

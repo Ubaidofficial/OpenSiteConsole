@@ -6,7 +6,8 @@ import { decode } from './onpage';
 
 export const MAX_ENTRIES_PER_FILE = 50_000; // the sitemap protocol's own limit
 
-export interface SitemapEntry { loc: string; lastmod: string | null }
+/** `lastmodBad` is present (true) only when the entry has a <lastmod> that is not a valid W3C date: empty, wrong format, or a day that does not exist. */
+export interface SitemapEntry { loc: string; lastmod: string | null; lastmodBad?: true }
 export interface ParsedSitemap { kind: 'index' | 'urlset' | 'unknown'; entries: SitemapEntry[]; truncated: boolean }
 
 /**
@@ -36,6 +37,23 @@ function inner(xml: string, lower: string, tag: string, from: number, to: number
 	return decode(t);
 }
 
+// The sitemap protocol's date format (W3C Datetime): a day, optionally with a time and a time zone.
+const W3C_DATE = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/;
+const realDay = (d: string) => new Date(d + 'T00:00:00Z').toISOString().slice(0, 10) === d;
+
+/**
+ * The day of a <lastmod> (its first ten characters when they are a real day, as before), and whether the value was invalid. A year or a
+ * year-month alone is valid but gives no day. Sloppy values such as "2026-01-02 10:00:00" still give their day but are flagged.
+ */
+export function readLastmod(raw: string | null): { lastmod: string | null; bad: boolean } {
+	if (raw === null) return { lastmod: null, bad: false };
+	const t = raw.trim();
+	if (/^\d{4}(?:-\d{2})?$/.test(t)) return { lastmod: null, bad: false };
+	const day = /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null;
+	const real = !!day && !Number.isNaN(Date.parse(day + 'T00:00:00Z')) && realDay(day);
+	return { lastmod: real ? day : null, bad: !(real && W3C_DATE.test(t)) };
+}
+
 export function parseSitemapXml(xml: string): ParsedSitemap {
 	const lower = asciiLower(xml);
 	const kind = lower.includes('<sitemapindex') ? 'index' : lower.includes('<urlset') ? 'urlset' : 'unknown';
@@ -59,7 +77,8 @@ export function parseSitemapXml(xml: string): ParsedSitemap {
 		const loc = inner(xml, lower, 'loc', open, close);
 		if (loc && loc.length <= 2048 && /^https?:\/\/\S+$/i.test(loc)) {
 			const lm = inner(xml, lower, 'lastmod', open, close);
-			entries.push({ loc, lastmod: lm && /^\d{4}-\d{2}-\d{2}/.test(lm) ? lm.slice(0, 10) : null });
+			const r = readLastmod(lm);
+			entries.push(r.bad ? { loc, lastmod: r.lastmod, lastmodBad: true } : { loc, lastmod: r.lastmod });
 			if (entries.length >= MAX_ENTRIES_PER_FILE) return { kind, entries, truncated: lower.indexOf('<' + tag, close) >= 0 };
 		}
 		from = close + tag.length + 3;

@@ -21,9 +21,9 @@
 	<h2 class="mt-2 font-medium" class:pii={names}>{a.title}</h2>
 	<p class="mt-1 text-sm text-muted-foreground" class:pii={names}>{a.why}</p>
 	<p class="mt-1.5 text-sm" class:pii={names}><b>What to do:</b> {a.how}</p>
-	{#if a.evidence.length}<ul class="pii mt-2 space-y-0.5 text-xs text-muted-foreground">{#each a.evidence as e}<li>· {e}</li>{/each}</ul>{/if}
+	{#if a.evidence.length}<details class="mt-2 text-xs text-muted-foreground"><summary class="cursor-pointer select-none">Evidence ({a.evidence.length})</summary><ul class="pii mt-1 space-y-0.5">{#each a.evidence as e}<li>· {e}</li>{/each}</ul></details>{/if}
 	<div class="mt-3 flex flex-wrap items-center gap-2">
-		<Tip interactive text={BUTTON_EXPLAIN.open}><a class="btn !h-8 text-xs" href={a.href}>Open</a></Tip>
+		<Tip interactive text={BUTTON_EXPLAIN.open}><a class="btn !h-8 text-xs {a.blocking ? 'btn-primary' : ''}" href={a.href}>Open</a></Tip>
 		{#if !hideControls}
 			<form method="POST" action="/sites/{a.siteId}/actions?/state" use:enhance class="flex gap-2">
 				<input type="hidden" name="key" value={a.key} />

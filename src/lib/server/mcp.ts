@@ -4,7 +4,7 @@ import { ALL_TYPES } from '../searchTypes';
 import { cruxIntegration, cruxLatest } from './crux';
 import { rate, VITALS } from '../vitals';
 import { clientForSite, displayName } from './clients';
-import { inspectUrls, storedInspection, type InspectOutcome } from './inspect';
+import { inspectUrls, storedInspection, MAX_INSPECT_URLS, type InspectOutcome } from './inspect';
 import { inProperty } from '../property';
 import { pageInsights } from './pageinsights';
 import { joinWindows, resolveWindows, sortRows, type Joined, type SortBy } from '../performance';
@@ -31,6 +31,8 @@ import { CHANNELS, CHANNEL_LABEL, MAX_DRIP_DAYS, MAX_SUBMIT_URLS, RECHECK_DAYS, 
 import { diagnoseSitemap } from './sitemapcov';
 import { enqueueIndexMonitor } from './jobs';
 import { audit } from './db';
+import { buildQueue, dismissRequests, judge, markRequested, requestQueue } from './requestindex';
+import { compareWithPages, lastLiveCompare, lastmodReport } from './lastmod';
 import { listAccounts } from './accounts';
 import { VERIFY_METHODS, getVerificationToken, verifyAndAdd, type VerifyMethod } from './siteverify';
 import { scoreOf } from '../actions';
@@ -130,6 +132,17 @@ const methodArg = (v: unknown): VerifyMethod => {
 	if (!VERIFY_METHODS.includes(v as VerifyMethod)) throw new Error(`\`method\` must be one of ${VERIFY_METHODS.join(', ')} (a domain uses DNS_TXT or DNS_CNAME; a URL-prefix site uses META or FILE).`);
 	return v as VerifyMethod;
 };
+
+/** A submission report as the tools return it (one shape for every tool that submits). */
+const reportJson = (rep: Awaited<ReturnType<typeof submitForIndexing>>) => ({
+	dryRun: rep.dryRun,
+	urls: rep.urls.length,
+	rejected: rep.rejected,
+	channels: rep.channels.map((c) => ({ channel: c.channel, label: CHANNEL_LABEL[c.channel], usable: c.available, whyNot: c.reason, attempted: c.attempted, accepted: c.accepted, queuedForLater: c.queued, skipped: c.skipped, error: c.error, notes: c.notes })),
+	addedToWatchList: rep.watching,
+	note: rep.note
+});
+const isoOrNull = (t: number | null | undefined) => (t ? new Date(t).toISOString() : null);
 
 const TOOLS: Tool[] = [
 	{
@@ -813,15 +826,7 @@ const TOOLS: Tool[] = [
 			if (!dry && submittedToday(ctx.keyId) + list.length > budget) throw new Error(`This key may submit ${budget} URLs a day (UTC) and has used ${submittedToday(ctx.keyId)}. Try fewer URLs, or tomorrow.`);
 			const rep = await submitForIndexing(site, list, { channels, dryRun: dry, force: a.force === true, source: 'mcp', keyId: ctx.keyId, dripDays, queueOverflow: a.queue_overflow !== false }).catch(refuse);
 			if (!dry) addSubmitted(ctx.keyId, rep.urls.length);
-			return {
-				site: displayName(site.site_url),
-				dryRun: rep.dryRun,
-				urls: rep.urls.length,
-				rejected: rep.rejected,
-				channels: rep.channels.map((c) => ({ channel: c.channel, label: CHANNEL_LABEL[c.channel], usable: c.available, whyNot: c.reason, attempted: c.attempted, accepted: c.accepted, queuedForLater: c.queued, skipped: c.skipped, error: c.error, notes: c.notes })),
-				addedToWatchList: rep.watching,
-				note: rep.note
-			};
+			return { site: displayName(site.site_url), ...reportJson(rep) };
 		}
 	},
 	{
@@ -952,6 +957,121 @@ const TOOLS: Tool[] = [
 			if (a.channel !== undefined && !CHANNELS.includes(a.channel as Channel)) throw new Error(`\`channel\` must be one of ${CHANNELS.join(', ')}.`);
 			const n = clearQueue(site.id, 'mcp', a.channel as Channel | undefined);
 			return { site: displayName(site.site_url), removed: n, remaining: queueStatus(site.id).total };
+		}
+	},
+	{
+		name: 'get_sitemap_lastmod_health',
+		description: 'Whether the <lastmod> dates in a site\'s sitemap are worth Google\'s trust (Google uses lastmod to decide what to re-crawl, but only if the date is valid and believable). From the last stored sitemap read: URLs with no date, invalid dates, dates in the future, many URLs sharing one date (a build stamp), nearly everything changed this week, and, from stored URL Inspections, whether Google re-crawled pages whose date moved (a sample). compare_live: true also fetches up to 20 of the site\'s own pages and compares each page\'s Last-Modified header with its sitemap date. The thresholds are rules of thumb of this app, not Google\'s.',
+		schema: { ...siteArg, compare_live: { type: 'boolean', description: 'Also fetch a sample of pages and compare their Last-Modified headers (up to 20 requests to the site)' } },
+		run: async (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			if (a.compare_live === true) await compareWithPages(site);
+			const r = lastmodReport(site);
+			const live = lastLiveCompare(site.id);
+			return {
+				site: displayName(site.site_url),
+				verdict: r.verdict,
+				sitemapReadAt: isoOrNull(r.readAt),
+				counts: { urls: r.total, withDate: r.withDate, noDate: r.missing, invalidDate: r.invalid, futureDate: r.future, differentDays: r.distinctDays, changedLast7Days: r.changedLast7d, oldest: r.oldest, newest: r.newest, commonestDate: r.commonest },
+				googleRecrawl: { inspectedPagesWhoseDateMoved: r.recrawl.compared, notRecrawled: r.recrawl.notRecrawled, notRecrawledAfterAWeek: r.recrawl.notRecrawledWeek, examples: r.recrawl.examples, note: 'A sample: only URLs the indexing monitor inspected after their date.' },
+				findings: r.findings,
+				liveComparison: live && { checkedAt: isoOrNull(live.at), pagesFetched: live.checked, comparable: live.compared, disagree: live.mismatched, noHeader: live.noHeader, currentTimeHeader: live.dynamic, unreachable: live.unreachable, examples: live.examples, findings: live.findings }
+			};
+		}
+	},
+	{
+		name: 'get_request_indexing_queue',
+		description: 'The "Request indexing" list for a site, as stored: pages worth asking Google about in Search Console (new or changed pages not indexed yet, pages the owner pinned, pages never shown in search, pages sent earlier that are still not indexed), each with why and a Search Console link when Google gave one; pages where asking would not help (blocked by robots or noindex, gone, another canonical) under `fixFirst`; what was asked in the last 14 days with the result; and the daily allowance. Search Console\'s Request Indexing button has no API: a person presses it, then it is recorded with mark_indexing_requested. Build the list with build_request_indexing_queue.',
+		schema: siteArg,
+		run: (a, sites) => {
+			const site = resolveSite(sites, a.site);
+			const q = requestQueue(site.id);
+			const item = (i: (typeof q.pending)[number]) => ({ url: i.url, why: i.reason, google: i.state, coverage: i.coverage, openInSearchConsole: i.link, listed: isoOrNull(i.builtAt) });
+			return {
+				site: displayName(site.site_url),
+				allowance: { askedLast24h: q.budget.usedLast24h, perDay: q.budget.perDay, left: q.budget.left, nextSlot: isoOrNull(q.budget.nextSlotAt), note: 'Google does not publish its limit; the figure is a setting (REQUEST_INDEXING_PER_DAY).' },
+				builtAt: isoOrNull(q.builtAt),
+				toRequest: q.pending.map(item),
+				fixFirst: q.problems.map(item),
+				askedRecently: q.recent.map((r) => ({ url: r.url, asked: isoOrNull(r.actedAt), result: r.verdict ?? 'waiting', daysSince: r.daysSince, nextCheck: isoOrNull(r.nextCheckAt) }))
+			};
+		}
+	},
+	{
+		name: 'build_request_indexing_queue',
+		needs: 'submit',
+		description: 'Build (or rebuild) the "Request indexing" list for a site: take the best candidates, ask Google about them with URL Inspection (cached 12 hours; counts against this key\'s daily inspection budget), drop pages already indexed, set blocked or pointless ones aside, and keep as many as today\'s allowance has room for. Replaces the previous unanswered list. A person then presses Request Indexing in Search Console for each (this cannot be done through any API). Needs a key with the submit permission.',
+		schema: siteArg,
+		run: async (a, sites, ctx) => {
+			const site = resolveSite(sites, a.site);
+			const left = inspectBudget() - inspectionsUsed(ctx.keyId);
+			if (left <= 0) throw new Error(`This key has used its ${inspectBudget()} live URL inspections for today (UTC). Read the stored list with get_request_indexing_queue, or try tomorrow.`);
+			const r = await buildQueue(site, { inspectCap: Math.min(30, left) });
+			addInspections(ctx.keyId, r.liveInspections);
+			if (r.limitReached) return { site: displayName(site.site_url), built: false, reason: "Today's allowance for asking Google is used up.", nextSlot: isoOrNull(r.nextSlotAt) };
+			const q = requestQueue(site.id);
+			return { site: displayName(site.site_url), built: true, candidates: r.candidates, askedGoogleAbout: r.asked, liveInspections: r.liveInspections, alreadyIndexed: r.alreadyIndexed, listed: r.listed, fixFirst: r.problems, toRequest: q.pending.map((i) => ({ url: i.url, why: i.reason, openInSearchConsole: i.link })), note: 'Press Request Indexing in Search Console for each, then call mark_indexing_requested.' };
+		}
+	},
+	{
+		name: 'mark_indexing_requested',
+		needs: 'submit',
+		description: 'Record what a person did with URLs on the Request indexing list: action "requested" = they pressed Request Indexing in Search Console (the URL gets the day 1, 3 and 5 re-checks and shows in get_submission_status); action "skip" = not worth asking about, hide for 30 days. This does not ask Google by itself: no API can. Do not record a request that did not happen. Needs a key with the submit permission.',
+		schema: { ...siteArg, urls: { type: 'array', items: { type: 'string' }, description: `Full URLs inside the site (max ${MAX_SUBMIT_URLS})` }, action: { type: 'string', enum: ['requested', 'skip'] } },
+		run: (a, sites, ctx) => {
+			const site = resolveSite(sites, a.site);
+			const list = (Array.isArray(a.urls) ? a.urls : []).map((u) => String(u));
+			if (!list.length) throw new Error('`urls` is required.');
+			if (list.length > MAX_SUBMIT_URLS) throw new Error(`At most ${MAX_SUBMIT_URLS} URLs per call.`);
+			if (a.action === 'requested') {
+				const r = markRequested(site, list, 'mcp', Date.now(), ctx.keyId);
+				return { site: displayName(site.site_url), recorded: r.marked, rejected: r.rejected, note: r.marked ? 'Google is asked again about each at day 1, 3 and 5.' : 'None of those URLs belong to this site.' };
+			}
+			if (a.action === 'skip') return { site: displayName(site.site_url), skipped: dismissRequests(site, list), note: 'They stay off the list for 30 days.' };
+			throw new Error('`action` must be requested or skip.');
+		}
+	},
+	{
+		name: 'inspect_and_submit_urls',
+		needs: 'submit',
+		description: `Inspect up to ${MAX_INSPECT_URLS} URLs with Google (URL Inspection; answers reused for 12 hours, refresh: true asks again; counts against this key's daily inspection budget), then submit the ones that are not indexed to the channels that take them (see submit_urls_for_indexing: IndexNow, Bing, and Google's Indexing API for job and livestream pages only). URLs Google already has are left out (only_if_not_indexed, default true), and so are URLs where submitting would not help: blocked by robots.txt or noindex, not fetchable, or another page chosen as the canonical; the answer says why for each. dry_run: true inspects and shows the plan without sending. Google has no request-indexing call for ordinary pages: for those, add them to the Request list or submit the sitemap. Needs a key with the submit permission.`,
+		schema: { ...siteArg, urls: { type: 'array', items: { type: 'string' }, description: `Full URLs inside the site (max ${MAX_INSPECT_URLS})` }, only_if_not_indexed: { type: 'boolean', description: 'Default true' }, refresh: { type: 'boolean', description: 'Ignore the 12-hour inspection cache' }, channels: { type: 'array', items: { type: 'string', enum: CHANNELS }, description: 'Default: all' }, dry_run: { type: 'boolean' }, force: { type: 'boolean' }, drip_days: { type: 'integer' }, queue_overflow: { type: 'boolean' } },
+		run: async (a, sites, ctx) => {
+			const site = resolveSite(sites, a.site);
+			const raw = (Array.isArray(a.urls) ? a.urls : a.url ? [a.url] : []).map((u) => String(u).trim()).filter(Boolean);
+			if (!raw.length) throw new Error('`urls` is required: one or more full URLs of this site.');
+			if (raw.length > MAX_INSPECT_URLS) throw new Error(`At most ${MAX_INSPECT_URLS} URLs per call.`);
+			const list: string[] = [];
+			for (const u of raw) {
+				if (!/^https?:\/\/\S+$/i.test(u)) throw new Error(`"${u}" is not a full http(s) URL.`);
+				if (!inProperty(u, site.site_url)) throw new Error(`"${u}" is outside the property ${site.site_url}; Google only inspects URLs inside it.`);
+				const x = new URL(u);
+				x.hash = '';
+				if (!list.includes(x.href)) list.push(x.href);
+			}
+			const channels = Array.isArray(a.channels) ? (a.channels.map(String) as Channel[]) : undefined;
+			if (channels?.some((c) => !CHANNELS.includes(c))) throw new Error(`\`channels\` may only contain ${CHANNELS.join(', ')}.`);
+			const dripDays = a.drip_days === undefined ? 1 : Number(a.drip_days);
+			if (!Number.isInteger(dripDays) || dripDays < 1 || dripDays > MAX_DRIP_DAYS) throw new Error(`\`drip_days\` must be a whole number from 1 to ${MAX_DRIP_DAYS}.`);
+			if (inspectionsUsed(ctx.keyId) >= inspectBudget()) throw new Error(`This key has used its ${inspectBudget()} live URL inspections for today (UTC). Answers already stored are still available.`);
+			const { outcomes } = await inspectUrls(site.id, list, a.refresh === true);
+			addInspections(ctx.keyId, outcomes.filter((o) => !o.fromCache).length);
+			const onlyIfNot = a.only_if_not_indexed !== false;
+			const seen = list.map((url) => {
+				const v = judge({ url, tier: 1, lastmod: null }, storedInspection(site.id, url), Date.now());
+				return { url, google: v.state, coverage: v.coverage, problem: v.problem ?? null, indexed: v.state === 'indexed' && !v.problem };
+			});
+			const send = seen.filter((p) => !p.problem && !(onlyIfNot && p.indexed)).map((p) => p.url);
+			const left = seen.filter((p) => !send.includes(p.url)).map((p) => ({ url: p.url, why: p.problem ?? 'Already indexed.' }));
+			const dry = a.dry_run === true;
+			let submitted: ReturnType<typeof reportJson> | null = null;
+			if (send.length) {
+				if (!dry && submittedToday(ctx.keyId) + send.length > submitBudget()) throw new Error(`This key may submit ${submitBudget()} URLs a day (UTC) and has used ${submittedToday(ctx.keyId)}. Inspection is done: the answers are stored; submit fewer URLs, or tomorrow.`);
+				const rep = await submitForIndexing(site, send, { channels, dryRun: dry, force: a.force === true, source: 'mcp', keyId: ctx.keyId, dripDays, queueOverflow: a.queue_overflow !== false }).catch(refuse);
+				if (!dry) addSubmitted(ctx.keyId, rep.urls.length);
+				submitted = reportJson(rep);
+			}
+			return { site: displayName(site.site_url), inspected: seen.map((p) => ({ url: p.url, google: p.google, coverage: p.coverage, problem: p.problem })), notSubmitted: left, submission: submitted, note: send.length ? undefined : 'Nothing needed submitting.' };
 		}
 	}
 ];

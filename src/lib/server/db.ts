@@ -273,6 +273,20 @@ CREATE TABLE IF NOT EXISTS index_rechecks (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS idx_index_submissions_site ON index_submissions (site_id, at DESC);
 CREATE INDEX IF NOT EXISTS idx_index_submissions_url ON index_submissions (site_id, url);
+-- The "Request indexing" list: pages worth asking Google about by hand (Search Console's button has no API), what the owner did with each.
+CREATE TABLE IF NOT EXISTS index_requests (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	status TEXT NOT NULL,               -- pending | requested | dismissed | problem
+	tier INTEGER NOT NULL DEFAULT 0,
+	reason TEXT NOT NULL,
+	state TEXT,                         -- Google's answer when the list was built: indexed | not_indexed | unknown
+	coverage TEXT,
+	link TEXT,                          -- Search Console's own link for the URL, only if Google gave one and it points at search.google.com
+	built_at INTEGER NOT NULL,
+	acted_at INTEGER,
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS seo_tests (
 	id INTEGER PRIMARY KEY,
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
@@ -310,6 +324,7 @@ CREATE TABLE IF NOT EXISTS sitemap_urls (
 	url TEXT NOT NULL,
 	norm TEXT NOT NULL,                 -- host (no www) + path (no trailing slash), for matching against Search Console pages
 	lastmod TEXT,                       -- YYYY-MM-DD if the sitemap gave one
+	lastmod_bad INTEGER NOT NULL DEFAULT 0, -- 1: the sitemap had a <lastmod> that is not a valid W3C date
 	sitemap TEXT NOT NULL,              -- which sitemap file listed it
 	PRIMARY KEY (site_id, url)
 ) WITHOUT ROWID;
@@ -478,6 +493,7 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('index_message')) db.exec('ALTER TABLE sites ADD COLUMN index_message TEXT');
 	if (!cols('sites').includes('index_next_at')) db.exec('ALTER TABLE sites ADD COLUMN index_next_at INTEGER');
 	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
+	if (!cols('sitemap_urls').includes('lastmod_bad')) db.exec('ALTER TABLE sitemap_urls ADD COLUMN lastmod_bad INTEGER NOT NULL DEFAULT 0');
 	if (!cols('index_watch').includes('source')) db.exec('ALTER TABLE index_watch ADD COLUMN source TEXT');
 	if (!cols('api_keys').includes('permission')) db.exec("ALTER TABLE api_keys ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'"); // read | submit
 	if (!cols('oauth_codes').includes('permission')) db.exec("ALTER TABLE oauth_codes ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'");

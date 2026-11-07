@@ -318,7 +318,7 @@ describe('MCP: submit permission', () => {
 		const res = await handleMcp(new Request('http://x/api/mcp', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${readKey}` }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) }));
 		const tools = (await res.json()).result.tools as { name: string; annotations: { readOnlyHint: boolean; destructiveHint?: boolean } }[];
 		const writers = tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name).sort();
-		expect(writers).toEqual(['cancel_indexing_queue', 'delete_sitemap', 'get_site_verification_token', 'run_indexing_check', 'setup_indexnow', 'submit_sitemap', 'submit_urls_for_indexing', 'verify_site_ownership']);
+		expect(writers).toEqual(['build_request_indexing_queue', 'cancel_indexing_queue', 'delete_sitemap', 'get_site_verification_token', 'inspect_and_submit_urls', 'mark_indexing_requested', 'run_indexing_check', 'setup_indexnow', 'submit_sitemap', 'submit_urls_for_indexing', 'verify_site_ownership']);
 		expect(tools.filter((t) => t.annotations.destructiveHint).map((t) => t.name)).toEqual(['delete_sitemap']);
 		for (const n of ['suggest_indexing_candidates', 'get_submission_status', 'check_sitemap']) expect(tools.find((t) => t.name === n)!.annotations.readOnlyHint).toBe(true);
 	});

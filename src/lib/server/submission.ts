@@ -335,6 +335,20 @@ export async function deleteSitemapFrom(site: SiteRow, feed: string, source: 'ap
 	return f;
 }
 
+/**
+ * The owner pressed "Request indexing" in Search Console for these URLs (the button has no API, so this only records it): log it with the
+ * other submissions, put them on the watch list and give them the same day 1, 3 and 5 re-checks.
+ */
+export function recordManualRequests(site: SiteRow, urls: string[], source: 'app' | 'mcp', now = Date.now(), keyId?: number): number {
+	for (const u of urls) logRow(site.id, u, 'search_console' as Channel, now, true, 'You asked for indexing in Search Console.', source, keyId);
+	if (urls.length) {
+		addWatch(site.id, urls, 'submit');
+		scheduleRechecks(site.id, urls, now);
+		audit('index.requested', { siteId: site.id, detail: `${urls.length} URL${urls.length === 1 ? '' : 's'} (${source})` });
+	}
+	return urls.length;
+}
+
 // ── what happened to what was submitted ──────────────────────────────────────
 export interface SubmissionRow {
 	url: string;
@@ -344,7 +358,7 @@ export interface SubmissionRow {
 	verdict: 'indexed' | 'still_not_indexed' | 'waiting';
 	/** when the next automatic re-check is due; null when none is left */
 	nextCheckAt: number | null;
-	channels: { channel: Channel; ok: boolean; message: string }[];
+	channels: { channel: Channel | 'search_console'; ok: boolean; message: string }[];
 	/** what the newest stored Google inspection says; null when never inspected */
 	google: { state: 'indexed' | 'not_indexed' | 'unknown'; coverage: string | null; checkedAt: number; checkedAfterSubmit: boolean } | null;
 }
@@ -366,7 +380,7 @@ export function submissionStatus(siteId: number, limit = 50, now = Date.now()): 
 			daysSince,
 			verdict: google?.checkedAfterSubmit && google.state === 'indexed' ? 'indexed' : daysSince >= RECHECK_DAYS[RECHECK_DAYS.length - 1] && google?.checkedAfterSubmit && google.state === 'not_indexed' ? 'still_not_indexed' : 'waiting',
 			nextCheckAt: (next.get(siteId, u.url) as { due_at: number } | undefined)?.due_at ?? null,
-			channels: (rows.all(siteId, u.url, u.at) as { channel: Channel; ok: number; message: string }[]).map((x) => ({ channel: x.channel, ok: !!x.ok, message: x.message })),
+			channels: (rows.all(siteId, u.url, u.at) as { channel: Channel | 'search_console'; ok: number; message: string }[]).map((x) => ({ channel: x.channel, ok: !!x.ok, message: x.message })),
 			google
 		};
 	});

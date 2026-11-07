@@ -676,3 +676,30 @@ describe('sign-in and the submit permission', () => {
 		expect(readFileSync('src/routes/oauth/authorize/+page.server.ts', 'utf8')).toMatch(/f\.get\('submit'\) === '1' && !config\.readOnly/);
 	});
 });
+
+describe('the privacy policy and terms pages', () => {
+	const gev = (path: string, cookie?: string) => {
+		const url = new URL(`http://localhost:5173${path}`);
+		const jar = new Map<string, string>(cookie ? [['osc_session', cookie]] : []);
+		return { url, request: new Request(url, { headers: { host: 'localhost:5173' } }), locals: {} as Record<string, unknown>, cookies: { get: (k: string) => jar.get(k) }, getClientAddress: () => '127.0.0.1' };
+	};
+	const run = (e: ReturnType<typeof gev>) => handle({ event: e as never, resolve: (async () => new Response('page')) as never });
+	it('are readable without signing in (Google\'s OAuth verification needs a public policy), while every other page still sends a visitor to the login', async () => {
+		expect(config.hasPassword).toBe(true);
+		for (const p of ['/privacy', '/terms']) expect((await run(gev(p))).status, p).toBe(200);
+		for (const p of ['/', '/accounts', '/sites/1', '/agents', '/digest']) {
+			const r = await run(gev(p));
+			expect(r.status, p).toBe(303);
+			expect(r.headers.get('location'), p).toBe('/login');
+		}
+	});
+	it('show a signed-out visitor nothing about the installation, and the operator a note until it is filled in', async () => {
+		const priv = await import('../src/routes/privacy/+page.server');
+		const out = (await priv.load({ locals: { authed: false } } as never)) as { sections: { title: string }[]; configured: boolean; authed: boolean };
+		expect(out.authed).toBe(false);
+		expect(out.sections.length).toBeGreaterThan(5);
+		expect(JSON.stringify(out)).not.toMatch(/ADMIN_PASSWORD|osc_|pw-for-oauth-tests/); // nothing but the policy text
+		const layoutData = (await import('../src/routes/+layout.server')).load({ locals: { authed: false } } as never) as { accounts: number; authed: boolean };
+		expect(layoutData).toMatchObject({ authed: false, accounts: 0 });
+	});
+});

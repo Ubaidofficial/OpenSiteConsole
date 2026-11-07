@@ -8,7 +8,7 @@ import { DONE_DAYS, SNOOZE_DAYS, type ActionType, type Confidence, type Effort }
 export const TYPE_LABEL: Record<ActionType, string> = {
 	tracking: 'Measurement', blocked: 'Blocked', deindexed: 'De-indexed', sitewide: 'Site-wide', anomaly: 'Traffic drop', dead: 'Gone',
 	'not-indexed': 'Not indexed', update: 'Google update', cannibalization: 'Cannibalization', 'ctr-gap': 'CTR gap', decay: 'Decay',
-	striking: 'Striking distance', onpage: 'On-page', sitemap: 'Sitemap', vitals: 'Web vitals', test: 'Test'
+	striking: 'Striking distance', onpage: 'On-page', sitemap: 'Sitemap', lastmod: 'Sitemap dates', submitted: 'Sent, not indexed', request: 'Request indexing', vitals: 'Web vitals', test: 'Test'
 };
 
 export const TYPE_EXPLAIN: Record<ActionType, string> = {
@@ -26,6 +26,9 @@ export const TYPE_EXPLAIN: Record<ActionType, string> = {
 	striking: 'A search where you rank just below the top results (roughly positions 4 to 20). A modest improvement there would add clicks.',
 	onpage: 'The on-page check found a problem, such as a missing title or description, on pages it checked. These are quick fixes.',
 	sitemap: 'A mismatch between your sitemaps and what Google shows: pages that are listed but never shown, or pages that earn clicks but are not listed.',
+	lastmod: 'The dates in your sitemap look wrong or untrustworthy (invalid, in the future, or all the same). Google uses them to decide what to re-crawl and ignores sites whose dates cannot be trusted.',
+	submitted: 'URLs you sent to the search engines were checked again with Google after 5 days and are still not indexed. Google\'s own explanation for each is on the Submit tab.',
+	request: 'Pages worth asking Google about with Search Console\'s Request Indexing button (which no tool can press for you), or pages where asking would not help until something is fixed.',
 	vitals: 'Real visitors on phones get a poor Core Web Vitals result (loading speed, responsiveness or layout shift). It is a small ranking factor and a real cost to visitors.',
 	test: 'The result of an SEO test you started: it may have worked, failed, conflicted with conversions, or be too early to tell.'
 };
@@ -79,6 +82,7 @@ export const SITE_TABS = [
 	['/vitals', 'Web vitals', 'Real-visitor page speed (Core Web Vitals) from Google\'s Chrome UX Report. Needs a free Google API key.'],
 	['/tests', 'Tests', 'Measure whether an SEO change worked, comparing before and after or against control pages.'],
 	['/submit', 'Submit', 'Send new or changed pages to the search engines that accept them, send sitemaps to Search Console, and see what happened to each URL.'],
+	['/request', 'Request', 'A short daily list of pages worth asking Google about in Search Console, with a link to each, and a record of what you asked and whether it worked.'],
 	['/indexing', 'Indexing', 'Watch whether Google has indexed your pages, using a rotating sample of URL inspections.'],
 	['/indexnow', 'IndexNow', 'Tell Bing and other IndexNow search engines the moment a page changes.'],
 	['/onpage', 'On-page', 'Checks pages for common on-page problems, such as a missing title or description.'],
@@ -100,7 +104,7 @@ export const SYNC_RUNS_EXPLAIN = 'Every run re-pulls the newest few days, becaus
 export const SITE_TAB_GROUPS = [
 	['Traffic', ['', '/queries', '/pages', '/trends', '/groups', '/segments', '/types']],
 	['Findings', ['/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/vitals', '/tests']],
-	['Indexing', ['/submit', '/indexing', '/indexnow', '/sitemaps', '/inspect']],
+	['Indexing', ['/submit', '/request', '/indexing', '/indexnow', '/sitemaps', '/inspect']],
 	['Other sources', ['/bing', '/analytics', '/tags', '/clarity']],
 	['Site', ['/settings']]
 ] as const;

@@ -1,12 +1,16 @@
 <script lang="ts">
 	import ActionCard from '$lib/components/ActionCard.svelte';
+	import { TYPE_LABEL } from '$lib/explain';
 	let { data } = $props();
 	let type = $state('all');
+	let only = $state<'all' | 'blocking' | 'quick'>('all');
 	let showAll = $state(false);
 	const types = $derived([...new Set(data.open.map((a) => a.type))]);
-	const rows = $derived(data.open.filter((a) => type === 'all' || a.type === type));
+	const count = (f: (a: (typeof data.open)[number]) => boolean) => data.open.filter(f).length;
+	const rows = $derived(data.open.filter((a) => (type === 'all' || a.type === type) && (only === 'all' || (only === 'blocking' ? a.blocking : a.effort === 'low' && !a.blocking))));
 	const shown = $derived(showAll ? rows : rows.slice(0, 15));
-	const blocking = $derived(data.open.filter((a) => a.blocking).length);
+	const blocking = $derived(count((a) => a.blocking));
+	const quick = $derived(count((a) => a.effort === 'low' && !a.blocking));
 </script>
 
 <p class="mb-3 max-w-3xl text-sm text-muted-foreground">
@@ -19,9 +23,13 @@
 {:else}
 	<div class="mb-3 flex flex-wrap items-center gap-1.5">
 		<span class="mr-1 text-sm"><b>{data.open.length}</b> open{#if blocking} · <b class="text-bad">{blocking} blocking</b>{/if}</span>
-		<button class="chip {type === 'all' ? 'chip-on' : ''}" onclick={() => (type = 'all')}>All</button>
-		{#each types as t}<button class="chip {type === t ? 'chip-on' : ''}" onclick={() => (type = t)}>{t}</button>{/each}
+		<button class="chip {only === 'blocking' ? 'chip-on' : ''}" onclick={() => (only = only === 'blocking' ? 'all' : 'blocking')} disabled={!blocking}>Blocking ({blocking})</button>
+		<button class="chip {only === 'quick' ? 'chip-on' : ''}" onclick={() => (only = only === 'quick' ? 'all' : 'quick')} disabled={!quick} title="Low-effort items that are not blocking">Quick wins ({quick})</button>
+		<span class="mx-1 text-muted-foreground">|</span>
+		<button class="chip {type === 'all' ? 'chip-on' : ''}" onclick={() => (type = 'all')}>All kinds</button>
+		{#each types as t}<button class="chip {type === t ? 'chip-on' : ''}" onclick={() => (type = t)}>{TYPE_LABEL[t]} ({count((a) => a.type === t)})</button>{/each}
 	</div>
+	{#if rows.length === 0}<div class="card p-6 text-center text-sm text-muted-foreground">Nothing matches these filters. <button class="underline" onclick={() => ((type = 'all'), (only = 'all'))}>Clear them</button></div>{/if}
 	<div class="stagger space-y-3">
 		{#each shown as a, i (a.key)}<ActionCard {a} rank={i + 1} />{/each}
 	</div>

@@ -10,6 +10,9 @@ import { trackingHealth } from './tracking';
 import { recentEvents } from './indexmon';
 import { storedChecks } from './onpage';
 import { sitemapCoverage } from './sitemapcov';
+import { requestQueue } from './requestindex';
+import { submissionStatus } from './submission';
+import { lastmodReport } from './lastmod';
 import { listTests, evaluateTestCached } from './seotests';
 import { updatesBetween } from './gupdates';
 import { cruxLatest } from './crux';
@@ -29,7 +32,7 @@ const pathOf = (u: string) => {
 	}
 };
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`;
-const VERSION = 'a3';
+const VERSION = 'a4';
 
 /** Every finding for one site, unranked state-free. Cheap enough to run on demand; see actionsFor for the cached, ranked form. */
 export function buildActions(site: Site, days = 28): ActionItem[] {
@@ -168,6 +171,35 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 	} catch {
 		/* no sitemap data */
 	}
+	// ── indexing: what the Request and Submit tabs know ──────────────────────
+	try {
+		const q = requestQueue(id);
+		if (q.pending.length) {
+			add({ key: 'request:list', type: 'request', title: `${q.pending.length} page${q.pending.length === 1 ? '' : 's'} worth asking Google about`, why: "Search Console's Request Indexing button is the one fast, official way to ask Google to look at a page soon, and no tool can press it for you. These are the pages it is most worth using it on.", how: `Open the Request tab, follow the Search Console link for each, press Request indexing there and mark it done. ${q.budget.left} slot${q.budget.left === 1 ? '' : 's'} left today.`, impact: null, confidence: 'medium', effort: 'low', blocking: false, href: `${base}/request`, evidence: q.pending.slice(0, 5).map((i) => `${pathOf(i.url)} · ${i.reason}`) });
+		}
+		if (q.problems.length) {
+			add({ key: 'request:problems', type: 'request', title: `${q.problems.length} page${q.problems.length === 1 ? '' : 's'} cannot be indexed until something is fixed`, why: 'Blocked by robots.txt or noindex, not fetchable, or Google chose another page as the canonical. Asking Google about them would not help.', how: 'Fix the cause shown for each page, then rebuild the Request list.', impact: null, confidence: 'high', effort: 'medium', blocking: false, href: `${base}/request`, evidence: q.problems.slice(0, 5).map((i) => `${pathOf(i.url)} · ${i.reason}`) });
+		}
+	} catch {
+		/* no request list */
+	}
+	try {
+		const stuck = submissionStatus(id, 200).filter((r) => r.verdict === 'still_not_indexed');
+		if (stuck.length) {
+			add({ key: `submitted:${keyHash(stuck.map((x) => x.url))}`, type: 'submitted', title: `${stuck.length} URL${stuck.length === 1 ? '' : 's'} you sent ${stuck.length === 1 ? 'is' : 'are'} still not indexed after 5 days`, why: 'Each was sent to the search engines, then Google was asked about it again at day 1, 3 and 5 and still says it is not indexed. Sending it again will not change that.', how: 'Open the Submit tab: the coverage text says why. "Crawled – currently not indexed" usually means improve the content and link to the page from busy pages; "Discovered – currently not indexed" means Google knows the address but has not crawled it yet: internal links and a correct sitemap date help.', impact: null, confidence: 'medium', effort: 'medium', blocking: false, href: `${base}/submit`, evidence: stuck.slice(0, 5).map((r) => `${pathOf(r.url)} · ${r.google?.coverage ?? 'not indexed'}`) });
+		}
+	} catch {
+		/* nothing submitted */
+	}
+	try {
+		const lm = lastmodReport(site);
+		if (lm.verdict === 'bad' || lm.verdict === 'warn') {
+			const [first, ...rest] = lm.findings.filter((f) => f.level === 'bad' || f.level === 'warn');
+			add({ key: `lastmod:${lm.verdict}`, type: 'lastmod', title: 'Google may be ignoring the dates in your sitemap', why: first.text, how: "Set each URL's <lastmod> to when its content last changed in a meaningful way (not the build or deploy date), as YYYY-MM-DD, never in the future. Then read the sitemaps again on the Indexing tab.", impact: null, confidence: 'medium', effort: 'medium', blocking: false, href: `${base}/sitemaps`, evidence: rest.slice(0, 3).map((f) => f.text) });
+		}
+	} catch {
+		/* no sitemap read */
+	}
 	try {
 		const phone = cruxLatest(id).latest.get('PHONE');
 		if (phone) {
@@ -211,6 +243,9 @@ function cacheKey(site: Site, days: number): string {
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_events WHERE site_id = ?', site.id),
 		one('SELECT MAX(checked_at) m, COUNT(*) n FROM onpage_checks WHERE site_id = ?', site.id),
 		one('SELECT fetched_at f FROM sitemap_sync WHERE site_id = ?', site.id),
+		one("SELECT MAX(built_at) b, COUNT(*) n, SUM(status = 'pending') p, SUM(status = 'requested') r FROM index_requests WHERE site_id = ?", site.id),
+		one('SELECT MAX(at) m, COUNT(*) n FROM index_submissions WHERE site_id = ?', site.id),
+		one('SELECT COUNT(*) n, MAX(due_at) m FROM index_rechecks WHERE site_id = ?', site.id),
 		one('SELECT MAX(updated_at) m, COUNT(*) n FROM google_updates'),
 		one('SELECT COUNT(*) n, MAX(id) m FROM seo_tests WHERE site_id = ?', site.id),
 		one('SELECT MAX(computed_at) m FROM seo_test_results r JOIN seo_tests t ON t.id = r.test_id WHERE t.site_id = ?', site.id),

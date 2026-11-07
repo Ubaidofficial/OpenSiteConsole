@@ -3,7 +3,7 @@ import { SITE_TABS } from './explain';
 const APP = 'SEOConsole';
 const TOP: Record<string, string> = {
 	'/': 'Dashboard', '/actions': 'What to do first', '/digest': 'Weekly digest', '/portfolio': 'Portfolio', '/sitemaps': 'Sitemaps', '/connect': 'Connect',
-	'/agents': 'Agents and MCP', '/accounts': 'Accounts', '/updates': 'Google updates', '/login': 'Sign in'
+	'/agents': 'Agents and MCP', '/accounts': 'Accounts', '/updates': 'Google updates', '/login': 'Sign in', '/privacy': 'Privacy policy', '/terms': 'Terms of service'
 };
 
 /**

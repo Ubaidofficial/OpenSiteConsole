@@ -122,7 +122,7 @@ describe('sitemap parsing', () => {
 	});
 	it('handles CDATA, entities, whitespace, odd dates and junk entries', () => {
 		const p = parseSitemapXml(`<urlset><url><loc> <![CDATA[https://x.com/a?x=1&y=2]]> </loc></url><url><loc>https://x.com/b?x=1&amp;y=2</loc><lastmod>2026-02-03T10:00:00+00:00</lastmod></url><url><loc>ftp://x.com/c</loc></url><url><loc>notaurl</loc></url><url><lastmod>2026-01-01</lastmod></url><url><loc>https://x.com/d</loc><lastmod>soon</lastmod></url></urlset>`);
-		expect(p.entries).toEqual([{ loc: 'https://x.com/a?x=1&y=2', lastmod: null }, { loc: 'https://x.com/b?x=1&y=2', lastmod: '2026-02-03' }, { loc: 'https://x.com/d', lastmod: null }]);
+		expect(p.entries).toEqual([{ loc: 'https://x.com/a?x=1&y=2', lastmod: null }, { loc: 'https://x.com/b?x=1&y=2', lastmod: '2026-02-03' }, { loc: 'https://x.com/d', lastmod: null, lastmodBad: true }]); // "soon" is not a date: kept as a URL, flagged so the lastmod check can count it
 	});
 	it('says "unknown" for things that are not sitemaps, and stops at an unterminated element', () => {
 		expect(parseSitemapXml('<html><body>Please log in</body></html>').kind).toBe('unknown');
