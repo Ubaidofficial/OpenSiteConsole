@@ -12,9 +12,11 @@
  * total would double count. Each stands alone.
  */
 
-export type ActionType =
-	| 'tracking' | 'blocked' | 'deindexed' | 'sitewide' | 'anomaly' | 'dead' | 'not-indexed' | 'update'
-	| 'cannibalization' | 'ctr-gap' | 'decay' | 'striking' | 'onpage' | 'sitemap' | 'vitals' | 'test';
+export const ACTION_TYPES = [
+	'tracking', 'blocked', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update',
+	'cannibalization', 'ctr-gap', 'decay', 'striking', 'onpage', 'sitemap', 'vitals', 'test'
+] as const;
+export type ActionType = (typeof ACTION_TYPES)[number];
 export type Confidence = 'high' | 'medium' | 'low';
 export type Effort = 'low' | 'medium' | 'high';
 

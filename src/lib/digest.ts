@@ -96,7 +96,7 @@ export function renderText(d: Digest, base = ''): string {
 	for (const h of d.headline) lines.push(`• ${chatSafe(h)}`);
 	if (d.top.length) {
 		lines.push('', '*Do this first*');
-		d.top.slice(0, 8).forEach((t, i) => lines.push(`${i + 1}. ${t.blocking ? '🛑 ' : ''}${chatSafe(t.site)}: ${chatSafe(t.title)}${t.impact != null ? ` (≈${n0(t.impact)} clicks / 28 d, ${t.confidence} confidence)` : ''}${base ? `\n    ${base}${t.href}` : ''}`));
+		d.top.slice(0, 8).forEach((t, i) => lines.push(`${i + 1}. ${t.blocking ? '🛑 ' : ''}${chatSafe(t.site)}: ${chatSafe(t.title)}${t.impact != null ? ` (≈${n0(t.impact)} clicks / 28d, ${t.confidence} confidence)` : ''}${base ? `\n    ${base}${t.href}` : ''}`));
 	}
 	lines.push('', `Estimates come from each site's own data; they are not promises and not additive.${base ? ` Full list: ${base}/actions` : ''}`);
 	return lines.join('\n');

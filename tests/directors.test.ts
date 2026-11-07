@@ -308,6 +308,13 @@ describe('building the queue from a site', () => {
 		expect([...types].some((t) => ['cannibalization', 'ctr-gap', 'striking', 'decay'].includes(t))).toBe(true);
 	});
 
+	it('numbers in the sentences are written with thousands separators, like the chips beside them', () => {
+		const text = buildActions(site()).map((i) => `${i.why} ${i.title}`).join('\n');
+		// Without separators a 4+ digit count would appear as a bare run of digits next to "impressions" or "clicks".
+		expect(text).toMatch(/\d,\d{3} (impressions|clicks)/);
+		expect(text).not.toMatch(/(?<![\d,.])\d{4,} (impressions|clicks)/);
+	});
+
 	it('blocked pages, de-indexed pages and a collapse in traffic come out as blocking items', () => {
 		const d = db();
 		const page = (d.prepare('SELECT page FROM sa_rows WHERE site_id = 1 GROUP BY page ORDER BY SUM(clicks) DESC LIMIT 1').get() as { page: string }).page;

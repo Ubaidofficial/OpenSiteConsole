@@ -59,7 +59,7 @@ describe('digest wording', () => {
 		const d: Digest = { createdAt: 1, weekEnd: '2026-10-31', headline: ['Nothing is blocking.'], sites: [], top: [top(), top({ key: 'z', blocking: false, impact: null, title: 'Fix titles' })] };
 		const t = renderText(d, 'https://seo.example');
 		expect(t).toContain('*SEO digest, week ending 2026-10-31*');
-		expect(t).toContain('1. 🛑 a.example: Pages blocked (≈120 clicks / 28 d, high confidence)');
+		expect(t).toContain('1. 🛑 a.example: Pages blocked (≈120 clicks / 28d, high confidence)');
 		expect(t).toContain('https://seo.example/sites/1/indexing');
 		expect(t).toContain('2. a.example: Fix titles\n');
 		expect(t).toMatch(/not promises and not additive/);

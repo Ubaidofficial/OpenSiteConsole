@@ -1,6 +1,8 @@
 <script lang="ts">
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
+	import { Tip } from '$lib/components/ui/tooltip';
+	import { PORTFOLIO_INTRO, PORTFOLIO_TAB_EXPLAIN } from '$lib/explain';
 	let { data } = $props();
 
 	const tabs = [
@@ -23,11 +25,13 @@
 	<h1 class="text-lg font-semibold">Portfolio</h1>
 	<PeriodPicker days={data.days} />
 </div>
-<nav class="mb-4 flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
+<p class="mb-3 max-w-3xl text-sm text-muted-foreground">{PORTFOLIO_INTRO}</p>
+<nav class="mb-2 flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
 	{#each tabs as [t, label]}
-		<a href="?tab={t}&days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] {data.tab === t ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}</a>
+		<Tip interactive text={PORTFOLIO_TAB_EXPLAIN[t]}><a href="?tab={t}&days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] {data.tab === t ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}</a></Tip>
 	{/each}
 </nav>
+<p class="mb-3 max-w-3xl text-xs text-muted-foreground">{PORTFOLIO_TAB_EXPLAIN[data.tab]}</p>
 {#key data.tab}
 	<DataTable rows={data.rows as Record<string, any>[]} cols={colsByTab[data.tab]} sortKey={sortKeyByTab[data.tab]} empty="Nothing found across your sites for this period." />
 {/key}

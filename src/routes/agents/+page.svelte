@@ -51,6 +51,7 @@
 	<section class="card p-4 text-sm">
 		<h3 class="mb-1 font-medium">Claude Code</h3>
 		<pre class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">claude mcp add --transport http seoconsole {data.mcpUrl} --header "Authorization: Bearer osc_YOUR_KEY"</pre>
+		<p class="mt-2 text-xs text-muted-foreground">Run it in a terminal on your own computer, then check with <code>claude mcp list</code>. By default the server is available only in the folder you ran it in. Add <code>--scope user</code> right after <code>mcp add</code> to have it in every project; Claude Code's documentation says user-scope servers are stored in <code>~/.claude.json</code>, which sessions in the desktop app's Code tab also read. Cloud sessions run on Anthropic's servers and cannot reach a <code>localhost</code> address.</p>
 	</section>
 	<section class="card p-4 text-sm">
 		<h3 class="mb-1 font-medium">Claude (claude.ai and the desktop app)</h3>
