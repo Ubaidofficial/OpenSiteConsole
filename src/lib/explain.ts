@@ -8,7 +8,9 @@ import { DONE_DAYS, SNOOZE_DAYS, type ActionType, type Confidence, type Effort }
 export const TYPE_LABEL: Record<ActionType, string> = {
 	tracking: 'Measurement', blocked: 'Blocked', deindexed: 'De-indexed', sitewide: 'Site-wide', anomaly: 'Traffic drop', dead: 'Gone',
 	'not-indexed': 'Not indexed', update: 'Google update', cannibalization: 'Cannibalization', 'ctr-gap': 'CTR gap', decay: 'Decay',
-	striking: 'Striking distance', onpage: 'On-page', sitemap: 'Sitemap', lastmod: 'Sitemap dates', submitted: 'Sent, not indexed', request: 'Request indexing', vitals: 'Web vitals', test: 'Test'
+	striking: 'Striking distance', onpage: 'On-page', sitemap: 'Sitemap', lastmod: 'Sitemap dates', submitted: 'Sent, not indexed', request: 'Request indexing', vitals: 'Web vitals', test: 'Test',
+	'lost-query': 'Lost searches', rising: 'Rising searches', 'page-edge': 'Page on the edge', gem: 'Hidden gem', questions: 'Unanswered questions',
+	bing: 'Bing', device: 'Phone gap', engagement: 'Visitors leave', friction: 'Friction'
 };
 
 export const TYPE_EXPLAIN: Record<ActionType, string> = {
@@ -30,7 +32,16 @@ export const TYPE_EXPLAIN: Record<ActionType, string> = {
 	submitted: 'URLs you sent to the search engines were checked again with Google after 5 days and are still not indexed. Google\'s own explanation for each is on the Submit tab.',
 	request: 'Pages worth asking Google about with Search Console\'s Request Indexing button (which no tool can press for you), or pages where asking would not help until something is fixed.',
 	vitals: 'Real visitors on phones get a poor Core Web Vitals result (loading speed, responsiveness or layout shift). It is a small ranking factor and a real cost to visitors.',
-	test: 'The result of an SEO test you started: it may have worked, failed, conflicted with conversions, or be too early to tell.'
+	test: 'The result of an SEO test you started: it may have worked, failed, conflicted with conversions, or be too early to tell.',
+	'lost-query': 'Searches that used to bring you clicks and have nearly stopped. Some are lost rankings, some are seasonal, and a few simply dropped out of the data Google shares.',
+	rising: 'Searches whose impressions have at least doubled and where you still rank below the top five: demand is arriving and you have not captured it yet.',
+	'page-edge': 'One page that sits just below the top results for several searches at once. A single good update to that page can lift all of them together.',
+	gem: 'A page whose visitors engage and convert better than your site average, yet Google ranks it at positions 4 to 20. The right audience is arriving; there is just not enough of it.',
+	questions: 'Question-style searches (how, why, what, can I) where you show up but rank low. A short, direct answer on the page is the usual way in.',
+	bing: 'Bing and Google disagree about your site: Bing ranks a page near the top where Google does not, or Bing shows nothing for pages that earn Google clicks.',
+	device: 'You rank noticeably worse on phones than on desktop for the same search. Most visitors are on phones, so check the mobile page and its speed.',
+	engagement: 'Visitors who arrive from Google leave faster or convert less than on the rest of the site: the page may not match what the search promised.',
+	friction: 'Microsoft Clarity recorded many visits with rage clicks or dead clicks (repeated clicks on things that do nothing) on a page that Google sends visitors to.'
 };
 
 export const BLOCKING_EXPLAIN = 'This stops the site earning traffic or stops you measuring it, so it is listed before everything else, however large the other items look.';
@@ -135,3 +146,25 @@ export const COLUMN_HINT: Record<string, string> = {
 	'Key events': 'Actions you marked as key events in Google Analytics 4 (formerly called conversions).',
 	'Rage clicks': 'Microsoft Clarity flags many rapid clicks in the same spot, a sign the visitor was frustrated.'
 };
+
+/** The Hidden opportunities block on the Opportunities tab: what each table means, and what is missing when it is empty. */
+export const HIDDEN_INTRO = 'These need more than one source or more than one period to see, so they do not show up in Search Console on its own. Each estimate comes from your own click curve and is a model figure, not a promise.';
+export const HIDDEN_SOURCE_HINT: Record<'previousPeriod' | 'bing' | 'ga4' | 'clarity', string> = {
+	previousPeriod: 'The period before this one is not downloaded yet, so lost and rising searches cannot be worked out. Run a full history sync from the site settings.',
+	bing: 'Bing is not connected for this site. Connect it on the Connect page to see where Bing and Google disagree.',
+	ga4: 'GA4 has no landing-page data for this window. Connect GA4 on the Connect page (it is pulled with the next sync).',
+	clarity: 'Clarity has no snapshot for this site yet. Add a Clarity token on the Connect page; it keeps one snapshot per day.'
+};
+export const HIDDEN_GROUPS: { id: string; title: string; blurb: string }[] = [
+	{ id: 'lost', title: 'Lost searches', blurb: 'Searches that earned clicks in the previous period and have nearly stopped. Some may be seasonal, or may have dropped out of the data Google shares.' },
+	{ id: 'rising', title: 'Rising searches', blurb: 'Impressions at least doubled and you rank below the top five: demand is arriving and you have not captured it.' },
+	{ id: 'edge', title: 'Pages on the edge', blurb: 'One page sitting at positions 4 to 20 for several searches at once. One good update can lift all of them. The estimate assumes they all reach position 5, so it is a ceiling.' },
+	{ id: 'questions', title: 'Questions you rank low for', blurb: 'Question-style searches where you show up below position 7. A short, direct answer on the page is the usual way in.' },
+	{ id: 'bing', title: 'Bing ranks you, Google does not', blurb: 'Bing has you in the top five, Google at 11 or lower or not at all. The content is probably right for the topic; Google may want more links or a clearer match.' },
+	{ id: 'notbing', title: 'Pages Bing shows nothing for', blurb: 'They earn Google clicks and have no Bing impressions, so Bing probably has not indexed them. IndexNow or Bing Webmaster Tools submits them.' },
+	{ id: 'gems', title: 'Hidden gems', blurb: 'Pages whose visitors engage and convert better than your average, ranked 4 to 20 by Google. The audience is right; there is not enough of it.' },
+	{ id: 'leaks', title: 'Visitors who leave', blurb: 'Google landing pages where far fewer visitors engage than on the rest of your site (GA4).' },
+	{ id: 'noconv', title: 'Busy pages with no conversions', blurb: 'Busy Google landing pages with no key events at all, on a site that converts elsewhere. Check the key event can fire there before changing content.' },
+	{ id: 'friction', title: 'Rage and dead clicks', blurb: 'Pages Google sends visitors to where many sessions had repeated clicks on things that do nothing (Clarity, last day only).' },
+	{ id: 'device', title: 'Worse on phones', blurb: 'You rank at least three places worse on phones than on desktop for the same search. Google ranks the phone version of your pages.' }
+];

@@ -18,6 +18,7 @@ import { updatesBetween } from './gupdates';
 import { cruxLatest } from './crux';
 import { rate, VITALS, fmtVital } from '../vitals';
 import { allSites } from './queries';
+import { hiddenReport } from './hidden';
 
 type Site = SiteRow;
 const r0 = (n: number) => Math.round(n);
@@ -147,6 +148,57 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 		}
 	}
 
+	// ── 6b. hidden opportunities: more than one source or period to see ──────
+	try {
+		const h = hiddenReport(site, days);
+		const q = (s: string) => `“${s}”`;
+		const sum = (xs: (number | null)[]) => xs.reduce<number>((a, x) => a + (x ?? 0), 0);
+		const top = <T,>(xs: T[], f: (x: T) => string, n = 5) => xs.slice(0, n).map(f);
+		const pc = (x: number) => `${(x * 100).toFixed(0)}%`;
+
+		const lostSum = sum(h.lost.map((x) => x.lostClicks));
+		if (h.lost.length && lostSum >= Math.max(10, r0(scale * 20))) {
+			add({ key: 'hidden:lost', type: 'lost-query', title: `${h.lost.length} search${h.lost.length === 1 ? '' : 'es'} that used to bring clicks ${h.lost.length === 1 ? 'has' : 'have'} nearly stopped`, why: `Together they earned ${n0(sum(h.lost.map((x) => x.prevClicks)))} clicks in the previous ${days} days and ${n0(sum(h.lost.map((x) => x.clicks)))} now. Some may be seasonal or may have dropped out of the data Google shares (rare searches are hidden); the rest are rankings you lost.`, how: 'Search each one yourself: see who ranks now and what their page has that yours lacks, check your page still returns 200 and is indexed, then refresh it. Compare the same weeks last year on the Trends tab to rule out seasonality.', impact: lostSum, confidence: 'medium', effort: 'medium', blocking: false, href: `${base}/queries`, evidence: top(h.lost, (x) => `${q(x.query)} (${n0(x.prevClicks)} → ${n0(x.clicks)} clicks${x.positionNow == null ? ', no longer shown' : `, position ${x.positionPrev.toFixed(1)} → ${x.positionNow.toFixed(1)}`})`) });
+		}
+		const risingSum = sum(h.rising.map((x) => x.gain));
+		if (h.rising.length && risingSum >= 3) {
+			add({ key: 'hidden:rising', type: 'rising', title: `${h.rising.length} search${h.rising.length === 1 ? ' is' : 'es are'} growing fast and you do not rank in the top five`, why: `Their impressions at least doubled against the previous ${days} days, and you rank at position ${Math.min(...h.rising.map((x) => x.position)).toFixed(0)} or lower. Reaching position 5 would be worth about ${n0(risingSum)} clicks; that is an estimate of the prize, not a forecast.`, how: 'Look at the page that shows for each one. If none of your pages is really about it, write one; otherwise put the search in its title, headings and an answer section, and link to it from related pages with descriptive anchors.', impact: risingSum, confidence: 'low', effort: 'medium', blocking: false, href: `${base}/opportunities`, evidence: top(h.rising, (x) => `${q(x.query)} (${x.isNew ? 'new, ' : ''}${n0(x.impressions)} impressions${x.isNew ? '' : ` from ${n0(x.prevImpressions)}`}, position ${x.position.toFixed(1)})`) });
+		}
+		for (const e of h.pageEdge.filter((x) => x.gain >= 3).slice(0, 2)) {
+			add({ key: `hidden:edge:${normalizeUrl(e.page)}`, type: 'page-edge', title: `${pathOf(e.page)} sits just below the top for ${e.queries} searches`, why: `${n0(e.impressions)} impressions across ${e.queries} searches at positions 4 to 20. Lifting all of them to position 5 would be worth about ${n0(e.gain)} clicks. That assumes every search gets there at once, so treat it as a ceiling, not a forecast.`, how: 'Update this one page: strengthen the sections that match each search, add what the top results have that it lacks, refresh dates and facts, and link to it from your strongest related pages.', impact: e.gain, confidence: 'low', effort: 'medium', blocking: false, href: `${base}/pages`, evidence: e.top.map((t) => `${q(t.query)} (position ${t.position.toFixed(1)}, ${n0(t.impressions)} impressions)`) });
+		}
+		for (const g of h.gems.slice(0, 3)) {
+			add({ key: `hidden:gem:${normalizeUrl(g.page)}`, type: 'gem', title: `${pathOf(g.page)} converts better than average but ranks ${g.position.toFixed(1)}`, why: `${n0(g.sessions)} organic sessions, ${pc(g.engagementRate)} engaged and ${(g.keyEventRate * 100).toFixed(1)} key events per 100 sessions, against a site average that is lower. Google shows it ${n0(g.impressions)} times at position ${g.position.toFixed(1)}; reaching position 3 would be worth about ${n0(g.gain)} clicks.`, how: 'This page attracts the right audience, so push it: add internal links to it from related pages, strengthen it where the top results are deeper, and earn a few links to it.', impact: g.gain, confidence: 'medium', effort: 'medium', blocking: false, href: `${base}/analytics`, evidence: [pathOf(g.page)] });
+		}
+		const qSum = sum(h.questions.map((x) => x.gain));
+		if (h.questions.length && qSum >= 3) {
+			add({ key: 'hidden:questions', type: 'questions', title: `${h.questions.length} question${h.questions.length === 1 ? '' : 's'} people ask where you rank below the top seven`, why: `You already show for them (${n0(sum(h.questions.map((x) => x.impressions)))} impressions) but rank low. Answering them directly could be worth about ${n0(qSum)} clicks if you reached position 5.`, how: 'Add a short, direct answer (two or three sentences) under a heading phrased like the question on the page that already ranks, then expand below it. A FAQ section works when several questions share a page.', impact: qSum, confidence: 'low', effort: 'low', blocking: false, href: `${base}/queries`, evidence: top(h.questions, (x) => `${q(x.query)} (position ${x.position.toFixed(1)}, ${n0(x.impressions)} impressions)`) });
+		}
+		if (h.bingGaps.length) {
+			const g = sum(h.bingGaps.map((x) => x.gain));
+			add({ key: 'hidden:bing-gaps', type: 'bing', title: `${h.bingGaps.length} search${h.bingGaps.length === 1 ? '' : 'es'} where Bing ranks you in the top five and Google does not`, why: `Bing already judges the page relevant for ${h.bingGaps.length === 1 ? 'it' : 'them'}. Google ranks the same ${h.bingGaps.length === 1 ? 'search' : 'searches'} at position 11 or lower, or shows you nowhere${g > 0 ? `; reaching position 5 on the ones Google shows would be worth about ${n0(g)} clicks` : ''}.`, how: 'The content is probably right for the topic; what Google lacks is authority or a clearer match. Add internal and external links to the page, put the search in its headings, and check in URL Inspection that Google has indexed it.', impact: g > 0 ? g : null, confidence: 'low', effort: 'medium', blocking: false, href: `${base}/bing`, evidence: top(h.bingGaps, (x) => `${q(x.query)} (Bing ${x.bingPosition.toFixed(1)}, Google ${x.googlePosition == null ? 'not shown' : x.googlePosition.toFixed(1)})`) });
+		}
+		if (h.notInBing.length >= 3) {
+			add({ key: 'hidden:not-in-bing', type: 'bing', title: `${h.notInBing.length} pages that earn Google clicks show nothing in Bing`, why: `Bing lists no impressions for them, so they are probably not indexed there. Bing sends a smaller share of visits than Google, but it is free traffic and a second source of data.`, how: 'Send the URLs with IndexNow (the IndexNow tab) or submit them in Bing Webmaster Tools, and check your sitemap is submitted to Bing as well.', impact: null, confidence: 'low', effort: 'low', blocking: false, href: `${base}/indexnow`, evidence: top(h.notInBing, (x) => `${pathOf(x.page)} (${n0(x.clicks)} Google clicks)`) });
+		}
+		const devSum = sum(h.device.map((x) => x.gain));
+		if (h.device.length && devSum >= 3) {
+			add({ key: 'hidden:device', type: 'device', title: `${h.device.length} search${h.device.length === 1 ? '' : 'es'} rank at least 3 places worse on phones than on desktop`, why: `Closing the gap would be worth about ${n0(devSum)} clicks (estimated from your own click curve). Google ranks the phone version of your pages, so the cause is often on the phone page, though search results can also simply differ by device.`, how: 'Open the page on a phone: check the layout, hidden or collapsed content, pop-ups that cover the text, and speed (Web vitals tab).', impact: devSum, confidence: 'low', effort: 'medium', blocking: false, href: `${base}/vitals`, evidence: top(h.device, (x) => `${q(x.query)} (phone ${x.mobilePosition.toFixed(1)}, desktop ${x.desktopPosition.toFixed(1)})`) });
+		}
+		if (h.engagement.length) {
+			const lost = sum(h.engagement.map((x) => x.lostEngagedSessions));
+			add({ key: 'hidden:engagement', type: 'engagement', title: `${h.engagement.length} Google landing page${h.engagement.length === 1 ? '' : 's'} lose${h.engagement.length === 1 ? 's' : ''} visitors faster than the rest of your site`, why: `Their visits engage at ${pc(Math.min(...h.engagement.map((x) => x.engagementRate)))} to ${pc(Math.max(...h.engagement.map((x) => x.engagementRate)))}, against ${pc(h.engagement[0].siteRate)} across the site (GA4, Google organic). About ${n0(lost)} more visits would have engaged at the site rate.`, how: 'Open each page the way a searcher would, after typing its main search: does the top of the page answer it? Fix the mismatch (headline, first paragraph, phone speed, pop-ups), then compare in GA4 after a few weeks.', impact: null, confidence: 'medium', effort: 'medium', blocking: false, href: `${base}/analytics`, evidence: top(h.engagement, (x) => `${pathOf(x.page)} (${n0(x.sessions)} sessions, ${pc(x.engagementRate)} engaged)`) });
+		}
+		if (h.conversions.length) {
+			add({ key: 'hidden:conversions', type: 'engagement', title: `${h.conversions.length} busy landing page${h.conversions.length === 1 ? '' : 's'} produced no key events`, why: `They brought ${n0(sum(h.conversions.map((x) => x.sessions)))} Google visits between them. At your site's average they would have produced about ${n0(sum(h.conversions.map((x) => x.expectedKeyEvents)))} key events. The cause may be the page, or the key event not being tracked there.`, how: 'First check in Tag Manager preview that the key event can fire on that page. If it can, give the page a clear next step above the fold and match it to what the visitor searched for.', impact: null, confidence: 'low', effort: 'medium', blocking: false, href: `${base}/analytics`, evidence: top(h.conversions, (x) => `${pathOf(x.page)} (${n0(x.sessions)} sessions, 0 key events)`) });
+		}
+		if (h.friction.length) {
+			add({ key: 'hidden:friction', type: 'friction', title: `${h.friction.length} landing page${h.friction.length === 1 ? ' has' : 's have'} visitors rage-clicking or hitting dead clicks`, why: `Microsoft Clarity recorded many such sessions on pages Google sends visitors to (last day only, so treat it as a lead, not a verdict).`, how: 'Open the Clarity recordings filtered for rage or dead clicks on the page, and fix the element people expect to be clickable or the layout that shifts under their finger.', impact: null, confidence: 'low', effort: 'low', blocking: false, href: `${base}/clarity`, evidence: top(h.friction, (x) => `${pathOf(x.page)} (${pc(x.rate)} of ${n0(x.sessions)} sessions)`) });
+		}
+	} catch {
+		/* a source that is missing must not stop the queue */
+	}
+
 	// ── 7. hygiene found by the on-page check, sitemaps and field data ───────
 	const issueHow: Record<string, [string, string, 'low' | 'medium']> = {
 		'no-title': ['have no <title>', 'Add a unique, descriptive title that leads with the main query.', 'medium'],
@@ -250,6 +302,9 @@ function cacheKey(site: Site, days: number): string {
 		one('SELECT COUNT(*) n, MAX(id) m FROM seo_tests WHERE site_id = ?', site.id),
 		one('SELECT MAX(computed_at) m FROM seo_test_results r JOIN seo_tests t ON t.id = r.test_id WHERE t.site_id = ?', site.id),
 		one('SELECT SUM(COALESCE(last_sync_at, 0)) s FROM site_links WHERE site_id = ?', site.id),
+		one('SELECT MAX(date) m, COUNT(*) n FROM bing_terms WHERE site_id = ?', site.id),
+		one('SELECT MAX(pulled_on) m, COUNT(*) n FROM ga4_landing WHERE site_id = ? AND days = ?', site.id, days),
+		one('SELECT MAX(fetched_at) m, COUNT(*) n FROM clarity_snapshots WHERE site_id = ?', site.id),
 		site.crux_pulled_on,
 		// settings that change what is found, and the day (the 14-day de-index window slides)
 		site.brand_terms, site.permission, Math.floor(Date.now() / 86_400_000)

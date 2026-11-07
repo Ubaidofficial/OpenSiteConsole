@@ -495,9 +495,19 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
 	if (!cols('sitemap_urls').includes('lastmod_bad')) db.exec('ALTER TABLE sitemap_urls ADD COLUMN lastmod_bad INTEGER NOT NULL DEFAULT 0');
 	if (!cols('index_watch').includes('source')) db.exec('ALTER TABLE index_watch ADD COLUMN source TEXT');
-	if (!cols('api_keys').includes('permission')) db.exec("ALTER TABLE api_keys ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'"); // read | submit
-	if (!cols('oauth_codes').includes('permission')) db.exec("ALTER TABLE oauth_codes ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'");
+	// read | submit | delete. Databases from the on/off "can make changes" switch (can_write) carry it over once, as the submit level.
+	if (!cols('api_keys').includes('permission')) {
+		db.exec("ALTER TABLE api_keys ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'");
+		if (cols('api_keys').includes('can_write')) db.exec("UPDATE api_keys SET permission = 'submit' WHERE can_write = 1");
+	}
+	if (!cols('oauth_codes').includes('permission')) {
+		db.exec("ALTER TABLE oauth_codes ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'");
+		if (cols('oauth_codes').includes('can_write')) db.exec("UPDATE oauth_codes SET permission = 'submit' WHERE can_write = 1");
+	}
 	if (!cols('api_keys').includes('expires_at')) db.exec('ALTER TABLE api_keys ADD COLUMN expires_at INTEGER'); // NULL = never (keys made by hand)
+	// Whether a key may use the MCP tools that change things. Off unless the owner ticked it; existing keys stay read-only.
+	if (!cols('api_keys').includes('can_write')) db.exec('ALTER TABLE api_keys ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
+	if (!cols('oauth_codes').includes('can_write')) db.exec('ALTER TABLE oauth_codes ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.

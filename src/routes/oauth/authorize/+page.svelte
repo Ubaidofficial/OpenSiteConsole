@@ -44,7 +44,7 @@
 			<fieldset class="space-y-1.5 text-sm">
 				<legend class="mb-1 font-medium">What may it do?</legend>
 				<label class="flex items-start gap-2"><input type="radio" name="level" value="read" checked class="mt-1" /> <span><b>Read only</b> (default): look at your search, analytics and indexing data.</span></label>
-				<label class="flex items-start gap-2"><input type="radio" name="level" value="submit" class="mt-1" disabled={data.readOnly} /> <span><b>Also submit</b>: send URLs and sitemaps to search engines (IndexNow, Bing, Search Console) and start an indexing check.</span></label>
+				<label class="flex items-start gap-2"><input type="radio" name="level" value="submit" class="mt-1" disabled={data.readOnly} /> <span><b>Also submit</b>: send URLs and sitemaps to search engines (IndexNow, Bing, Search Console), start an indexing check, and make the app's own changes (mark findings done, log a change, start a test, refresh data, watch URLs).</span></label>
 				<label class="flex items-start gap-2"><input type="radio" name="level" value="delete" class="mt-1" disabled={data.readOnly} /> <span><b>Submit and delete</b>: also remove a sitemap from Search Console and throw away queued submissions. Each of those needs a second, confirming call.</span></label>
 				{#if data.readOnly}<p class="text-xs text-warn">Only read access is available: this server runs with READ_ONLY=1.</p>{/if}
 				<p class="text-xs text-muted-foreground">It still cannot delete your data or change a site's content or settings.</p>

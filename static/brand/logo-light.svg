@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+<linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e8e8ec"/></linearGradient>
+<linearGradient id="ink" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2a2e"/><stop offset="0.32" stop-color="#0a0a0b"/><stop offset="0.5" stop-color="#3b3b41"/><stop offset="0.72" stop-color="#0a0a0b"/><stop offset="1" stop-color="#18181b"/></linearGradient>
+<linearGradient id="bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1c1f"/><stop offset="1" stop-color="#000"/></linearGradient>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#tile)"/>
+<rect x="3" y="3" width="506" height="506" rx="109" fill="none" stroke="#000" stroke-opacity="0.13" stroke-width="2"/>
+<g transform="translate(14 1)">
+<g fill="none" stroke="url(#ink)" stroke-linecap="round"><circle cx="218" cy="236" r="112" stroke-width="42"/><path d="M300 318 L376 394" stroke-width="46"/></g>
+<g fill="url(#bar)"><rect x="168" y="236" width="30" height="46" rx="8"/><rect x="208" y="202" width="30" height="80" rx="8"/><rect x="248" y="164" width="30" height="118" rx="8"/></g>
+<path d="M322 92 C324 112 330 118 350 120 C330 122 324 128 322 148 C320 128 314 122 294 120 C314 118 320 112 322 92 Z" fill="#0a0a0b"/>
+</g>
+</svg>

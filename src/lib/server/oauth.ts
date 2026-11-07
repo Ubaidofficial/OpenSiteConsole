@@ -139,7 +139,8 @@ export function approveRequest(requestId: string, siteIds: number[] | null, now 
 	if (!client) return undefined;
 	const code = rand(32);
 	db().prepare('INSERT INTO oauth_codes (hash, client_id, redirect_uri, code_challenge, site_ids, expires_at, permission) VALUES (?,?,?,?,?,?,?)').run(sha(code), req.client_id, req.redirect_uri, req.code_challenge, siteIds && siteIds.length ? JSON.stringify(siteIds) : null, now + CODE_TTL_MS, allowDelete ? 'delete' : allowSubmit ? 'submit' : 'read');
-	audit('oauth.approve', { detail: client.name });
+	const level = allowDelete ? 'delete' : allowSubmit ? 'submit' : 'read';
+	audit('oauth.approve', { detail: `${client.name} (${level === 'read' ? 'read-only' : level === 'delete' ? 'submit and delete allowed' : 'changes allowed'})` });
 	return { location: callbackUrl(req.redirect_uri, { code, state: req.state }, config.origin) };
 }
 

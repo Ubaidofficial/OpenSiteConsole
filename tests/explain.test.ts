@@ -85,3 +85,19 @@ describe('column header hints', () => {
 		expect(table).not.toMatch(/<button[^>]*title=\{c\.title\}/);
 	});
 });
+
+describe('hidden opportunities text', () => {
+	it('every table on the Opportunities page has a title and a plain explanation, and every source has a hint', async () => {
+		const { HIDDEN_GROUPS, HIDDEN_SOURCE_HINT } = await import('../src/lib/explain');
+		const page = readFileSync('src/routes/sites/[id]/opportunities/+page.svelte', 'utf8');
+		const ids = [...page.matchAll(/\{ id: '([a-z]+)', rows:/g)].map((m) => m[1]);
+		expect(ids.length).toBe(11);
+		expect(HIDDEN_GROUPS.map((g) => g.id).sort()).toEqual([...ids].sort());
+		for (const g of HIDDEN_GROUPS) {
+			expect(g.title.length).toBeGreaterThan(5);
+			expect(g.blurb.length).toBeGreaterThan(60);
+		}
+		expect(Object.keys(HIDDEN_SOURCE_HINT).sort()).toEqual(['bing', 'clarity', 'ga4', 'previousPeriod']);
+		for (const src of [...page.matchAll(/src: '([a-zA-Z]+)' as const/g)].map((m) => m[1])) expect(Object.keys(HIDDEN_SOURCE_HINT)).toContain(src);
+	});
+});

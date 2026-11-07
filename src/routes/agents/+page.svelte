@@ -11,6 +11,7 @@
 <Explainer lead="Let an AI agent read your search data, and only if you allow it, send URLs and sitemaps to search engines.">
 	<p>It is an MCP server, <b>read-only by default</b>, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Tag Manager, Bing, Clarity and Core Web Vitals data in one place. Connect it next to OpenSEO's MCP: <code>get_openseo_project</code> hands a site's project id to OpenSEO's keyword, rank-tracking and audit tools.</p>
 	<p>A key can also be given the <b>submit</b> permission (push URLs and sitemaps to IndexNow, Bing, Search Console and, for job and livestream pages, Google's Indexing API; start an indexing check), or <b>submit and delete</b>, which adds the few actions that cannot be undone and need a confirming second call. Nothing can delete your data or change a site's content.</p>
+	<p>The table at the bottom lists every change an agent made, and every time a key was given or lost a permission.</p>
 </Explainer>
 
 {#if form?.newKey}
@@ -49,7 +50,7 @@
 		<h2 class="mb-2 font-medium">Endpoint</h2>
 		<code class="block break-all rounded bg-black/5 p-2 dark:bg-white/10">{data.mcpUrl}</code>
 		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address.</p>
-		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools</b> ({data.writeTools.submit.length} need submit, {data.writeTools.delete.length} need delete): <span class="font-mono">{data.tools.join(', ')}</span>.</p>
+		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools</b> ({data.tools.length - data.changeTools.length} only read; {data.writeTools.submit.length} need submit, {data.writeTools.delete.length} need delete): <span class="font-mono">{data.tools.join(', ')}</span>.</p>
 	</section>
 </div>
 
@@ -97,16 +98,35 @@ bearer_token_env_var = "OSC_MCP_KEY"</pre>
 <h2 class="mt-6 mb-2 font-medium">Keys</h2>
 <div class="card overflow-x-auto">
 	<table class="w-full">
-		<thead><tr><th class="th">Name</th><th class="th">Key</th><th class="th">Scope</th><th class="th">Last used</th><th class="th relative"><span class="sr-only">Actions</span></th></tr></thead>
+		<thead><tr><th class="th">Name</th><th class="th">Key</th><th class="th">Scope</th><th class="th">Can change things</th><th class="th">Last used</th><th class="th relative"><span class="sr-only">Actions</span></th></tr></thead>
 		<tbody>
 			{#each data.keys as k (k.id)}
 				<tr>
 					<td class="td">{k.name}{#if k.permission === 'submit'}<span class="chip ml-2 !border-[color:var(--warn)]" title="This key may push URLs and sitemaps to search engines.">can submit</span>{:else if k.permission === 'delete'}<span class="chip ml-2 !border-[color:var(--bad)] text-bad" title="This key may also remove a sitemap from Search Console and discard queued submissions (each after a confirming second call).">can submit + delete</span>{/if}{#if k.signInApp}<span class="chip ml-2" title="Created when {k.signInApp} was approved with Sign in. Its token is renewed automatically; revoke it here to cut the app off.">sign-in</span>{/if}</td><td class="td"><code>{k.prefix}…</code></td>
 					<td class="td text-xs"><span class="pii">{k.scope ? k.scope.map(nameOf).join(', ') : 'all sites'}</span></td>
+					<td class="td text-xs"><form method="POST" action="?/permission" use:enhance={() => async ({ update }) => update({ reset: false })} class="flex items-center gap-2"><input type="hidden" name="id" value={k.id} /><label class="sr-only" for="lvl-{k.id}">Permission for {k.name}</label><select id="lvl-{k.id}" name="level" aria-label="Permission for {k.name}" class="input text-xs" disabled={data.readOnly}><option value="read" selected={k.permission === 'read'}>Read only</option><option value="submit" selected={k.permission === 'submit'}>Submit</option><option value="delete" selected={k.permission === 'delete'}>Submit and delete</option></select><button class="btn text-xs">Save</button></form></td>
 					<td class="td text-xs text-muted-foreground">{k.lastUsedAt ? ago(k.lastUsedAt) : 'never'}</td>
 					<td class="td text-right"><form method="POST" action="?/remove" use:enhance><input type="hidden" name="id" value={k.id} /><ConfirmButton title="Revoke this API key?" description="Anything using this key (an agent, a script) loses access immediately." confirmLabel="Revoke key">Revoke</ConfirmButton></form></td>
 				</tr>
-			{:else}<tr><td class="td text-muted-foreground" colspan="5">No keys yet.</td></tr>{/each}
+			{:else}<tr><td class="td text-muted-foreground" colspan="6">No keys yet.</td></tr>{/each}
+		</tbody>
+	</table>
+</div>
+
+<h2 class="mt-8 mb-1 font-medium">Agent activity</h2>
+<p class="mb-2 text-xs text-muted-foreground">Every change an agent made through the MCP, and every time a key or sign-in was given or taken away the right to make changes. Newest first.</p>
+<div class="card overflow-x-auto">
+	<table class="w-full">
+		<thead><tr><th class="th">When</th><th class="th">What</th><th class="th">Site</th><th class="th">Details</th></tr></thead>
+		<tbody>
+			{#each data.activity as a}
+				<tr>
+					<td class="td whitespace-nowrap text-xs text-muted-foreground">{ago(a.at)}</td>
+					<td class="td text-xs"><code>{a.action.replace(/^mcp\./, '')}</code></td>
+					<td class="td text-xs"><span class="pii">{a.siteId ? nameOf(a.siteId) : ''}</span></td>
+					<td class="td max-w-[40rem] truncate text-xs text-muted-foreground"><span class="pii" title={a.detail ?? ''}>{a.detail ?? ''}</span></td>
+				</tr>
+			{:else}<tr><td class="td text-muted-foreground" colspan="4">Nothing yet.</td></tr>{/each}
 		</tbody>
 	</table>
 </div>
