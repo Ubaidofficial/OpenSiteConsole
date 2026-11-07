@@ -30,7 +30,7 @@
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host. A hosted plan at $10 a month is planned but not open yet."}},
+{"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $10 a month is planned but not open yet."}},
 {"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 40 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
 {"@type":"Question","name":"Where does my data live?","acceptedAnswer":{"@type":"Answer","text":"In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM."}},
 {"@type":"Question","name":"How far back does history go?","acceptedAnswer":{"@type":"Answer","text":"As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has."}},
@@ -41,16 +41,14 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<div class="progress" aria-hidden="true"><i></i></div>
 
 <header class="top" id="top">
   <div class="wrap bar-in">
     <a class="brand" href="#top" aria-label="SEOConsole home"><img src="/assets/brand/mark-dark.svg" width="30" height="30" alt=""><span>SEOConsole</span></a>
     <nav class="nav" aria-label="Main">
       <a href="#wins">Hidden wins</a>
+      <a href="#product">How it works</a>
       <a href="#agents">Agents</a>
-      <a href="#product">Product</a>
-      <a href="#more">Features</a>
       <a href="#self-host">Self-host</a>
       <a href="#faq">FAQ</a>
     </nav>
@@ -63,21 +61,21 @@
 <section class="hero" aria-labelledby="h1">
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <p class="kicker mono"><span class="dot" aria-hidden="true"></span>Open source · AGPL-3.0 · MCP-native</p>
+      <p class="kicker mono"><span class="dot" aria-hidden="true"></span>Free · open source · self-hosted</p>
       <h1 id="h1" class="h-xl">
         <span class="ln l1"><span class="w">Dig up the</span></span>
         <span class="ln l2"><span class="w">SEO <span class="hl">wins</span> hiding</span></span>
         <span class="ln l3"><span class="w">in your data.</span></span>
       </h1>
-    <p class="lead rv">Find hidden SEO opportunities across all your websites in one dashboard. SEOConsole syncs Search Console, GA4, Bing and Clarity into a SQLite file you own, ranks what to fix first, and lets any AI agent read it over MCP.</p>
+    <p class="lead rv">Find hidden SEO opportunities across all your websites in one dashboard. Search Console shows one property at a time. SEOConsole brings every property from every Google account together with Bing, GA4 and Clarity, and tells you what to fix first.</p>
       <div class="cta rv">
-        <a class="btn primary" href="#self-host">Self-host it, free<span class="arr" aria-hidden="true">→</span></a>
-        <a class="btn ghost" href="#wins">See what it digs up</a>
+        <a class="btn primary" href="#self-host">Try it on demo data<span class="arr" aria-hidden="true">→</span></a>
+        <a class="btn ghost" href="#wins">See what it finds</a>
       </div>
-      <ul class="proof mono rv" aria-label="Highlights">
+      <ul class="proof rv" aria-label="The short version">
+        <li>No account, no trial clock</li>
+        <li>Your data stays in a file on your server</li>
         <li><b>60</b> MCP tools, read-only until you allow changes</li>
-        <li><b>1-click</b> sign-in from Claude</li>
-        <li><b>0</b> third-party scripts on this page</li>
       </ul>
     </div>
 
@@ -95,55 +93,48 @@
     <div class="stage" data-stage>
       <div class="landscape" aria-hidden="true"><i class="ls-far"></i><i class="ls-near"></i></div>
       <div class="stack">
-      <div class="layer l3" aria-hidden="true"><span class="mono"><i></i>Portfolio</span></div>
-      <div class="layer l2" aria-hidden="true"><span class="mono"><i></i>Actions</span></div>
       <div class="device" data-device>
-        <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span class="url mono">seoconsole.app · demo data</span></div>
-        <img class="shot" src="/assets/shots/dashboard-1080.webp" srcset="/assets/shots/dashboard-1080.webp 1080w, /assets/shots/dashboard.webp 2160w" sizes="(min-width: 1240px) 1240px, 94vw" width="2160" height="1350" alt="The SEOConsole dashboard: six Search Console properties with clicks, impressions, CTR and average position, sparklines and change against the previous period." fetchpriority="high">
-        <span class="glare" aria-hidden="true"></span>
+        <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span class="url mono">Dashboard · demo data</span></div>
+        <img class="shot" src="/assets/shots/dashboard-1080.webp" srcset="/assets/shots/dashboard-1080.webp 1080w, /assets/shots/dashboard.webp 2160w" sizes="(min-width: 1240px) 1160px, 94vw" width="2160" height="1307" alt="The SEOConsole dashboard: totals for clicks, impressions, CTR and average position across six Search Console properties, then one card per site with its trend and the change against the previous 28 days." fetchpriority="high">
       </div>
-      </div>
-      <div class="hud-row mono" aria-hidden="true">
-        <span class="hud"><i></i>6 properties · 2 accounts · one view</span>
-        <span class="hud"><i></i>change vs previous period on every number</span>
-        <span class="hud"><i></i>Bing · GA4 · Tag Manager · Clarity linked</span>
       </div>
     </div>
-    <p class="fine mono">Screenshots in this page are the real app running on its built-in demo data.</p>
+    <p class="fine">Screenshots in this page are the real app running on its built-in demo data.</p>
   </div>
 </section>
 
-<div class="marquee">
-  <p class="sr">Connects to Search Console, GA4, Tag Manager, Bing Webmaster, Clarity, Chrome UX Report, IndexNow and OpenSEO.</p>
-  <div class="track mono" aria-hidden="true">
-    <span>Google Search Console</span><span>GA4</span><span>Tag Manager</span><span>Bing Webmaster</span><span>Microsoft Clarity</span><span>Chrome UX Report</span><span>IndexNow</span><span>OpenSEO</span><span>Model Context Protocol</span>
-    <span>Google Search Console</span><span>GA4</span><span>Tag Manager</span><span>Bing Webmaster</span><span>Microsoft Clarity</span><span>Chrome UX Report</span><span>IndexNow</span><span>OpenSEO</span><span>Model Context Protocol</span>
+<div class="sources">
+  <div class="wrap sources-in">
+    <p class="mono">Works with</p>
+    <ul>
+      <li>Google Search Console</li><li>GA4</li><li>Tag Manager</li><li>Bing Webmaster Tools</li><li>Microsoft Clarity</li><li>Chrome UX Report</li><li>IndexNow</li><li>OpenSEO</li>
+    </ul>
   </div>
 </div>
 
 <!-- ───────────── HIDDEN WINS ───────────── -->
 <section class="sec wins" id="wins" aria-labelledby="h-wins">
   <div class="wrap">
-    <p class="kicker mono rv"><span class="idx">01</span>Hidden wins</p>
+    <p class="kicker mono rv">Hidden wins</p>
     <h2 id="h-wins" class="h-lg rv">Eight places SEO wins hide.</h2>
-    <p class="sub rv">Search Console shows one report at a time. SEOConsole lines up Search Console, Bing, GA4, Clarity and two time periods, and flags what only appears when they disagree.</p>
+    <p class="sub rv">Search Console shows one report at a time. Some problems only appear when you compare two periods, Google with Bing, or rankings with what visitors do after they land. SEOConsole runs those comparisons for every site.</p>
 
     <div class="wins-grid">
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-lost" aria-hidden="true"></div></div><div class="wbody"><h3>Searches that stopped paying.</h3><p>Queries that earned clicks last period and have nearly stopped. Lost ranking, seasonality or data Google stopped sharing: you decide.</p><p class="eg mono"><span>demo data</span>“garden tool storage ideas”: 42 → 3 clicks</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-rising" aria-hidden="true"></div></div><div class="wbody"><h3>Demand arriving early.</h3><p>Impressions at least doubled while you still rank below the top five. The prize, priced on your own click curve.</p><p class="eg mono"><span>demo data</span>“best electric pruning shears”: 30 → 260 impressions</p></div></article>
+      <article class="win rv"><div class="scene"><div class="spr s2 sc-lost" aria-hidden="true"></div></div><div class="wbody"><h3>Searches that stopped paying.</h3><p>Queries that earned clicks last period and have nearly stopped. It could be a lost ranking, the season, or data Google stopped sharing. You see the numbers and judge the cause.</p><p class="eg mono"><span>demo data</span>“garden tool storage ideas”: 42 → 3 clicks</p></div></article>
+      <article class="win rv"><div class="scene"><div class="spr s2 sc-rising" aria-hidden="true"></div></div><div class="wbody"><h3>Demand arriving early.</h3><p>Impressions at least doubled while you still rank below the top five. The extra clicks are estimated from your own click curve.</p><p class="eg mono"><span>demo data</span>“best electric pruning shears”: 30 → 260 impressions</p></div></article>
       <article class="win rv"><div class="scene"><div class="spr s2 sc-edge" aria-hidden="true"></div></div><div class="wbody"><h3>One page, many searches.</h3><p>A page sitting at positions 4 to 20 for several searches at once. One good update can lift them all.</p><p class="eg mono"><span>demo data</span>/blog/garden-tools-9: 8 searches near the top</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-bing" aria-hidden="true"></div></div><div class="wbody"><h3>Bing likes it. Google doesn’t.</h3><p>Bing has you in the top five where Google ranks you 11th or lower. The content is probably right; Google wants a reason.</p><p class="eg mono"><span>demo data</span>“garden tool set”: Bing 2.0, Google 14.6</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-gem" aria-hidden="true"></div></div><div class="wbody"><h3>Pages that convert, ranked too low.</h3><p>Visitors who engage and convert above your average, on pages Google ranks 4 to 20. The audience is right; there is not enough of it.</p><p class="eg mono"><span>needs GA4</span>engagement and key events per page</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-leak" aria-hidden="true"></div></div><div class="wbody"><h3>Clicks that don’t stay.</h3><p>Google landing pages where far fewer visitors engage than elsewhere on your site, or that never convert.</p><p class="eg mono"><span>demo data</span>/blog/garden-tools-8: 24% of 540 visits engaged</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-friction" aria-hidden="true"></div></div><div class="wbody"><h3>Buttons that don’t work.</h3><p>Pages where many sessions had rage clicks or dead clicks, seen by Microsoft Clarity on pages Google sends visitors to.</p><p class="eg mono"><span>demo data</span>/products/garden-tools-6: 19 of 140 sessions</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-phone" aria-hidden="true"></div></div><div class="wbody"><h3>Fine on desktop, lost on phones.</h3><p>The same search, ranked three or more places worse on phones, where most of your visitors are.</p><p class="eg mono"><span>demo data</span>“garden tool set”: phone 19.0, desktop 6.0</p></div></article>
+      <article class="win rv"><div class="scene"><div class="spr s2 sc-bing" aria-hidden="true"></div></div><div class="wbody"><h3>Bing likes it. Google doesn’t.</h3><p>Bing ranks you in the top five where Google has you at 11 or lower. The content is probably fine. Google needs a stronger signal.</p><p class="eg mono"><span>demo data</span>“garden tool set”: Bing 2.0, Google 14.6</p></div></article>
+      <article class="win rv"><div class="scene"><div class="spr s2 sc-gem" aria-hidden="true"></div></div><div class="wbody"><h3>Pages that convert, ranked too low.</h3><p>Visitors engage and convert above your average, but Google ranks the page 4 to 20. Right audience, not enough of it.</p><p class="eg mono"><span>needs GA4</span>engagement and key events per page</p></div></article>
+      <article class="win rv"><div class="scene"><div class="spr s2 sc-leak" aria-hidden="true"></div></div><div class="wbody"><h3>Clicks that don’t stay.</h3><p>Google landing pages where far fewer visitors engage than elsewhere on your site, or where nobody converts.</p><p class="eg mono"><span>demo data</span>/blog/garden-tools-8: 24% of 540 visits engaged</p></div></article>
+      <article class="win rv"><div class="scene"><div class="spr s2 sc-friction" aria-hidden="true"></div></div><div class="wbody"><h3>Buttons that don’t work.</h3><p>Pages Google sends visitors to where Microsoft Clarity saw many sessions with rage clicks or dead clicks.</p><p class="eg mono"><span>demo data</span>/products/garden-tools-6: 19 of 140 sessions</p></div></article>
+      <article class="win rv"><div class="scene"><div class="spr s2 sc-phone" aria-hidden="true"></div></div><div class="wbody"><h3>Fine on desktop, lost on phones.</h3><p>The same search ranks three or more places worse on phones, where most of your visitors probably are.</p><p class="eg mono"><span>demo data</span>“garden tool set”: phone 19.0, desktop 6.0</p></div></article>
     </div>
 
     <figure class="shotwide rv wipe">
-      <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span class="url mono">Opportunities · Hidden opportunities · demo data</span></div>
-      <img src="/assets/shots/hidden-1080.webp" srcset="/assets/shots/hidden-1080.webp 1080w, /assets/shots/hidden.webp 2160w" sizes="(min-width: 1240px) 1160px, 94vw" width="1080" height="675" loading="lazy" alt="The Hidden opportunities block in SEOConsole: tables of lost searches, rising searches and pages on the edge, each with its own explanation and the estimated clicks.">
+      <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span class="url mono">Opportunities · demo data</span></div>
+      <img src="/assets/shots/hidden-1080.webp" srcset="/assets/shots/hidden-1080.webp 1080w, /assets/shots/hidden.webp 2160w" sizes="(min-width: 1240px) 1160px, 94vw" width="1080" height="633" loading="lazy" alt="The Hidden opportunities block in SEOConsole: which sources are in use, a table of lost searches and a table of pages on the edge with their estimated extra clicks.">
     </figure>
-    <p class="fine mono">Every table explains itself, and says plainly when a source is missing instead of staying silent. Estimates come from your own click curve: model figures, not promises.</p>
+    <p class="fine">Each table says what it measures, and says so when a source is missing. Estimates come from your own click curve. They are model figures, not promises.</p>
   </div>
 </section>
 
@@ -153,15 +144,86 @@
     <div class="sites-grid">
       <figure class="art-card rv"><div class="spr s4 sc-many" role="img" aria-label="Pixel illustration: five small websites send data along dotted lines into one dashboard."></div></figure>
       <div>
-        <p class="kicker mono rv"><span class="idx">02</span>One dashboard</p>
+        <p class="kicker mono rv">Many sites, many accounts</p>
         <h2 id="h-sites" class="h-lg rv">Every website. One dashboard.</h2>
-        <p class="sub rv">Connect every Google account you use. Each property is listed once, with the change against the previous period on every number.</p>
+        <p class="sub rv">Connect every Google account you use, whether that is yours, a client’s or an old agency login. Each property is listed once, with the change against the previous period on every number.</p>
         <ul class="ticks rv">
-          <li><b>One ranked to-do list</b> across all your sites, blocking problems first.</li>
-          <li><b>Duplicates folded together:</b> a domain property and its URL-prefix twin are counted once.</li>
-          <li><b>Privacy mode</b> blurs site names for screenshots and screen-shares; the numbers stay.</li>
+          <li><b>One to-do list</b> across all your sites, blocking problems first.</li>
+          <li><b>Duplicates counted once.</b> A domain property and its URL-prefix twin don’t double your numbers.</li>
+          <li><b>Privacy mode</b> blurs site names for screenshots and screen-shares. The numbers stay visible.</li>
           <li><b>The same data in Claude</b>, so one question can cover every site.</li>
         </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── PRODUCT (pinned story) ───────────── -->
+<section class="sec product" id="product" aria-labelledby="h-product">
+  <div class="wrap">
+    <p class="kicker mono rv">How it works</p>
+    <h2 id="h-product" class="h-lg rv">Every screen ends with what to do next.</h2>
+    <p class="sub rv">Fewer charts to interpret. Each view answers one question: what to fix, what changed, or whether your last change worked.</p>
+
+    <div class="story" data-story>
+      <ol class="steps">
+        <li class="step" data-i="0">
+          <span class="num mono">01</span>
+          <h3>A ranked to-do list.</h3>
+          <p>Broken tracking, pages dropped from the index, traffic collapses, cannibalisation, CTR gaps and striking-distance queries, all in one list. Blocking problems come first, the rest by estimated clicks and confidence. Every item says what to do.</p>
+          <p class="src mono">ranked · explained · per site or across all</p>
+          <img class="inline" src="/assets/shots/actions-1080.webp" width="1080" height="675" alt="The action queue: filters by site and kind, then ranked findings, each with its confidence, effort and what to do." loading="lazy">
+        </li>
+        <li class="step" data-i="1">
+          <span class="num mono">02</span>
+          <h3>Every site, one list.</h3>
+          <p>Portfolio merges striking distance, cannibalisation, decay and anomalies from every property and Google account. Each site is judged on its own data first, then the lists are merged.</p>
+          <p class="src mono">many accounts · duplicates counted once</p>
+          <img class="inline" src="/assets/shots/portfolio-1080.webp" width="1080" height="675" alt="Portfolio view: striking-distance queries across several sites, ranked by estimated extra clicks." loading="lazy">
+        </li>
+        <li class="step" data-i="2">
+          <span class="num mono">03</span>
+          <h3>Every source, side by side.</h3>
+          <p>Google, Bing, GA4, AI-assistant visits and Clarity in one table, joined on the page. www, http and https count as one page, and each number shows its change against the previous period.</p>
+          <p class="src mono">Search Console · Bing · GA4 · Clarity</p>
+          <img class="inline" src="/assets/shots/pages-1080.webp" width="1080" height="675" alt="One table with a coloured band per source: Google, Bing, GA4, AI assistants and Clarity metrics for each page." loading="lazy">
+        </li>
+        <li class="step" data-i="3">
+          <span class="num mono">04</span>
+          <h3>Numbers fitted to your site.</h3>
+          <p>Striking-distance queries ranked by estimated extra clicks, using a click-through curve fitted to your own data instead of an industry average. Bold means measured on your site. Grey means a fallback.</p>
+          <p class="src mono">your CTR curve · not a benchmark</p>
+          <img class="inline" src="/assets/shots/opportunities-1080.webp" width="1080" height="675" alt="Opportunities: the site's own CTR by position, and striking-distance queries ranked by estimated gain." loading="lazy">
+        </li>
+        <li class="step" data-i="4">
+          <span class="num mono">05</span>
+          <h3>Did that change work?</h3>
+          <p>Log a change and SEOConsole compares the pages you touched with matched control pages over the same days. You get a 95% range, a p-value and a plain verdict, including “no clear effect” when the data can’t tell. A test that wins clicks but loses key events gets flagged.</p>
+          <p class="src mono">before/after · split · redirect tests</p>
+          <img class="inline" src="/assets/shots/tests-1080.webp" width="1080" height="675" alt="A finished SEO test: clicks, impressions and position for the test pages against control pages, with a 95% range, a p-value and a chart around the change date." loading="lazy">
+        </li>
+        <li class="step" data-i="5">
+          <span class="num mono">06</span>
+          <h3>Know when Google drops a page.</h3>
+          <p>An opt-in monitor re-inspects your biggest pages every day and logs pages that were de-indexed, newly indexed, given a new canonical or blocked by robots. A quiet drop doesn’t stay quiet.</p>
+          <p class="src mono">URL Inspection · daily · opt-in</p>
+          <img class="inline" src="/assets/shots/indexing-1080.webp" width="1080" height="675" alt="The indexing monitor: how many inspected pages are indexed and Google's reasons for the ones that are not." loading="lazy">
+        </li>
+      </ol>
+
+      <div class="pin" aria-hidden="true">
+        <div class="pin-card">
+          <div class="chrome"><i></i><i></i><i></i><span class="url mono" data-pin-url>Actions · demo data</span></div>
+          <div class="frames">
+            <img class="frame f0 on" src="/assets/shots/actions-1080.webp" srcset="/assets/shots/actions-1080.webp 1080w, /assets/shots/actions.webp 1920w" sizes="(min-width: 980px) 720px, 90vw" width="1920" height="1200" alt="" loading="lazy">
+            <img class="frame f1" src="/assets/shots/portfolio-1080.webp" srcset="/assets/shots/portfolio-1080.webp 1080w, /assets/shots/portfolio.webp 1920w" sizes="(min-width: 980px) 720px, 90vw" width="1920" height="1200" alt="" loading="lazy">
+            <img class="frame f2" src="/assets/shots/pages-1080.webp" srcset="/assets/shots/pages-1080.webp 1080w, /assets/shots/pages.webp 2160w" sizes="(min-width: 980px) 720px, 90vw" width="2160" height="1351" alt="" loading="lazy">
+            <img class="frame f3" src="/assets/shots/opportunities-1080.webp" srcset="/assets/shots/opportunities-1080.webp 1080w, /assets/shots/opportunities.webp 1920w" sizes="(min-width: 980px) 720px, 90vw" width="1920" height="1200" alt="" loading="lazy">
+            <img class="frame f4" src="/assets/shots/tests-1080.webp" srcset="/assets/shots/tests-1080.webp 1080w, /assets/shots/tests.webp 2160w" sizes="(min-width: 980px) 720px, 90vw" width="2160" height="1350" alt="" loading="lazy">
+            <img class="frame f5" src="/assets/shots/indexing-1080.webp" srcset="/assets/shots/indexing-1080.webp 1080w, /assets/shots/indexing.webp 1920w" sizes="(min-width: 980px) 720px, 90vw" width="1920" height="1200" alt="" loading="lazy">
+          </div>
+        </div>
+        <ol class="dots" aria-hidden="true"><li class="on"></li><li></li><li></li><li></li><li></li><li></li></ol>
       </div>
     </div>
   </div>
@@ -172,16 +234,16 @@
   <div class="wrap">
     <div class="agent-head">
       <div>
-      <p class="kicker mono rv"><span class="idx">03</span>Agents</p>
-      <h2 id="h-agents" class="h-lg rv">Give your agent the whole picture.</h2>
-      <p class="sub rv">SEOConsole is a Model Context Protocol server. Your agent calls 40 tools that read your own stored data, so it can reason over every site, every source and the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
+      <p class="kicker mono rv">For AI agents</p>
+      <h2 id="h-agents" class="h-lg rv">Ask your agent about every site at once.</h2>
+      <p class="sub rv">SEOConsole includes a Model Context Protocol server. Your agent calls 40 tools that read your own stored data, so one question can cover every site, every source and all the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
       </div>
       <figure class="art-card rv"><div class="spr s4 sc-agent" role="img" aria-label="Pixel illustration: a chat window sends questions through glowing packets to your SEOConsole database, and a gem comes back."></div></figure>
     </div>
 
     <div class="agent-grid">
       <div class="term rv" data-term role="group" aria-label="Example conversation with an agent connected to SEOConsole">
-        <div class="term-bar mono"><i></i><i></i><i></i><span>agent · seoconsole</span><em>live demo data</em></div>
+        <div class="term-bar mono"><i></i><i></i><i></i><span>agent · seoconsole</span><em>demo data</em></div>
         <div class="term-body mono">
           <p class="t-line t-user" data-step="user"><span class="pr">›</span> What should I fix first across my sites?</p>
           <p class="t-line t-tool" data-step="tool"><span class="bul">●</span> seoconsole · <b>get_action_queue</b> <span class="args">{ limit: 5 }</span></p>
@@ -228,96 +290,25 @@
     }
   }
 }</code></pre></div>
-          <p class="note">Any client that speaks HTTP MCP with a bearer token or OAuth. Claude is the one confirmed so far.</p>
+          <p class="note">Any client that speaks HTTP MCP with a bearer token or OAuth. Claude is the only one confirmed so far.</p>
         </div>
       </div>
     </div>
 
-    <ul class="stats mono rv" aria-label="MCP server facts">
+    <ul class="stats rv" aria-label="MCP server facts">
       <li><b data-count="40">40</b><span>tools that read</span></li>
       <li><b>20</b><span>that act, only if you allow it; deleting is a separate level</span></li>
-      <li><b>OAuth</b><span>or API key, per site scope</span></li>
-      <li><b>Rate-limited</b><span>per key, with an audit log of every change</span></li>
+      <li><b>OAuth</b><span>or API key, scoped per site</span></li>
+      <li><b>Audit log</b><span>of every change, with rate limits per key</span></li>
     </ul>
-  </div>
-</section>
-
-<!-- ───────────── PRODUCT (pinned story) ───────────── -->
-<section class="sec product" id="product" aria-labelledby="h-product">
-  <div class="wrap">
-    <p class="kicker mono rv"><span class="idx">04</span>Product</p>
-    <h2 id="h-product" class="h-lg rv">Not another dashboard to stare at.</h2>
-    <p class="sub rv">Every screen is built to end in a decision: what to fix, what changed, whether it worked.</p>
-
-    <div class="story" data-story>
-      <ol class="steps">
-        <li class="step" data-i="0">
-          <span class="num mono">01</span>
-          <h3>A ranked to-do list.</h3>
-          <p>Broken tracking, blocked or de-indexed pages, traffic collapses, cannibalisation, CTR gaps, striking distance: every finding in one list. Blocking items first, then by estimated clicks times confidence. Hover any chip to see what it means.</p>
-          <p class="src mono">ranked · explained · per site or across all</p>
-          <img class="inline" src="/assets/shots/actions-1080.webp" width="1080" height="675" alt="The action queue: a ranked list of findings with type, estimated clicks, confidence and effort chips." loading="lazy">
-        </li>
-        <li class="step" data-i="1">
-          <span class="num mono">02</span>
-          <h3>Every site, one list.</h3>
-          <p>Portfolio merges striking distance, cannibalisation, decay and anomalies across all your properties and Google accounts. Each site is judged on its own data first, then merged.</p>
-          <p class="src mono">many accounts · duplicates counted once</p>
-          <img class="inline" src="/assets/shots/portfolio-1080.webp" width="1080" height="675" alt="Portfolio view: striking-distance queries across several sites, ranked by estimated extra clicks." loading="lazy">
-        </li>
-        <li class="step" data-i="2">
-          <span class="num mono">03</span>
-          <h3>Every source, side by side.</h3>
-          <p>Google, Bing, GA4 and Clarity joined on the page’s URL path, with www, http and https counted as one page. Each metric carries its change against the previous period.</p>
-          <p class="src mono">Search Console · Bing · GA4 · Clarity</p>
-          <img class="inline" src="/assets/shots/pages-1080.webp" width="1080" height="675" alt="One table with a band per source: Google, Bing, GA4 and Clarity metrics for each page." loading="lazy">
-        </li>
-        <li class="step" data-i="3">
-          <span class="num mono">04</span>
-          <h3>Numbers fitted to your site.</h3>
-          <p>Striking-distance queries ranked by estimated extra clicks, using a click-through curve fitted to your own data instead of an industry average. Bold means measured on your site; grey means a fallback.</p>
-          <p class="src mono">your CTR curve · not a benchmark</p>
-          <img class="inline" src="/assets/shots/opportunities-1080.webp" width="1080" height="675" alt="Opportunities: the site's own CTR by position, and striking-distance queries ranked by estimated gain." loading="lazy">
-        </li>
-        <li class="step" data-i="4">
-          <span class="num mono">05</span>
-          <h3>Test what you change.</h3>
-          <p>Before and after, split with control pages, or redirect tests, with a 95% interval, a p-value and a plain verdict. A test that wins on clicks but loses key events is flagged, not celebrated.</p>
-          <p class="src mono">clicks and GA4 key events</p>
-          <img class="inline" src="/assets/shots/tests-1080.webp" width="1080" height="675" alt="SEO tests: setting up a before/after or split test and reading the result." loading="lazy">
-        </li>
-        <li class="step" data-i="5">
-          <span class="num mono">06</span>
-          <h3>Know when Google forgets a page.</h3>
-          <p>An opt-in monitor re-inspects your biggest pages every day and logs de-indexed, newly indexed, canonical changes and robots blocks, so a quiet drop does not stay quiet.</p>
-          <p class="src mono">URL Inspection · daily · opt-in</p>
-          <img class="inline" src="/assets/shots/indexing-1080.webp" width="1080" height="675" alt="The indexing monitor: index status of the biggest pages and the changes it has logged." loading="lazy">
-        </li>
-      </ol>
-
-      <div class="pin" aria-hidden="true">
-        <div class="pin-card">
-          <div class="chrome"><i></i><i></i><i></i><span class="url mono" data-pin-url>seoconsole.app/actions</span></div>
-          <div class="frames">
-            <img class="frame f0 on" src="/assets/shots/actions-1080.webp" srcset="/assets/shots/actions-1080.webp 1080w, /assets/shots/actions.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
-            <img class="frame f1" src="/assets/shots/portfolio-1080.webp" srcset="/assets/shots/portfolio-1080.webp 1080w, /assets/shots/portfolio.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
-            <img class="frame f2" src="/assets/shots/pages-1080.webp" srcset="/assets/shots/pages-1080.webp 1080w, /assets/shots/pages.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
-            <img class="frame f3" src="/assets/shots/opportunities-1080.webp" srcset="/assets/shots/opportunities-1080.webp 1080w, /assets/shots/opportunities.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
-            <img class="frame f4" src="/assets/shots/tests-1080.webp" srcset="/assets/shots/tests-1080.webp 1080w, /assets/shots/tests.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
-            <img class="frame f5" src="/assets/shots/indexing-1080.webp" srcset="/assets/shots/indexing-1080.webp 1080w, /assets/shots/indexing.webp 2160w" sizes="(min-width: 980px) 620px, 90vw" width="2160" height="1350" alt="" loading="lazy">
-          </div>
-        </div>
-        <ol class="dots" aria-hidden="true"><li class="on"></li><li></li><li></li><li></li><li></li><li></li></ol>
-      </div>
-    </div>
   </div>
 </section>
 
 <!-- ───────────── MORE (bento) ───────────── -->
 <section class="sec more" id="more" aria-labelledby="h-more">
   <div class="wrap">
-    <p class="kicker mono rv"><span class="idx">05</span>And the rest</p>
-    <h2 id="h-more" class="h-lg rv">The boring parts, done properly.</h2>
+    <p class="kicker mono rv">Also included</p>
+    <h2 id="h-more" class="h-lg rv">The rest of the toolkit.</h2>
 
     <div class="bento">
       <article class="card c-history rv">
@@ -331,12 +322,12 @@
           <line class="cut" x1="388" y1="8" x2="388" y2="190"/>
         </svg>
         <ul class="legend mono" aria-hidden="true"><li><i class="k a"></i>your archive</li><li><i class="k g"></i>Search Console: last 16 months</li></ul>
-        <p class="fine left mono">Illustration, not real data.</p>
+        <p class="fine left">Illustration, not real data.</p>
       </article>
       <article class="card c-privacy rv">
         <h3>Privacy mode.</h3>
         <p>One click blurs site names, accounts and URLs for screenshots and screen-shares. The numbers stay.</p>
-        <div class="crop"><img src="/assets/shots/privacy-1080.webp" width="1080" height="675" alt="The dashboard with every site name blurred and the numbers still visible." loading="lazy"></div>
+        <div class="crop"><img src="/assets/shots/privacy-1080.webp" width="1080" height="675" alt="Dashboard cards with every site name blurred and the numbers still visible." loading="lazy"></div>
       </article>
       <article class="card c-gtm rv">
         <h3>Tracking audit.</h3>
@@ -345,18 +336,22 @@
       </article>
       <article class="card c-digest rv">
         <h3>Weekly digest, urgent alerts.</h3>
-        <p>A Monday summary and alerts for blocking problems, sent to a webhook. Every item says what to do first.</p>
-        <div class="crop"><img src="/assets/shots/digest-1080.webp" width="1080" height="675" alt="The weekly digest page: headline, top actions and what moved." loading="lazy"></div>
+        <p>A Monday summary of what to do first, plus alerts for blocking problems, sent to Slack, Discord or any webhook.</p>
+        <div class="crop"><img src="/assets/shots/digest-1080.webp" width="1080" height="675" alt="The weekly digest: a short summary, then a numbered list of what to do first with the site and estimated clicks for each." loading="lazy"></div>
       </article>
       <article class="card c-vitals rv">
         <h3>Core Web Vitals.</h3>
         <p>LCP, INP and CLS from real Chrome users, rated good, needs improvement or poor, with a snapshot stored every day.</p>
-        <div class="crop"><img src="/assets/shots/vitals-1080.webp" width="1080" height="675" alt="Core Web Vitals for phone and desktop, each rated good, needs improvement or poor." loading="lazy"></div>
+        <div class="crop"><img src="/assets/shots/vitals-1080.webp" width="1080" height="675" alt="Core Web Vitals for phones: LCP, INP and CLS, each with its rating and the share of good page loads." loading="lazy"></div>
       </article>
       <article class="card c-sitemap rv">
         <h3>Sitemap coverage.</h3>
-        <p>Which sitemap URLs Google has never shown, and which pages earn clicks but are missing from your sitemaps.</p>
-        <div class="crop"><img src="/assets/shots/sitemaps-1080.webp" width="1080" height="675" alt="Sitemaps for a site: what is submitted, last read and any problems." loading="lazy"></div>
+        <p>Which sitemap URLs Google has never shown, and which pages earn clicks but are missing from every sitemap.</p>
+        <div class="crop"><img src="/assets/shots/sitemaps-1080.webp" width="1080" height="675" alt="Sitemap coverage: URLs in sitemaps, how many were shown in search, how many never were, and the list of never-shown URLs." loading="lazy"></div>
+      </article>
+      <article class="card c-small rv">
+        <h3>AI assistant traffic.</h3>
+        <p>Visits GA4 credits to ChatGPT, Perplexity, Gemini, Claude and Copilot, per page. Assistants that send no referrer show up as Direct and can’t be counted.</p>
       </article>
       <article class="card c-small rv">
         <h3>Indexing, the official routes.</h3>
@@ -364,12 +359,18 @@
       </article>
       <article class="card c-small rv">
         <h3>Google update markers.</h3>
-        <p>Ranking-update dates on your charts, your tests and your digest, so a drop gets an honest explanation first.</p>
+        <p>Ranking-update dates on your charts, your tests and your digest, so you can rule out an update before blaming your own change.</p>
       </article>
-      <article class="card c-small rv">
-        <h3>Locked down by default.</h3>
-        <p>Tokens encrypted at rest with AES-256-GCM, password login, agent access scoped per site, read-only unless you pick submit or delete, rate limits, an audit log of every change.</p>
-      </article>
+    </div>
+
+    <div class="not rv">
+      <h3>What it doesn’t do</h3>
+      <ul>
+        <li><b>No rank tracker or backlink index.</b> It works from what Google, Bing, GA4 and Clarity already know about your sites.</li>
+        <li><b>No AI writing.</b> It tells you which page to work on and why. The changes are yours to make.</li>
+        <li><b>No history from before you connect</b> beyond the 16 months Google still holds on that day.</li>
+        <li><b>No hosted version yet.</b> You run it yourself, on your computer or a server.</li>
+      </ul>
     </div>
   </div>
 </section>
@@ -377,14 +378,14 @@
 <!-- ───────────── SELF-HOST ───────────── -->
 <section class="sec host" id="self-host" aria-labelledby="h-host">
   <div class="wrap">
-    <p class="kicker mono rv"><span class="idx">06</span>Self-host</p>
+    <p class="kicker mono rv">Self-host</p>
     <h2 id="h-host" class="h-lg rv">Run it where your data already lives.</h2>
-    <p class="sub rv">Free and open source. Try it on built-in demo data in three commands, then connect your own Google account when you are ready.</p>
+    <p class="sub rv">Start on the built-in demo data with three commands. When you like what you see, connect your own Google account, then add Bing, GA4, Tag Manager and Clarity on the Connect page.</p>
 
     <div class="price-grid">
       <article class="plan on rv">
         <p class="plan-k mono">Self-host</p>
-        <p class="plan-p"><b>Free</b><span>AGPL-3.0, forever</span></p>
+        <p class="plan-p"><b>Free</b><span>AGPL-3.0, every feature</span></p>
         <div class="code"><button class="copy mono" type="button" data-copy="git clone https://github.com/Ubaidofficial/OpenSiteConsole
 cd OpenSiteConsole &amp;&amp; pnpm install
 cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm serve">Copy</button><pre class="mono" tabindex="0"><code>git clone https://github.com/Ubaidofficial/OpenSiteConsole
@@ -393,20 +394,20 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
         <ul class="plan-l">
           <li>Your SQLite file, your server, your keys</li>
           <li>Guides for Docker, Coolify and Cloudflare in the README</li>
-          <li>Every feature on this page, no tiers</li>
+          <li>Needs Node.js 20.19+ and pnpm</li>
         </ul>
         <a class="btn primary" href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">Open the repository<span class="arr" aria-hidden="true">↗</span></a>
       </article>
       <article class="plan rv">
         <p class="plan-k mono">Hosted <em>planned</em></p>
         <p class="plan-p"><b>$10</b><span>per month, when it opens</span></p>
-        <p class="plan-d">Your own isolated instance, set up for you, with sign-in and billing handled. It is still being prepared and is <b>not open yet</b>; Google’s OAuth review has to come first.</p>
+        <p class="plan-d">Your own private instance, set up for you, with sign-in and billing handled. It is <b>not open yet</b>: Google’s OAuth review has to come first.</p>
         <ul class="plan-l">
           <li>One private instance per customer</li>
           <li>Same app, same MCP server</li>
-          <li>Leave any time; your data stays yours</li>
+          <li>Leave any time. Your data stays yours.</li>
         </ul>
-        <a class="btn ghost" href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">Follow the repository<span class="arr" aria-hidden="true">↗</span></a>
+        <a class="btn ghost" href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">Watch the repository<span class="arr" aria-hidden="true">↗</span></a>
       </article>
     </div>
   </div>
@@ -415,10 +416,10 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
 <!-- ───────────── FAQ ───────────── -->
 <section class="sec faq" id="faq" aria-labelledby="h-faq">
   <div class="wrap narrow">
-    <p class="kicker mono rv"><span class="idx">07</span>Questions</p>
-    <h2 id="h-faq" class="h-lg rv">Straight answers.</h2>
+    <p class="kicker mono rv">FAQ</p>
+    <h2 id="h-faq" class="h-lg rv">Common questions.</h2>
     <div class="qa rv">
-      <details><summary>Is it really free?</summary><p>Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $10 a month is planned, and the page above says plainly that it is not open yet.</p></details>
+      <details><summary>Is it really free?</summary><p>Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $10 a month is planned but not open yet.</p></details>
       <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 40 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
       <details><summary>Where does my data live?</summary><p>In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM. Whatever an agent reads is sent to that agent’s provider, so connect only agents you trust with that data.</p></details>
       <details><summary>How far back does history go?</summary><p>As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has.</p></details>
@@ -431,26 +432,24 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
 <!-- ───────────── FINAL CTA ───────────── -->
 <section class="sec final" aria-labelledby="h-final">
   <div class="wrap">
-    <h2 id="h-final" class="h-xl rv">Point an agent at your search data.</h2>
+    <h2 id="h-final" class="h-xl rv">Start with the demo. Connect Google when you’re ready.</h2>
     <div class="cta rv">
-      <a class="btn primary" href="#self-host">Self-host it, free<span class="arr" aria-hidden="true">→</span></a>
+      <a class="btn primary" href="#self-host">Try it on demo data<span class="arr" aria-hidden="true">→</span></a>
       <a class="btn ghost" href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">Star on GitHub<span class="arr" aria-hidden="true">↗</span></a>
     </div>
   </div>
 </section>
 </main>
 
-<nav aria-label="Shortcut"><a class="pill-cta" href="#agents" data-pill aria-label="Connect Claude with one-click sign-in: jump to the setup steps"><img src="/assets/brand/mark-dark.svg" width="30" height="30" alt=""><span>Connect Claude<small>one-click sign-in</small></span><span class="arr" aria-hidden="true">→</span></a></nav>
-
 <footer class="foot">
   <div class="wrap foot-in">
     <a class="brand" href="#top"><img src="/assets/brand/mark-dark.svg" width="26" height="26" alt=""><span>SEOConsole</span></a>
-    <nav aria-label="Footer" class="mono">
+    <nav aria-label="Footer">
       <a href="https://github.com/Ubaidofficial/OpenSiteConsole" rel="noopener">GitHub</a>
       <a href="https://github.com/Ubaidofficial/OpenSiteConsole#readme" rel="noopener">Docs</a>
       <a href="https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>
     </nav>
-    <p class="mono">© 2026 SEOConsole. Google, GA4, Bing, Clarity and the other names here belong to their owners; SEOConsole is not affiliated with them.</p>
+    <p>© 2026 SEOConsole. Google, GA4, Bing, Clarity and the other names here belong to their owners. SEOConsole is not affiliated with them.</p>
   </div>
 </footer>
 

@@ -33,7 +33,15 @@ docker run --rm -p 8080:8080 seoconsole-site
 
 ## Refreshing the screenshots
 
-They are static WebP files in `assets/shots/` (two sizes each). When the app's look changes: run the app with `DEMO_MODE=1`, connect the demo Bing, GA4, Tag Manager, Clarity and Web Vitals sources on the Connect page (type `demo` as the key), screenshot the pages at 1440 x 900, and convert to WebP at 2160 and 1080 pixels wide.
+They are static WebP files in `assets/shots/` (two sizes each), made by a script so they can be redone the same way when the app's look changes:
+
+1. Start the app with `DEMO_MODE=1` and a fresh database (`pnpm serve`, on `http://localhost:5173`).
+2. `node site/tools/capture-shots.cjs`: connects the demo Bing, GA4, Tag Manager, Clarity and Web Vitals sources, seeds one SEO test, two indexing checks and a weekly digest (so no screen shows an empty state), then captures each view.
+3. `python3 site/tools/to-webp.py` (needs Pillow): writes the large and 1080 px files into `assets/shots/`.
+
+Each capture hides the app's own header and tab bar and is clipped to whole rows and tables, so nothing is cut off at the edge. The six story frames are 16:10 and shown whole (no zoom). If a capture changes size, update the `width`/`height` on its `<img>` tags. `tests/site.test.ts` checks the story frames stay 16:10.
+
+The hidden-win cards quote example rows from the demo data. Demo data is generated relative to today's date, so these rows can drift; re-check them against the app when you refresh the screenshots.
 
 ## What the page does not claim
 

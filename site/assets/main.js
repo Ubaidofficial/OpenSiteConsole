@@ -7,17 +7,14 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const root = document.documentElement;
 
-  /* header state, top progress bar, and the hero product tilting flat as you scroll */
+  /* header state, and the hero product tilting flat as you scroll */
   const top = $('.top'), stage = $('[data-stage]');
   let ticking = false;
   function onScroll() {
     ticking = false;
     const y = scrollY;
     top.classList.toggle('scrolled', y > 8);
-    const max = root.scrollHeight - innerHeight;
-    root.style.setProperty('--sp', max > 0 ? (y / max).toFixed(4) : '0');
     if (stage && !still) {
       const r = stage.getBoundingClientRect();
       const p = clamp((innerHeight * 0.9 - r.top) / (innerHeight * 0.9 - 64), 0, 1);
@@ -27,18 +24,6 @@
   addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
   addEventListener('resize', onScroll);
   onScroll();
-
-  /* the floating "connect Claude" pill appears after the hero and steps aside near the setup steps and the closing panel */
-  const pill = $('[data-pill]'), agents = $('#agents'), closing = $('.final');
-  function pillState() {
-    if (!pill) return;
-    const vh = innerHeight, past = scrollY > vh * 0.8;
-    const over = (el) => el && el.getBoundingClientRect().top < vh * 0.7 && el.getBoundingClientRect().bottom > vh * 0.3;
-    const connect = $('.connect');
-    pill.classList.toggle('show', past && !over(closing) && !over(connect));
-  }
-  addEventListener('scroll', () => requestAnimationFrame(pillState), { passive: true });
-  pillState();
 
   /* reveal on scroll, staggered among siblings */
   const reveals = $$('.rv');
@@ -75,7 +60,7 @@
     steps.forEach((s, k) => s.classList.toggle('on', k === i));
     frames.forEach((f, k) => f.classList.toggle('on', k === i));
     dots.forEach((d, k) => d.classList.toggle('on', k === i));
-    if (pinUrl) pinUrl.textContent = 'demo data · ' + labels[i];
+    if (pinUrl) pinUrl.textContent = labels[i] + ' · demo data';
   }
   if (steps.length && 'IntersectionObserver' in window) {
     const so = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setActive(Number(e.target.dataset.i)); }), { rootMargin: '-45% 0px -45% 0px' });

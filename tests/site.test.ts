@@ -209,11 +209,11 @@ describe('site: the pixel art and the animation built from it', () => {
 		expect(new Set(cards.map((c) => /sc-([a-z]+)/.exec(c)![1])).size).toBe(8); // eight different scenes
 		expect(html).toContain('<a href="#wins">Hidden wins</a>');
 	});
-	it('the section numbers run 01 to 07 once each, in order', () => {
-		expect([...html.matchAll(/<span class="idx">(\d\d)<\/span>/g)].map((m) => m[1])).toEqual(['01', '02', '03', '04', '05', '06', '07']);
+	it('section labels are plain words, not a numbered 01-07 template', () => {
+		expect(html).not.toMatch(/<span class="idx">/);
 	});
 	it('the screenshot of the hidden-opportunities block is real, sized, and described', () => {
-		expect(html).toMatch(/<img src="\/assets\/shots\/hidden-1080\.webp"[^>]*width="1080" height="675"[^>]*alt="The Hidden opportunities block/);
+		expect(html).toMatch(/<img src="\/assets\/shots\/hidden-1080\.webp"[^>]*width="1080" height="633"[^>]*alt="The Hidden opportunities block/);
 		for (const f of ['hidden', 'hidden-1080', 'activity', 'activity-1080']) expect(existsSync(`site/assets/shots/${f}.webp`), f).toBe(true);
 	});
 	it('animation plays only while a sprite is on screen, always runs without JavaScript, and shows the first frame for people who ask for less motion', () => {
@@ -223,6 +223,13 @@ describe('site: the pixel art and the animation built from it', () => {
 		const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
 		for (const sel of ['.spr, .spr.s2, .spr.s4 { animation: none; background-position: 0 0; }', '.dig-clouds::before { animation: none; }', '.dchip, .dchip i::after { animation: none; }', '.win { transform: none; transition: none; }', 'html.js .wipe.rv { clip-path: none; transition: none; }', '.ls-far, .ls-near { transform: none; }']) expect(block, sel).toContain(sel);
 		expect(js).toMatch(/if \(!still\) \$\$\('\.win'\)/); // the cards only tilt when motion is welcome
+	});
+	it('screenshots are shown whole: the story frames are not zoomed, the hero shot is not faded out or covered by decoration', () => {
+		expect(css).not.toMatch(/\.frame\s*\{[^}]*--z:/);
+		expect(css).not.toMatch(/\.device\s*\{[^}]*mask-image/);
+		for (const gone of ['class="layer', 'class="glare', 'class="hud-row', 'class="marquee', 'data-pill']) expect(html, gone).not.toContain(gone);
+		// every story frame is a 16:10 capture, so object-fit: cover in the 16:10 box crops nothing
+		for (const m of html.matchAll(/<img class="frame[^"]*"[^>]*width="(\d+)" height="(\d+)"/g)) expect(Number(m[1]) / Number(m[2]), m[0].slice(0, 60)).toBeCloseTo(1.6, 2);
 	});
 	it('the wipe-in of the wide screenshot hides content only once the script has marked the page', () => {
 		expect(css).toMatch(/html\.js \.wipe\.rv \{ clip-path: inset\(0 100% 0 0\)/);
@@ -252,7 +259,7 @@ describe('site: light mode only, and gentle on people who ask for less motion', 
 	it('every animation and scroll effect has a reduced-motion fallback that shows the final state', () => {
 		const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
 		expect(block).toBeTruthy();
-		for (const sel of ['.w {', '.hl::before', 'html.js .rv', '.track', '.stack', '.frame', '.term.live .t-line', '.tl-svg .line', '.hud-row']) expect(block, sel).toContain(sel);
+		for (const sel of ['.w {', '.hl::before', 'html.js .rv', '.stack', '.frame', '.term.live .t-line', '.tl-svg .line']) expect(block, sel).toContain(sel);
 		expect(js).toMatch(/prefers-reduced-motion: reduce/);
 		expect(js).toMatch(/still/);
 	});
