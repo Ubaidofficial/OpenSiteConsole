@@ -51,6 +51,22 @@ No customer counts, testimonials or ratings, because there are none. The hosted 
 
 Every illustration on the page (the dig site in the hero, the eight "hidden win" scenes, the many-sites and agent pictures, the landscape behind the dashboard) is drawn by [`art/make_art.py`](art/make_art.py) with a fixed palette and seed, and written to `assets/art/`. Run `python3 site/art/make_art.py` (needs Pillow) to regenerate them. Several are sprite sheets: the stylesheet steps through their frames with `steps()`, only while they are on screen, and shows the first frame for people who ask for less motion. `tests/site.test.ts` checks that each sprite's width is a whole number of its frames and that no image goes unused.
 
+## Product logos
+
+`assets/logos/` holds the logos of the products SEOConsole works with, saved locally because the page loads nothing from other sites. Each is shown at a small size next to the product's name, unchanged, only to say what SEOConsole connects to. The footer says the names and logos belong to their owners and that SEOConsole is not affiliated with or endorsed by them. **Check each brand's own guidelines before launch**; some brands restrict how their logos may be used.
+
+| File | Source |
+|---|---|
+| `search-console.svg` | The 2025 Google Search Console logo (Wikimedia Commons, `Google_Search_Console_Logo_2025.svg`), cropped to the icon |
+| `ga4.svg`, `tag-manager.svg` | Google's own icons (`gstatic.com/analytics-suite/header/suite/v2/ic_analytics.svg`, `ic_tag_manager.svg`) |
+| `bing.svg`, `chrome.svg` | Wikimedia Commons (`Bing_Fluent_Logo.svg`, `Google_Chrome_icon_(February_2022).svg`) |
+| `clarity.png` | Microsoft Clarity's own favicon (`claritystatic.azureedge.net/images/logo.ico`), resized to 64 px |
+| `mcp.svg`, `claude.svg`, `claude-code.svg` | [Simple Icons](https://simpleicons.org) (CC0 for the drawings; the marks remain their owners' trademarks), in the brand colour Simple Icons lists |
+
+IndexNow has no logo other than a text favicon that is unreadable at this size, and OpenSEO has no public logo, so both are named in text only.
+
+The link-preview image `assets/og.png` is drawn from `tools/og.html`. Rebuild it with `node site/tools/render-og.cjs` after changing the screenshots or logos.
+
 ## Credits
 
 Four motion patterns are adapted from [Shadcn Space](https://github.com/shadcnspace/shadcnspace): the animated beam (the "Works with" data-flow diagram), the blur-in text reveal (section headings), the animated list (the alerts in the digest card) and the shine border (the free plan). The originals are React components built on the `motion` library; here they are rebuilt in plain CSS and a few lines of `assets/main.js`, because the page loads no framework and nothing from another site. Like the rest of the page's motion, all four stop for visitors who ask their system for reduced motion, and the beam and the list only run while they are on screen.

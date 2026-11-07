@@ -32,7 +32,7 @@ describe('site: files and links', () => {
 		}
 	});
 	it('screenshots exist in both sizes and stay within a weight budget', () => {
-		const shots = readdirSync('site/assets/shots').filter((f) => !f.includes('-1080'));
+		const shots = readdirSync('site/assets/shots').filter((f) => !/-\d+\.webp$/.test(f)); // the base files; -1080 and other -NNN files are extra sizes
 		expect(shots.length).toBeGreaterThanOrEqual(10);
 		for (const f of shots) {
 			expect(existsSync(`site/assets/shots/${f.replace('.webp', '-1080.webp')}`), f).toBe(true);
@@ -204,7 +204,8 @@ describe('site: the pixel art and the animation built from it', () => {
 		for (const c of cards) {
 			expect(c).toMatch(/<div class="spr s2 sc-[a-z]+" aria-hidden="true">/);
 			expect(c).toMatch(/<h3>[^<]{8,60}<\/h3>/);
-			expect(c).toMatch(/<p class="eg mono"><span>(demo data|needs GA4)<\/span>/);
+			// a real demo row, or (when the demo data has none to quote) the source it needs and what it shows: never an invented number
+			expect(c).toMatch(/<p class="eg mono"><span>(?:<img class="lg"[^>]*>)?(demo data|shows|needs (?:Bing|GA4|Clarity))<\/span>/);
 		}
 		expect(new Set(cards.map((c) => /sc-([a-z]+)/.exec(c)![1])).size).toBe(8); // eight different scenes
 		expect(html).toContain('<a href="#wins">Hidden wins</a>');
@@ -249,6 +250,24 @@ describe('site: the pixel art and the animation built from it', () => {
 	it('the animated list keeps its final height while it fills, so nothing below it moves', () => {
 		expect(js).toMatch(/alist\.style\.setProperty\('min-height', alist\.offsetHeight \+ 'px'\)/);
 		expect(html.match(/<ol class="alist" data-alist[\s\S]*?<\/ol>/)![0].match(/<li>/g)).toHaveLength(4);
+	});
+	it('product logos are local files, decorative next to the product name, and the footer says whose they are', () => {
+		const logos = [...html.matchAll(/<img class="lg" src="(\/assets\/logos\/[^"]+)"[^>]*>/g)];
+		expect(logos.length).toBeGreaterThanOrEqual(15);
+		for (const m of logos) {
+			expect(existsSync('site' + m[1]), m[1]).toBe(true);
+			expect(m[0], m[1]).toMatch(/alt=""/); // the product's name is always written right next to it
+		}
+		for (const f of readdirSync('site/assets/logos')) expect(html, `${f} is not used`).toContain(`/assets/logos/${f}`);
+		expect(html).toMatch(/names and logos here belong to their owners/);
+		expect(html).toMatch(/not affiliated with or endorsed by them/);
+	});
+	it('the comparison keeps the rows where the others are ahead, and says when it was checked', () => {
+		const t = /<section class="sec compare"[\s\S]*?<\/section>/.exec(html)![0];
+		expect(t).toMatch(/Where they are ahead/);
+		expect((t.match(/<span class="v n">No<\/span>/g) ?? []).length).toBeGreaterThanOrEqual(4); // our own "No"s are in it
+		expect(t).toMatch(/7 November 2026/);
+		expect(t).toContain('https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/src/lib/compare.ts');
 	});
 	it('the wipe-in of the wide screenshot hides content only once the script has marked the page', () => {
 		expect(css).toMatch(/html\.js \.wipe\.rv \{ clip-path: inset\(0 100% 0 0\)/);
