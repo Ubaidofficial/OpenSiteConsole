@@ -163,6 +163,73 @@ describe('site: the titles and descriptions that search results and link preview
 	});
 });
 
+describe('site: the pixel art and the animation built from it', () => {
+	const png = (f: string) => { const b = readFileSync(f); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
+	const sprites = [...html.matchAll(/class="spr (s[24]) ([a-z-]+)[^"]*"/g)].map((m) => ({ frames: Number(m[1][1]), cls: m[2] }));
+	const fileOf = (cls: string) => new RegExp(`\\.${cls}\\s*\\{[^}]*url\\('([^']+)'\\)`).exec(css)?.[1];
+	it('the hero shows a pixel-art dig site that is described for people who cannot see it, with the callouts hidden from screen readers', () => {
+		expect(html).toMatch(/<figure class="dig rv" role="img" aria-label="Pixel-art illustration: a scanner drone/);
+		expect(html.match(/<span class="dchip[^"]*" aria-hidden="true">/g)).toHaveLength(4);
+		expect(html).toContain('<span class="w">Dig up the</span>');
+		expect(html).toContain('SEO <span class="hl">wins</span> hiding');
+		expect(html).toContain('<span class="w">in your data.</span>');
+	});
+	it('every sprite on the page points at a real image whose width is a whole number of its frames, at the right shape', () => {
+		expect(sprites.length).toBeGreaterThanOrEqual(11); // dig site, eight scenes, one dashboard, agent link
+		for (const { frames, cls } of sprites) {
+			const f = fileOf(cls);
+			expect(f, cls).toBeTruthy();
+			expect(existsSync('site/assets/' + f), f).toBe(true);
+			const { w, h } = png('site/assets/' + f);
+			expect(w % frames, `${f} is ${w} wide for ${frames} frames`).toBe(0);
+			const frame = w / frames / h; // each frame's shape must match the box the page puts it in
+			const expected = cls === 'dig-art' ? 320 / 240 : cls === 'sc-many' ? 240 / 130 : cls === 'sc-agent' ? 240 / 110 : 160 / 110;
+			expect(frame, f).toBeCloseTo(expected, 2);
+		}
+	});
+	it('the dig site and the landscape layers exist, and no image in assets/art is unused', () => {
+		for (const f of ['dig-site', 'clouds', 'ridge-far', 'ridge-near']) expect(css, f).toContain(`art/${f}.png`);
+		const used = new Set([...css.matchAll(/url\('art\/([^']+)'\)/g)].map((m) => m[1]));
+		for (const f of readdirSync('site/assets/art')) expect(used.has(f), `${f} is not used by the stylesheet`).toBe(true);
+		for (const f of used) expect(existsSync('site/assets/art/' + f), f).toBe(true);
+	});
+	it('the art stays small: no image over 40 KB, and all of it together under 150 KB', () => {
+		const files = readdirSync('site/assets/art').map((f) => statSync('site/assets/art/' + f).size);
+		for (const n of files) expect(n).toBeLessThan(40_000);
+		expect(files.reduce((a, b) => a + b, 0)).toBeLessThan(150_000);
+	});
+	it('eight "hidden win" cards, each with a scene, a plain title, and an example that says whether it is demo data', () => {
+		const cards = [...html.matchAll(/<article class="win rv">([\s\S]*?)<\/article>/g)].map((m) => m[1]);
+		expect(cards).toHaveLength(8);
+		for (const c of cards) {
+			expect(c).toMatch(/<div class="spr s2 sc-[a-z]+" aria-hidden="true">/);
+			expect(c).toMatch(/<h3>[^<]{8,60}<\/h3>/);
+			expect(c).toMatch(/<p class="eg mono"><span>(demo data|needs GA4)<\/span>/);
+		}
+		expect(new Set(cards.map((c) => /sc-([a-z]+)/.exec(c)![1])).size).toBe(8); // eight different scenes
+		expect(html).toContain('<a href="#wins">Hidden wins</a>');
+	});
+	it('the section numbers run 01 to 07 once each, in order', () => {
+		expect([...html.matchAll(/<span class="idx">(\d\d)<\/span>/g)].map((m) => m[1])).toEqual(['01', '02', '03', '04', '05', '06', '07']);
+	});
+	it('the screenshot of the hidden-opportunities block is real, sized, and described', () => {
+		expect(html).toMatch(/<img src="\/assets\/shots\/hidden-1080\.webp"[^>]*width="1080" height="675"[^>]*alt="The Hidden opportunities block/);
+		for (const f of ['hidden', 'hidden-1080', 'activity', 'activity-1080']) expect(existsSync(`site/assets/shots/${f}.webp`), f).toBe(true);
+	});
+	it('animation plays only while a sprite is on screen, always runs without JavaScript, and shows the first frame for people who ask for less motion', () => {
+		expect(css).toMatch(/\.spr \{[^}]*animation-play-state: paused/);
+		expect(css).toMatch(/\.spr\.on, html:not\(\.js\) \.spr \{ animation-play-state: running; \}/);
+		expect(js).toMatch(/classList\.toggle\('on', e\.isIntersecting\)/);
+		const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+		for (const sel of ['.spr, .spr.s2, .spr.s4 { animation: none; background-position: 0 0; }', '.dig-clouds::before { animation: none; }', '.dchip, .dchip i::after { animation: none; }', '.win { transform: none; transition: none; }', 'html.js .wipe.rv { clip-path: none; transition: none; }', '.ls-far, .ls-near { transform: none; }']) expect(block, sel).toContain(sel);
+		expect(js).toMatch(/if \(!still\) \$\$\('\.win'\)/); // the cards only tilt when motion is welcome
+	});
+	it('the wipe-in of the wide screenshot hides content only once the script has marked the page', () => {
+		expect(css).toMatch(/html\.js \.wipe\.rv \{ clip-path: inset\(0 100% 0 0\)/);
+		expect(css).not.toMatch(/(^|\n)\.wipe[^{]*\{[^}]*clip-path: inset\(0 100%/);
+	});
+});
+
 describe('site: light mode only, and gentle on people who ask for less motion', () => {
 	it('declares itself light and has no dark scheme', () => {
 		expect(html).toMatch(/<meta name="color-scheme" content="light">/);

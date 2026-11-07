@@ -50,6 +50,23 @@
     reveals.forEach((el) => io.observe(el));
   }
 
+  /* pixel sprites only step through their frames while they are on screen (saves battery; otherwise the first frame shows) */
+  const sprites = $$('.spr');
+  if ('IntersectionObserver' in window) {
+    const spo = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('on', e.isIntersecting)), { rootMargin: '80px' });
+    sprites.forEach((el) => spo.observe(el));
+  } else sprites.forEach((el) => el.classList.add('on'));
+
+  /* the eight scene cards lean toward the pointer */
+  if (!still) $$('.win').forEach((c) => {
+    c.addEventListener('pointermove', (e) => {
+      const r = c.getBoundingClientRect();
+      c.style.setProperty('--ry', ((e.clientX - r.left) / r.width - 0.5) * 9 + 'deg');
+      c.style.setProperty('--rx', (0.5 - (e.clientY - r.top) / r.height) * 7 + 'deg');
+    });
+    c.addEventListener('pointerleave', () => { c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg'); });
+  });
+
   /* pinned story: the screenshot on the right follows the step in the middle of the screen */
   const steps = $$('.step'), frames = $$('.frame'), dots = $$('.dots li');
   const labels = ['Actions', 'Portfolio', 'Pages', 'Opportunities', 'Tests', 'Indexing'];
