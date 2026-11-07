@@ -1,4 +1,4 @@
-# SEOConsole
+<h1 align="center"><img src="static/brand/banner.png" alt="SEOConsole" width="860"></h1>
 
 > Formerly **OpenSiteConsole**. Only the name changed: the repository path, the default database file (`data/opensiteconsole.db`), the Docker service name and the `osc_` API-key prefix keep their old names on purpose, so existing installs, volumes and keys keep working. The on-page checker's user agent is now `SEOConsole/1.0`; if you had allowed the old one in a firewall rule, add the new one.
 
@@ -149,7 +149,7 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 - **Anonymised queries**: Google hides some queries, so query tables never sum to the totals. The share is shown per site.
 - **Per-day row cap** (`MAX_ROWS_PER_DAY`, default 100k): very large sites lose long-tail detail beyond it. Totals stay exact. Large sites may want Google's bulk BigQuery export instead.
 - **Not yet built**: Yandex, email delivery of digests (webhook only), multi-user roles, i18n, PDF/client reports, SERP/rank tracking, the Indexing API, a REST API and monthly / white-label client reports (planned, not built), **writing** to Tag Manager / GA4 through MCP (creating tags, key events or custom dimensions, publishing containers): everything is read-only by design for now.
-- **Verified**: unit/integration tests (`pnpm test`, 515 passing), type-check (`pnpm check`), production build, and a headless-browser crawl of the pages against **demo data**, including privacy-mode and phone-width checks.
+- **Verified**: unit/integration tests (`pnpm test`, 523 passing), type-check (`pnpm check`), production build, and a headless-browser crawl of the pages against **demo data**, including privacy-mode and phone-width checks.
   **Not verified**: a live Google OAuth round-trip and real Search Console / GA4 / Tag Manager / Clarity / Chrome UX Report responses (search types, search appearance, GA4 landing pages and Core Web Vitals are tested against documented response shapes and demo data only), the Bing OAuth flow, and the OpenSEO connection against a real instance — no credentials were available. Bing's API-key endpoint and its error format *were* confirmed against the live service (a deliberately invalid key returned Bing's documented `InvalidApiKey`). The MCP server was checked with the official MCP SDK client. Expect to debug first contact with the real APIs.
 - **Motion** is short and subtle (page settle, staggered cards, charts drawing left to right, small bars growing, press feedback), and is switched off entirely for people whose system asks for reduced motion.
 - **Comparisons wait for history.** Trends, Groups, Indexing classes and SEO tests compare against the previous period; while that period is still downloading, or has no data, they say so instead of showing every query as a winner.
@@ -174,12 +174,26 @@ src/lib/server/          db, crypto, Google/Bing/Clarity clients, sync engine, j
                          indexmon, indexnow, gupdates; demo data source
 src/lib/components/      shared Svelte components (charts, action cards, ...)
 src/routes/              dashboard, portfolio, actions, digest, updates, accounts, sites/[id]/* tabs, auth, /api/mcp
+static/                  favicon, touch and app icons, the web manifest, and static/brand/ (the logo files below)
 tests/                   vitest (and real-shaped fixtures in tests/fixtures)
 deploy/cloudflare/       Worker, entrypoint and Litestream config for the Cloudflare Container deploy
 cloud/                   hosted-plan control app (sign-up, Stripe, Coolify provisioning, OAuth relay); its own build and tests
 spike/workers/           feasibility spike and proof for a native Workers + D1 port (not part of the app)
 Dockerfile, compose.yaml, Dockerfile.cloudflare, wrangler.jsonc   container and Cloudflare deploy files
 ```
+
+## Brand
+
+The logo is a magnifier holding three rising bars, in graphite chrome on a white tile (a dark twin exists). Files in `static/brand/`:
+
+| File | Use |
+|---|---|
+| `logo-light.svg`, `logo-dark.svg` | The full icon with its tile, for sizes of about 64 px and up: README, docs, slides, social images, the login page. |
+| `mark-light.svg`, `mark-dark.svg` | The simplified icon (lens and bars only, thicker), for 16 to 48 px: the favicon and tiny tiles. The sparkle disappears at those sizes, so it is left out. |
+| `mark-glyph.svg` | The glyph with no tile, for the app header on a light page. |
+| `banner.png` | The README banner (rendered with the Inter font). |
+
+The browser-tab icons, the Apple touch icon and the home-screen icons in `static/` (`favicon.svg`, `favicon.ico`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon-512-maskable.png`) were rendered from these SVGs; the Apple and maskable ones are full-bleed squares because iOS and Android round the corners themselves. A test checks that every file exists, is the right size and is referenced. **The logo has not been checked against existing logos or trademarks.**
 
 ## License
 
