@@ -89,7 +89,7 @@
 <section class="card mt-4 p-4">
 	<h2 class="mb-1 font-medium">4 · Google Tag Manager <span class="chip ml-1">read-only</span></h2>
 	<p class="mb-3 text-xs text-muted-foreground">
-		Reads each site's <b>published</b> container (tags, triggers, variables) and checks it against GA4 and Search Console on the site's <b>Tag Manager</b> tab: is the container published, does it send to the GA4 property linked here, are tags paused, does GA4 see the traffic Google sends. Needs the <b>Tag Manager API</b> enabled in your Google Cloud project. Containers are matched to sites by their domain, or by a name that is the site's address; OpenSiteConsole never edits or publishes a container.
+		Reads each site's <b>published</b> container (tags, triggers, variables) and checks it against GA4 and Search Console on the site's <b>Tag Manager</b> tab: is the container published, does it send to the GA4 property linked here, are tags paused, does GA4 see the traffic Google sends. Needs the <b>Tag Manager API</b> enabled in your Google Cloud project. Containers are matched to sites by their domain, or by a name that is the site's address; SEOConsole never edits or publishes a container.
 	</p>
 	<form method="POST" action="?/gtmAuto" use:enhance={submit('gtm')}><button class="btn btn-primary" disabled={busy === 'gtm'}>{busy === 'gtm' ? 'Matching…' : 'Find & link containers'}</button></form>
 	{#if msgFor('gtm')?.ok}<p class="mt-2 text-sm text-good">{msgFor('gtm')?.ok}</p>{/if}
@@ -101,7 +101,7 @@
 	<h2 class="mb-1 font-medium">5 · Microsoft Clarity</h2>
 	<p class="mb-3 text-xs text-muted-foreground">
 		Clarity has one token per project (a project is usually one site). In Clarity: open the project → <b>Settings</b> → <b>Data Export</b> → <b>Generate new API token</b> (project admins only).
-		Clarity allows <b>10 API calls per project per day</b> and only exposes the last 1–3 days, so OpenSiteConsole stores one snapshot a day. Connecting uses one of today's calls.
+		Clarity allows <b>10 API calls per project per day</b> and only exposes the last 1–3 days, so SEOConsole stores one snapshot a day. Connecting uses one of today's calls.
 	</p>
 	{#if msgFor('clarity')?.ok}<p class="mb-2 text-sm text-good">{msgFor('clarity')?.ok}</p>{/if}
 	{#if msgFor('clarity')?.error}<p class="mb-2 text-sm text-bad">{msgFor('clarity')?.error}</p>{/if}

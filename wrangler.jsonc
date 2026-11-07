@@ -1,4 +1,4 @@
-// Deploys OpenSiteConsole to Cloudflare: a Worker in front of a Container that runs the app.
+// Deploys SEOConsole to Cloudflare: a Worker in front of a Container that runs the app.
 // Setup steps: deploy/cloudflare/README.md. Run from the repository root:  npx --prefix deploy/cloudflare wrangler deploy
 {
 	"$schema": "./deploy/cloudflare/node_modules/wrangler/config-schema.json",

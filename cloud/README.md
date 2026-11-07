@@ -1,6 +1,6 @@
-# OpenSiteConsole Cloud: the control app for the hosted $10 plan
+# SEOConsole Cloud: the control app for the hosted $10 plan
 
-OpenSiteConsole is free to **self-host**. This folder is the small separate program that sells a **hosted** option: a visitor pays $10 a month and gets their **own private instance** (their own copy of the app and their own database), created automatically.
+SEOConsole is free to **self-host**. This folder is the small separate program that sells a **hosted** option: a visitor pays $10 a month and gets their **own private instance** (their own copy of the app and their own database), created automatically.
 
 > **Status: built and tested against fakes, never run against a real Stripe account, Coolify server or Google review.** Webhook verification, the request shapes for Stripe and Coolify, the provisioning state machine and the HTTP server are covered by 45 tests (mutation-checked), and the built program was started and answered requests. Every call to Stripe and Coolify was written from their documentation; **expect to debug first contact**, and do the first run in Stripe's **test mode**. Read "What is not built or not verified" before taking money from anyone.
 
@@ -13,7 +13,7 @@ visitor ──▶ control app (cloud.example.com)
           Stripe ──webhook──▶ control app ──Coolify API──▶ Coolify on your server
                                checkout.session.completed      creates one app per customer from compose.coolify.yaml,
                                subscription updated/deleted     sets its settings, domain c-xxxxxxxx.cloud.example.com, deploys
-customer ──▶ https://c-xxxxxxxx.cloud.example.com   (their own OpenSiteConsole, their own SQLite file)
+customer ──▶ https://c-xxxxxxxx.cloud.example.com   (their own SEOConsole, their own SQLite file)
 Google sign-in ──▶ control app /oauth/callback ──▶ back to that customer's instance (one shared redirect address)
 ```
 Why one instance per customer: it reuses the whole app, and one customer's data can never be reached from another's. The cost is some server memory per customer.

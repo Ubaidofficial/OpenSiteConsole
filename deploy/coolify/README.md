@@ -1,4 +1,4 @@
-# Deploy OpenSiteConsole on Coolify (Netcup or any server)
+# Deploy SEOConsole on Coolify (Netcup or any server)
 
 This is the simplest way to run the app permanently, and the one I recommend over Cloudflare. The app is a Node server that keeps its data in a SQLite file and runs its own background scheduler (daily sync, alerts, digest). A normal server with a disk suits that exactly: no database port, no wake-ups, no R2 bucket.
 

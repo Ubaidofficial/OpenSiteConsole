@@ -92,7 +92,7 @@ export const SCOPE_WRITE = 'https://www.googleapis.com/auth/webmasters';
 export const SCOPE_READ = 'https://www.googleapis.com/auth/webmasters.readonly';
 
 export const SCOPE_GA4_READ = 'https://www.googleapis.com/auth/analytics.readonly';
-/** Read-only on purpose: OpenSiteConsole inspects Tag Manager containers, it never edits or publishes them. */
+/** Read-only on purpose: SEOConsole inspects Tag Manager containers, it never edits or publishes them. */
 export const SCOPE_GTM_READ = 'https://www.googleapis.com/auth/tagmanager.readonly';
 
 /** One consent covers Search Console and (unless GOOGLE_INCLUDE_GA4=0 / GOOGLE_INCLUDE_GTM=0) GA4 and Tag Manager, so users click once. */

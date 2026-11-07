@@ -2,7 +2,7 @@
 	"name": "opensiteconsole-cloudflare",
 	"private": true,
 	"type": "module",
-	"description": "Cloudflare Worker that runs OpenSiteConsole in a Cloudflare Container. Not part of the app's own build.",
+	"description": "Cloudflare Worker that runs SEOConsole in a Cloudflare Container. Not part of the app's own build.",
 	"scripts": {
 		"check": "tsc --noEmit",
 		"deploy": "wrangler deploy -c ../../wrangler.jsonc",

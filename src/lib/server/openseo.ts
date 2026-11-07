@@ -56,7 +56,7 @@ export async function mcpSession(baseUrl: string, apiKey: string, fetchImpl: typ
 		return expectReply ? readRpc(res, id!) : (await res.text(), null);
 	};
 	const init = ++rpcId;
-	const ir = await post({ jsonrpc: '2.0', id: init, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'opensiteconsole', version: '0.2.0' } } }, true, init);
+	const ir = await post({ jsonrpc: '2.0', id: init, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'seoconsole', version: '0.2.0' } } }, true, init);
 	if (ir?.error) throw new OpenSeoError(ir.error.message ?? 'initialize failed');
 	await post({ jsonrpc: '2.0', method: 'notifications/initialized' }, false);
 	return {

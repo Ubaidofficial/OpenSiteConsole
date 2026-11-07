@@ -57,7 +57,7 @@ const gate: Handle = async ({ event, resolve }) => {
 			/* unknown peer: treated as not local */
 		}
 		if (!isLocalRequest(event.request.headers.get('host'), peer, event.request.headers)) {
-			return new Response('OpenSiteConsole refuses remote requests until ADMIN_PASSWORD is set. See .env.example.', { status: 503 });
+			return new Response('SEOConsole refuses remote requests until ADMIN_PASSWORD is set. See .env.example.', { status: 503 });
 		}
 		event.locals.authed = true;
 	}
