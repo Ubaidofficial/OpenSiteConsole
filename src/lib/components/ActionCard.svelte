@@ -18,7 +18,7 @@
 		<Tip text={CONFIDENCE_EXPLAIN[a.confidence]}><span class="chip {conf[a.confidence]}">{a.confidence} confidence</span></Tip>
 		<Tip text={EFFORT_EXPLAIN[a.effort]}><span class="chip">{a.effort} effort</span></Tip>
 	</div>
-	<h3 class="mt-2 font-medium" class:pii={names}>{a.title}</h3>
+	<h2 class="mt-2 font-medium" class:pii={names}>{a.title}</h2>
 	<p class="mt-1 text-sm text-muted-foreground" class:pii={names}>{a.why}</p>
 	<p class="mt-1.5 text-sm" class:pii={names}><b>What to do:</b> {a.how}</p>
 	{#if a.evidence.length}<ul class="pii mt-2 space-y-0.5 text-xs text-muted-foreground">{#each a.evidence as e}<li>· {e}</li>{/each}</ul>{/if}

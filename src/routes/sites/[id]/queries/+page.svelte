@@ -33,16 +33,16 @@
 </script>
 
 <div class="mb-3 flex flex-wrap items-center gap-2">
-	<select class="input" value={data.b} onchange={(e) => setParam('b', e.currentTarget.value)}>
+	<select class="input" aria-label="Query type" value={data.b} onchange={(e) => setParam('b', e.currentTarget.value)}>
 		<option value="all">All queries</option><option value="nonbrand">Non-branded</option><option value="brand">Branded</option>
 	</select>
-	<select class="input" value={data.onlyQuestions ? 'questions' : ''} onchange={(e) => setParam('q', e.currentTarget.value)} title="Question-style queries: how, what, why, can… or containing a question mark (English only)">
+	<select class="input" aria-label="Question queries" value={data.onlyQuestions ? 'questions' : ''} onchange={(e) => setParam('q', e.currentTarget.value)} title="Question-style queries: how, what, why, can… or containing a question mark (English only)">
 		<option value="">Any wording</option><option value="questions">Questions only</option>
 	</select>
-	<select class="input" value={data.filters.country ?? ''} onchange={(e) => setParam('country', e.currentTarget.value)}>
+	<select class="input" aria-label="Country" value={data.filters.country ?? ''} onchange={(e) => setParam('country', e.currentTarget.value)}>
 		<option value="">All countries</option>{#each data.countries as c}<option value={c}>{c.toUpperCase()}</option>{/each}
 	</select>
-	<select class="input" value={data.filters.device ?? ''} onchange={(e) => setParam('device', e.currentTarget.value)}>
+	<select class="input" aria-label="Device" value={data.filters.device ?? ''} onchange={(e) => setParam('device', e.currentTarget.value)}>
 		<option value="">All devices</option>{#each data.devices as d}<option value={d}>{d}</option>{/each}
 	</select>
 	<a class="btn ml-auto" href="/sites/{page.params.id}/export?dim=query&days={page.url.searchParams.get('days') ?? 28}">Export CSV</a>

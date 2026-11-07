@@ -17,7 +17,8 @@
 				<span class="chip {g.severity === 'high' ? 'text-bad' : 'text-warn'}">{g.severity === 'high' ? 'pages close in position' : 'one page dominates'}</span>
 				<span class="tnum ml-auto text-xs text-muted-foreground">{fmtInt(g.totalClicks)} clicks · {fmtInt(g.totalImpressions)} impr. · up to ~{fmtInt(g.potentialClicks)} clicks at stake</span>
 			</div>
-			<table class="w-full table-fixed text-[13px]">
+			<div class="overflow-x-auto">
+			<table class="w-full min-w-[36rem] table-fixed text-[13px]">
 				<colgroup><col class="w-20" /><col /><col class="w-20" /><col class="w-24" /><col class="w-24" /><col class="w-20" /></colgroup>
 				<tbody>
 					{#each g.pages as p, i}
@@ -32,6 +33,7 @@
 					{/each}
 				</tbody>
 			</table>
+			</div>
 		</div>
 	{:else}
 		<div class="card p-6 text-center text-muted-foreground">No cannibalization at this severity. Try “include lower-severity” or a longer period.</div>

@@ -4,6 +4,7 @@
 	import { Toaster, toast } from 'svelte-sonner';
 	import { Bot, LayoutDashboard, Layers, ListChecks, Map as MapIcon, Newspaper, Plug, RefreshCw, Users } from '@lucide/svelte';
 	import PrivacyToggle from '$lib/components/privacy-toggle.svelte';
+	import { pageTitle } from '$lib/titles';
 	import { privacy } from '$lib/privacy.svelte';
 	import { onMount } from 'svelte';
 
@@ -42,6 +43,8 @@
 		else if (typeof f.newKey === 'string') toast.success('API key created. Copy it now; it is shown once.');
 	});
 </script>
+
+<svelte:head><title>{pageTitle(page.url.pathname)}</title></svelte:head>
 
 <Toaster theme="light" richColors closeButton position="bottom-right" />
 

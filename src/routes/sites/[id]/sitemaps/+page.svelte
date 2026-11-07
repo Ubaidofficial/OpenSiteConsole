@@ -22,7 +22,7 @@
 
 <div class="overflow-x-auto rounded-xl border bg-card shadow-xs">
 	<table class="w-full">
-		<thead><tr><th class="th">Sitemap</th><th class="th">Submitted</th><th class="th">Last read</th><th class="th text-right">URLs</th><th class="th text-right">Warnings</th><th class="th text-right">Errors</th><th class="th"></th></tr></thead>
+		<thead><tr><th class="th">Sitemap</th><th class="th">Submitted</th><th class="th">Last read</th><th class="th text-right">URLs</th><th class="th text-right">Warnings</th><th class="th text-right">Errors</th><th class="th relative"><span class="sr-only">Actions</span></th></tr></thead>
 		<tbody>
 			{#each data.sitemaps as s (s.path)}
 				{@const urls = (s.contents ?? []).reduce((a, c) => a + Number(c.submitted ?? 0), 0)}
