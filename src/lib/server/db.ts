@@ -392,6 +392,23 @@ CREATE TABLE IF NOT EXISTS api_keys (
 	site_ids TEXT,                      -- JSON array, NULL = all sites
 	created_at INTEGER NOT NULL, last_used_at INTEGER
 );
+-- OAuth sign-in for the MCP endpoint (claude.ai "custom connector", ChatGPT). A grant owns one api_keys row: that row's secret IS the
+-- access token, rotated on every refresh, so revoking the key on the Agents page revokes the sign-in.
+CREATE TABLE IF NOT EXISTS oauth_clients (
+	id TEXT PRIMARY KEY, name TEXT NOT NULL, redirect_uris TEXT NOT NULL, created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_requests (          -- a checked /authorize request waiting for the owner's decision
+	id TEXT PRIMARY KEY, client_id TEXT NOT NULL, redirect_uri TEXT NOT NULL, code_challenge TEXT NOT NULL,
+	state TEXT, created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_codes (             -- one-time authorization codes (only a hash is kept)
+	hash TEXT PRIMARY KEY, client_id TEXT NOT NULL, redirect_uri TEXT NOT NULL, code_challenge TEXT NOT NULL,
+	site_ids TEXT, expires_at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0, key_id INTEGER
+);
+CREATE TABLE IF NOT EXISTS oauth_grants (
+	id INTEGER PRIMARY KEY, client_id TEXT NOT NULL, key_id INTEGER NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,
+	refresh_hash TEXT NOT NULL UNIQUE, prev_refresh_hash TEXT, refresh_expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL
+);
 `;
 
 declare global {
@@ -411,6 +428,7 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('index_message')) db.exec('ALTER TABLE sites ADD COLUMN index_message TEXT');
 	if (!cols('sites').includes('index_next_at')) db.exec('ALTER TABLE sites ADD COLUMN index_next_at INTEGER');
 	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
+	if (!cols('api_keys').includes('expires_at')) db.exec('ALTER TABLE api_keys ADD COLUMN expires_at INTEGER'); // NULL = never (keys made by hand)
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.

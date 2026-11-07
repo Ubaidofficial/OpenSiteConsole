@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { config } from '$lib/server/config';
 import { checkAdminPassword } from '$lib/server/adminauth';
 import { clientKey } from '$lib/server/guard';
+import { safeNext } from '$lib/server/oauth-core';
 import { createSession, SESSION_COOKIE } from '$lib/server/sessions';
 
 const attempts = new Map<string, { n: number; reset: number }>();
@@ -14,9 +15,10 @@ function prune(now: number) {
 	if (attempts.size >= MAX_TRACKED) attempts.clear();
 }
 
-export const load: PageServerLoad = ({ locals }) => {
-	if (locals.authed && config.hasPassword) redirect(303, '/');
-	if (!config.hasPassword) redirect(303, '/');
+export const load: PageServerLoad = ({ locals, url }) => {
+	const next = safeNext(url.searchParams.get('next')) ?? '/';
+	if (locals.authed && config.hasPassword) redirect(303, next);
+	if (!config.hasPassword) redirect(303, next);
 };
 
 export const actions: Actions = {
@@ -40,6 +42,6 @@ export const actions: Actions = {
 			secure: url.protocol === 'https:',
 			maxAge: session.maxAgeSeconds
 		});
-		redirect(303, '/');
+		redirect(303, safeNext(url.searchParams.get('next')) ?? '/');
 	}
 };
