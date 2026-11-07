@@ -3,6 +3,7 @@
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { enhance } from '$app/forms';
 	import { fmtInt, ago } from '$lib/format';
+	import { SYNC_RUNS_EXPLAIN, syncModeLabel } from '$lib/explain';
 	let { data: page, form } = $props();
 	let saving = $state(false);
 </script>
@@ -32,13 +33,14 @@
 	</section>
 
 	<section class="card overflow-x-auto lg:col-span-2">
-		<h2 class="p-4 pb-2 font-medium">Recent syncs</h2>
+		<h2 class="p-4 pb-1 font-medium">Recent syncs</h2>
+		<p class="max-w-3xl px-4 pb-2 text-xs text-muted-foreground">{SYNC_RUNS_EXPLAIN}</p>
 		<table class="w-full">
 			<thead><tr><th class="th">Started</th><th class="th">Mode</th><th class="th text-right">Days</th><th class="th text-right">Rows</th><th class="th">Result</th></tr></thead>
 			<tbody>
 				{#each page.runs as r}
 					<tr>
-						<td class="td">{ago(r.started_at)}</td><td class="td">{r.mode}</td>
+						<td class="td">{ago(r.started_at)}</td><td class="td">{syncModeLabel(r.mode)}</td>
 						<td class="td tnum text-right">{r.days}</td><td class="td tnum text-right">{fmtInt(r.rows)}</td>
 						<td class="td">{#if r.error}<span class="text-bad">{r.error}</span>{:else if !r.finished_at}running…{:else}ok{r.truncated_days ? ` · ${r.truncated_days} day(s) capped` : ''}{/if}</td>
 					</tr>

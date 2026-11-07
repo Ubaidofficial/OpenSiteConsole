@@ -89,3 +89,43 @@ export const SITE_TABS = [
 	['/clarity', 'Clarity', 'Microsoft Clarity snapshot, once linked. Clarity only exposes the last 1 to 3 days, so one snapshot is stored daily.'],
 	['/settings', 'Settings', 'Site preferences such as label, tags and brand terms, and what data is stored.']
 ] as const;
+
+/** What a row in a site's "Recent syncs" list means. "auto" is the normal run: it also walks one chunk further back while the history is incomplete. */
+export const SYNC_MODE_LABEL: Record<string, string> = { auto: 'Sync + backfill', incremental: 'Sync' };
+export const syncModeLabel = (mode: string) => SYNC_MODE_LABEL[mode] ?? mode;
+export const SYNC_RUNS_EXPLAIN = 'Every run re-pulls the newest few days, because Google revises recent figures. Until your history is complete (up to the 16 months Google keeps), a run also pulls one more chunk of 45 days further back, so a new site shows a string of "Sync + backfill" rows within the first minutes. Days is how many days were pulled in that run.';
+
+/** How the site tabs are grouped in the tab bar: a caption and the tab paths under it. Every tab appears in exactly one group (a test checks it). */
+export const SITE_TAB_GROUPS = [
+	['Traffic', ['', '/queries', '/pages', '/trends', '/groups', '/segments', '/types']],
+	['Findings', ['/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/vitals', '/tests']],
+	['Indexing', ['/indexing', '/indexnow', '/sitemaps', '/inspect']],
+	['Other sources', ['/bing', '/analytics', '/tags', '/clarity']],
+	['Site', ['/settings']]
+] as const;
+
+/**
+ * Hover text for table column headers, by header label. A column's own `title` wins over this. Only labels that mean the same thing
+ * wherever they appear are listed; a label that means different things in different tables (such as "Expected") gets its own title where it is defined.
+ */
+export const COLUMN_HINT: Record<string, string> = {
+	Clicks: 'How many times people clicked through to your site from search results.',
+	Impressions: 'How many times a result for your site was shown in search results.',
+	'Impr.': 'Impressions: how many times a result for your site was shown in search results.',
+	CTR: 'Click-through rate: clicks divided by impressions.',
+	Position: 'Average ranking position in search results. 1 is the top; a lower number is better.',
+	Pos: 'Average ranking position in search results. 1 is the top; a lower number is better.',
+	'Avg position': 'Average ranking position in search results. 1 is the top; a lower number is better.',
+	'Δ': 'Change in clicks, as a percentage, against the previous period of the same length.',
+	'Δ %': 'Change in clicks, as a percentage, against the previous period of the same length.',
+	'Δ clicks': 'Change in clicks, as a percentage, against the previous period of the same length.',
+	'vs site': 'How this page\'s change compares with the change of the whole site, so a page falling while its site grows stands out.',
+	'Est. +clicks': 'Estimated extra clicks per period if this query reached position 3, from this site\'s own click-through curve. An estimate, not a forecast.',
+	'Clicks at stake': 'Estimated extra clicks if one page took the best position for this query.',
+	'Lost clicks': 'Clicks lost against the previous period of the same length.',
+	'Indexed?': 'Whether Google reports the page as being in its index, from URL Inspection.',
+	Sessions: 'Visits, as Google Analytics 4 counts them.',
+	Engaged: 'Share of sessions that Google Analytics 4 counted as engaged.',
+	'Key events': 'Actions you marked as key events in Google Analytics 4 (formerly called conversions).',
+	'Rage clicks': 'Microsoft Clarity flags many rapid clicks in the same spot, a sign the visitor was frustrated.'
+};

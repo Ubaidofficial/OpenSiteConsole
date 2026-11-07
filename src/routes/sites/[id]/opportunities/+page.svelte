@@ -16,7 +16,7 @@
 		{ key: 'page', label: 'Page', type: 'link' as const },
 		{ key: 'missedClicks', label: 'Missed clicks', type: 'int' as const, bar: true },
 		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
-		{ key: 'expectedCtr', label: 'Expected', type: 'pct' as const },
+		{ key: 'expectedCtr', label: 'Expected', type: 'pct' as const, title: 'The click-through rate this site normally earns at that position, from its own data.' },
 		{ key: 'position', label: 'Position', type: 'pos' as const },
 		{ key: 'impressions', label: 'Impressions', type: 'int' as const }
 	];
