@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+<linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e8e8ec"/></linearGradient>
+<linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2a2e"/><stop offset="0.4" stop-color="#0a0a0b"/><stop offset="0.55" stop-color="#3b3b41"/><stop offset="1" stop-color="#101012"/></linearGradient>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#tile)"/><rect x="3" y="3" width="506" height="506" rx="109" fill="none" stroke="#000" stroke-opacity="0.14" stroke-width="2"/>
+<g transform="translate(256 256) scale(1.2) translate(-256 -256) translate(-14 8)">
+<g fill="none" stroke="url(#chrome)" stroke-linecap="round"><circle cx="232" cy="226" r="110" stroke-width="50"/><path d="M312 306 L384 378" stroke-width="54"/></g>
+<g fill="#0a0a0b"><rect x="180" y="226" width="34" height="52" rx="9"/><rect x="224" y="192" width="34" height="86" rx="9"/><rect x="268" y="160" width="34" height="118" rx="9"/></g>
+</g>
+</svg>

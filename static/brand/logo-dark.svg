@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+<linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#232326"/><stop offset="1" stop-color="#050506"/></linearGradient>
+<radialGradient id="sheen" cx="0.25" cy="0.08" r="0.85"><stop offset="0" stop-color="#fff" stop-opacity="0.17"/><stop offset="0.55" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f4f6"/><stop offset="0.32" stop-color="#8f8f98"/><stop offset="0.5" stop-color="#ffffff"/><stop offset="0.72" stop-color="#b4b4bc"/><stop offset="1" stop-color="#6b6b73"/></linearGradient>
+<linearGradient id="bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#b9b9c1"/></linearGradient>
+<radialGradient id="glass" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#fff" stop-opacity="0.13"/><stop offset="1" stop-color="#fff" stop-opacity="0.02"/></radialGradient>
+<filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#tile)"/><rect width="512" height="512" rx="112" fill="url(#sheen)"/>
+<rect x="3" y="3" width="506" height="506" rx="109" fill="none" stroke="#fff" stroke-opacity="0.12" stroke-width="2"/>
+<g transform="translate(14 1)">
+<circle cx="218" cy="236" r="112" fill="url(#glass)"/>
+<g filter="url(#glow)" fill="none" stroke="url(#chrome)" stroke-linecap="round"><circle cx="218" cy="236" r="112" stroke-width="42"/><path d="M300 318 L376 394" stroke-width="46"/></g>
+<g fill="url(#bar)"><rect x="168" y="236" width="30" height="46" rx="8"/><rect x="208" y="202" width="30" height="80" rx="8"/><rect x="248" y="164" width="30" height="118" rx="8"/></g>
+<path d="M322 92 C324 112 330 118 350 120 C330 122 324 128 322 148 C320 128 314 122 294 120 C314 118 320 112 322 92 Z" fill="#fff" filter="url(#glow)"/>
+</g>
+</svg>
