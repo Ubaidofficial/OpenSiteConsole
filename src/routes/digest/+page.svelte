@@ -34,7 +34,7 @@
 				<tr><td class="td tnum w-8 text-muted-foreground">{i + 1}</td>
 					<td class="td"><a class="hover:underline" class:pii={NAMES_TARGETS.has(t.type as ActionType)} href={t.href}>{t.title}</a>{#if t.blocking}<span class="chip ml-2 border-[color:var(--bad)] text-bad">blocking</span>{/if}</td>
 					<td class="td pii text-xs text-muted-foreground">{t.site}</td>
-					<td class="td tnum whitespace-nowrap text-right text-xs">{t.impact != null ? `≈ ${fmtInt(t.impact)} clicks / 28 d` : 'no estimate'}</td></tr>
+					<td class="td tnum whitespace-nowrap text-right text-xs">{t.impact != null ? `≈ ${fmtInt(t.impact)} clicks / 28d` : 'no estimate'}</td></tr>
 			{/each}
 		</tbody></table></div>
 	{/if}
