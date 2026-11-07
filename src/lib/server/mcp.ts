@@ -12,7 +12,8 @@ import { addDays } from './dates';
 import { computeCannibalization, computeCtrGaps, computeDecay, computeStriking, ctrOf, detectAnomalies, isBranded, pctChange } from '../analytics';
 import { linksFor } from './links';
 import { openSeoProjectUrl } from './connect';
-import { authenticate } from './apikeys';
+import { authenticate, presentedKey } from './apikeys';
+import { config } from './config';
 import { hostKey } from './hosts';
 import { coverageMap } from '../property';
 import { gtmSnapshot, trackingHealth } from './tracking';
@@ -709,7 +710,12 @@ const rpcErr = (id: unknown, code: number, message: string) => ({ jsonrpc: '2.0'
 export async function handleMcp(request: Request): Promise<Response> {
 	const auth = authenticate(request);
 	const headers = { 'content-type': 'application/json' };
-	if (!auth) return new Response(JSON.stringify(rpcErr(null, -32001, 'Missing or invalid API key (create one on the Agents page)')), { status: 401, headers: { ...headers, 'www-authenticate': 'Bearer' } });
+	if (!auth) {
+		// RFC 9728 / the MCP authorization spec: a 401 that names the discovery document is what starts "Sign in" in an MCP client.
+		// A credential that was sent but is no good (revoked, or an expired token to refresh) is reported as invalid_token.
+		const challenge = `Bearer resource_metadata="${config.origin}/.well-known/oauth-protected-resource/api/mcp"${presentedKey(request) ? ', error="invalid_token"' : ''}`;
+		return new Response(JSON.stringify(rpcErr(null, -32001, 'Missing or invalid API key (create one on the Agents page, or sign in from a connector)')), { status: 401, headers: { ...headers, 'www-authenticate': challenge } });
+	}
 	if (rateLimited(auth.id)) return new Response(JSON.stringify(rpcErr(null, -32029, `Too many requests: at most ${MCP_RATE_PER_MINUTE} a minute per key.`)), { status: 429, headers: { ...headers, 'retry-after': '60' } });
 	let msg: { jsonrpc?: string; id?: unknown; method?: string; params?: Record<string, unknown> };
 	try {

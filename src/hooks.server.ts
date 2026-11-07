@@ -4,7 +4,7 @@ import { ensureDemoAccounts } from '$lib/server/accounts';
 import { startScheduler } from '$lib/server/jobs';
 import { db } from '$lib/server/db';
 import { validSession, SESSION_COOKIE } from '$lib/server/sessions';
-import { isLocalRequest } from '$lib/server/guard';
+import { crossSiteRefused, isLocalRequest } from '$lib/server/guard';
 import { securityHeaders } from '$lib/server/headers';
 
 let booted: Promise<void> | null = null;
@@ -21,23 +21,34 @@ export const init: ServerInit = async () => {
 	await boot();
 };
 
-const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+/**
+ * OAuth endpoints that programs (an MCP client's servers) call without a browser session: they carry no cookie and grant nothing by
+ * themselves, so neither the login gate nor the cross-site check applies. /oauth/authorize is NOT here: it needs the owner signed in.
+ */
+const OAUTH_PROGRAM_ENDPOINTS = new Set(['/oauth/register', '/oauth/token']);
+const isDiscovery = (path: string) => path.startsWith('/.well-known/oauth-');
 
 const gate: Handle = async ({ event, resolve }) => {
 	await boot();
 	const path = event.url.pathname;
 
-	// Cross-site requests that change state are refused outright. SvelteKit's own check only covers form content types, so a
-	// request with no content type (a bare POST) would otherwise get through. The MCP endpoint is for programs, not browsers,
-	// and authenticates with its own API key.
-	if (!SAFE_METHODS.has(event.request.method) && path !== '/api/mcp') {
-		const origin = event.request.headers.get('origin');
-		if ((origin && origin !== event.url.origin) || event.request.headers.get('sec-fetch-site') === 'cross-site') {
-			return new Response('Cross-site requests are not allowed.', { status: 403 });
-		}
+	// Cross-site requests that change state are refused outright (see crossSiteRefused: it also stands in for SvelteKit's own form check, which is
+	// switched off in svelte.config.js because it cannot exempt the server-to-server endpoints). The MCP endpoint and the two OAuth endpoints are for
+	// programs, not browsers, and authenticate with their own credentials.
+	if (
+		crossSiteRefused({
+			method: event.request.method,
+			origin: event.request.headers.get('origin'),
+			secFetchSite: event.request.headers.get('sec-fetch-site'),
+			contentType: event.request.headers.get('content-type'),
+			urlOrigin: event.url.origin,
+			programEndpoint: path === '/api/mcp' || OAUTH_PROGRAM_ENDPOINTS.has(path)
+		})
+	) {
+		return new Response('Cross-site requests are not allowed.', { status: 403 });
 	}
 
-	if (path === '/api/mcp') {
+	if (path === '/api/mcp' || OAUTH_PROGRAM_ENDPOINTS.has(path) || isDiscovery(path)) {
 		event.locals.authed = false;
 		return resolve(event);
 	}
@@ -45,7 +56,9 @@ const gate: Handle = async ({ event, resolve }) => {
 	if (config.hasPassword) {
 		event.locals.authed = validSession(event.cookies.get(SESSION_COOKIE));
 		if (!event.locals.authed && path !== '/login') {
-			return new Response(null, { status: 303, headers: { location: '/login' } });
+			// Someone sent here to approve an app is returned to that request after signing in (and only to that page).
+			const back = path === '/oauth/authorize' && event.request.method === 'GET' ? `/login?next=${encodeURIComponent(path + event.url.search)}` : '/login';
+			return new Response(null, { status: 303, headers: { location: back } });
 		}
 	} else {
 		// No password configured: only serve to this machine, demo mode included (it exposes the same settings and integrations).

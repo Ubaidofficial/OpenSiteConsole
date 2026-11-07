@@ -6,13 +6,17 @@ import { allSites } from '$lib/server/queries';
 import { displayName } from '$lib/server/clients';
 import { intParam } from '$lib/server/params';
 import { MCP_TOOL_NAMES } from '$lib/server/mcp';
+import { oauthLabels } from '$lib/server/oauth';
 
-export const load: PageServerLoad = () => ({
-	keys: listApiKeys().map((k) => ({ id: k.id, name: k.name, prefix: k.prefix, scope: k.site_ids ? (JSON.parse(k.site_ids) as number[]) : null, createdAt: k.created_at, lastUsedAt: k.last_used_at })),
-	sites: allSites().map((s) => ({ id: s.id, name: displayName(s.site_url) })),
-	mcpUrl: `${config.origin}/api/mcp`,
-	tools: MCP_TOOL_NAMES
-});
+export const load: PageServerLoad = () => {
+	const signIns = oauthLabels(); // keys that exist because an app was approved with "Sign in", by app name
+	return {
+		keys: listApiKeys().map((k) => ({ id: k.id, name: k.name, prefix: k.prefix, scope: k.site_ids ? (JSON.parse(k.site_ids) as number[]) : null, createdAt: k.created_at, lastUsedAt: k.last_used_at, signInApp: signIns.get(k.id) ?? null })),
+		sites: allSites().map((s) => ({ id: s.id, name: displayName(s.site_url) })),
+		mcpUrl: `${config.origin}/api/mcp`,
+		tools: MCP_TOOL_NAMES
+	};
+};
 
 export const actions: Actions = {
 	create: async ({ request }) => {

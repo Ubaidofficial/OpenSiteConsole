@@ -57,7 +57,8 @@
 	</section>
 	<section class="card p-4 text-sm">
 		<h3 class="mb-1 font-medium">Claude (claude.ai and the desktop app)</h3>
-		<p class="text-xs text-muted-foreground">Settings → Connectors → add a custom connector. URL: <code>{data.mcpUrl}</code>. Authentication: no sign-in. Under request headers add <code>Authorization</code> with the value <code>Bearer osc_YOUR_KEY</code>. Anthropic's help article describes custom connectors with fixed header credentials; the menu names move around, so follow their current article if a label differs. Custom connectors are not on every plan.</p>
+		<p class="text-xs text-muted-foreground"><b>Sign in (recommended).</b> Customize → Connectors → Add custom connector. URL: <code>{data.mcpUrl}</code>. Authentication: <b>Sign in now</b>, and if it asks how Claude identifies itself, choose <b>Register automatically</b>. Add it, click Connect, and approve on the page that opens (you sign in with your admin password). No key to paste. Revoke it any time from the keys table below.</p>
+		<p class="mt-2 text-xs text-muted-foreground"><b>Fixed key instead.</b> Authentication: no sign-in, and under Request headers add <code>authorization</code> with the value <code>Bearer osc_YOUR_KEY</code>. Anthropic describes request headers as a beta for some organizations only. Menu names move around, so follow their current article if a label differs.</p>
 	</section>
 	<section class="card p-4 text-sm">
 		<h3 class="mb-1 font-medium">Codex</h3>
@@ -88,7 +89,7 @@ bearer_token_env_var = "OSC_MCP_KEY"</pre>
 		<tbody>
 			{#each data.keys as k (k.id)}
 				<tr>
-					<td class="td">{k.name}</td><td class="td"><code>{k.prefix}…</code></td>
+					<td class="td">{k.name}{#if k.signInApp}<span class="chip ml-2" title="Created when {k.signInApp} was approved with Sign in. Its token is renewed automatically; revoke it here to cut the app off.">sign-in</span>{/if}</td><td class="td"><code>{k.prefix}…</code></td>
 					<td class="td text-xs"><span class="pii">{k.scope ? k.scope.map(nameOf).join(', ') : 'all sites'}</span></td>
 					<td class="td text-xs text-muted-foreground">{k.lastUsedAt ? ago(k.lastUsedAt) : 'never'}</td>
 					<td class="td text-right"><form method="POST" action="?/remove" use:enhance><input type="hidden" name="id" value={k.id} /><ConfirmButton title="Revoke this API key?" description="Anything using this key (an agent, a script) loses access immediately." confirmLabel="Revoke key">Revoke</ConfirmButton></form></td>

@@ -60,3 +60,25 @@ export function clientKey(getClientAddress: () => string): string {
 		return 'unknown';
 	}
 }
+
+const FORM_TYPES = new Set(['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain']);
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/**
+ * Should this request be refused as a cross-site attack? Used for every request that can change something.
+ *
+ * Programs that call us from a server (the MCP endpoint, OAuth registration and token exchange) send no browser headers and carry no cookie, so
+ * there is nothing to forge: `programEndpoint` exempts them. For everything else:
+ *  - a request that names a different origin, or that the browser marks cross-site, is refused;
+ *  - a form-type POST/PUT/PATCH/DELETE must come from this origin. That is SvelteKit's own check (which only runs when it is switched on in
+ *    svelte.config.js; it cannot exempt a path, so it is off and this function does the same job with the exemption), so a bare form POST
+ *    with no Origin header is refused here too.
+ */
+export function crossSiteRefused(o: { method: string; origin: string | null; secFetchSite: string | null; contentType: string | null; urlOrigin: string; programEndpoint: boolean }): boolean {
+	if (SAFE_METHODS.has(o.method.toUpperCase())) return false;
+	if (o.programEndpoint) return false;
+	if (o.origin && o.origin !== o.urlOrigin) return true;
+	if (o.secFetchSite === 'cross-site') return true;
+	const type = (o.contentType ?? '').split(';')[0].trim().toLowerCase();
+	return FORM_TYPES.has(type) && o.origin !== o.urlOrigin;
+}
