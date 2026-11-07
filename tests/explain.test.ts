@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACTION_TYPES, DONE_DAYS, SNOOZE_DAYS } from '../src/lib/actions';
-import { readFileSync } from 'node:fs';
 import { BLOCKING_EXPLAIN, BUTTON_EXPLAIN, CONFIDENCE_EXPLAIN, EFFORT_EXPLAIN, IMPACT_EXPLAIN, NO_IMPACT_EXPLAIN, TYPE_EXPLAIN, TYPE_LABEL } from '../src/lib/explain';
 
 describe('action explainers', () => {
