@@ -126,7 +126,7 @@
 			{#if grouped}
 				<tr>
 					{#each bands as b}
-						<th colspan={b.span} class="px-3 pt-2.5 pb-1 text-left text-xs font-semibold tracking-wide" style="{b.color ? `background-color:color-mix(in oklab, ${b.color} 12%, transparent);color:color-mix(in oklab, ${b.color} 70%, var(--foreground));` : ''}{b.label ? 'border-left:1px solid var(--border);' : ''}">{b.label}</th>
+						<th colspan={b.span} class="relative px-3 pt-2.5 pb-1 text-left text-xs font-semibold tracking-wide" style="{b.color ? `background-color:color-mix(in oklab, ${b.color} 12%, transparent);color:color-mix(in oklab, ${b.color} 70%, var(--foreground));` : ''}{b.label ? 'border-left:1px solid var(--border);' : ''}">{#if b.label}{b.label}{:else}<span class="sr-only">Group</span>{/if}</th>
 					{/each}
 				</tr>
 			{/if}

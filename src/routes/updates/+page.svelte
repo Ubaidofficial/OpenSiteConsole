@@ -29,7 +29,7 @@
 
 <div class="card overflow-x-auto">
 	<table class="w-full">
-		<thead><tr><th class="th">Update</th><th class="th">Type</th><th class="th">Started</th><th class="th">Finished</th><th class="th">Source</th><th class="th"></th></tr></thead>
+		<thead><tr><th class="th">Update</th><th class="th">Type</th><th class="th">Started</th><th class="th">Finished</th><th class="th">Source</th><th class="th relative"><span class="sr-only">Actions</span></th></tr></thead>
 		<tbody>
 			{#each data.updates as u (u.id)}
 				<tr>

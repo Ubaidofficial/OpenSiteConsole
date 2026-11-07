@@ -62,3 +62,30 @@ export const PORTFOLIO_TAB_EXPLAIN: Record<string, string> = {
 	decay: 'Pages that lost clicks compared with the previous period of the same length. "Δ" is the page\'s change and "vs site" compares it with how the whole site moved, so a page falling while its site grows stands out.',
 	anomalies: 'Days when a site\'s clicks were unusually far from what is normal for that weekday. "Expected" is that normal level. Check tracking, indexing and Google updates before assuming a real change.'
 };
+
+/** The tabs on a site's page: path under /sites/<id>, label, and what the tab is for (shown on hover). One list, so the tab bar, the hover text and the browser titles cannot drift apart. */
+export const SITE_TABS = [
+	['', 'Overview', 'Traffic chart for the period, unusual days, and your change log.'],
+	['/actions', 'Actions', 'This site\'s to-do list, in the order to do it.'],
+	['/queries', 'Queries', 'Search queries, with filters for brand, country and device.'],
+	['/pages', 'Pages', 'Pages with Google, Bing, GA4 and Clarity numbers side by side.'],
+	['/trends', 'Trends', 'Queries and pages whose clicks changed by more than normal day-to-day noise, against the previous period.'],
+	['/groups', 'Groups', 'Pages grouped by the folder they live in, to see which section of the site is growing or shrinking.'],
+	['/opportunities', 'Opportunities', 'Your own click-through rate by position, and the queries ranking just below the top results (striking distance).'],
+	['/cannibalization', 'Cannibalization', 'Queries where two or more of your pages each hold a real share of the impressions.'],
+	['/decay', 'Decay', 'Pages that lost clicks against the previous period by more than the site as a whole moved.'],
+	['/segments', 'Segments', 'Clicks and impressions split by device and by country.'],
+	['/types', 'Search types', 'Search Console numbers split by search type, such as web, image and video.'],
+	['/vitals', 'Web vitals', 'Real-visitor page speed (Core Web Vitals) from Google\'s Chrome UX Report. Needs a free Google API key.'],
+	['/tests', 'Tests', 'Measure whether an SEO change worked, comparing before and after or against control pages.'],
+	['/indexing', 'Indexing', 'Watch whether Google has indexed your pages, using a rotating sample of URL inspections.'],
+	['/indexnow', 'IndexNow', 'Tell Bing and other IndexNow search engines the moment a page changes.'],
+	['/onpage', 'On-page', 'Checks pages for common on-page problems, such as a missing title or description.'],
+	['/sitemaps', 'Sitemaps', 'Your sitemaps as Google sees them, with a check that each can be fetched and read.'],
+	['/inspect', 'Inspect', 'Look up Google\'s index status for specific URLs (URL Inspection).'],
+	['/bing', 'Bing', 'Bing Webmaster data for this site, once Bing is linked.'],
+	['/analytics', 'GA4', 'Google Analytics 4 organic sessions beside Search Console clicks, once GA4 is linked.'],
+	['/tags', 'Tag Manager', 'What is in your Google Tag Manager container, checked against GA4 and Search Console, once it is linked.'],
+	['/clarity', 'Clarity', 'Microsoft Clarity snapshot, once linked. Clarity only exposes the last 1 to 3 days, so one snapshot is stored daily.'],
+	['/settings', 'Settings', 'Site preferences such as label, tags and brand terms, and what data is stored.']
+] as const;

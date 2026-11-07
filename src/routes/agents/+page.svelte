@@ -18,7 +18,8 @@
 		<p class="mb-1 text-sm font-medium">Copy your key now — it is shown only once.</p>
 		<code class="block break-all rounded bg-black/5 p-2 text-sm dark:bg-white/10">{form.newKey}</code>
 		<p class="mt-3 mb-1 text-xs text-muted-foreground">Claude Code:</p>
-		<pre class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">claude mcp add --transport http seoconsole {data.mcpUrl} --header "Authorization: Bearer {form.newKey}"</pre>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
+		<pre tabindex="0" class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">claude mcp add --transport http seoconsole {data.mcpUrl} --header "Authorization: Bearer {form.newKey}"</pre>
 	</div>
 {/if}
 
@@ -50,7 +51,8 @@
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<section class="card p-4 text-sm">
 		<h3 class="mb-1 font-medium">Claude Code</h3>
-		<pre class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">claude mcp add --transport http seoconsole {data.mcpUrl} --header "Authorization: Bearer osc_YOUR_KEY"</pre>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
+		<pre tabindex="0" class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">claude mcp add --transport http seoconsole {data.mcpUrl} --header "Authorization: Bearer osc_YOUR_KEY"</pre>
 		<p class="mt-2 text-xs text-muted-foreground">Run it in a terminal on your own computer, then check with <code>claude mcp list</code>. By default the server is available only in the folder you ran it in. Add <code>--scope user</code> right after <code>mcp add</code> to have it in every project; Claude Code's documentation says user-scope servers are stored in <code>~/.claude.json</code>, which sessions in the desktop app's Code tab also read. Cloud sessions run on Anthropic's servers and cannot reach a <code>localhost</code> address.</p>
 	</section>
 	<section class="card p-4 text-sm">
@@ -60,10 +62,12 @@
 	<section class="card p-4 text-sm">
 		<h3 class="mb-1 font-medium">Codex</h3>
 		<p class="mb-1 text-xs text-muted-foreground">In <code>~/.codex/config.toml</code> (or a trusted project's <code>.codex/config.toml</code>), with the key in an environment variable:</p>
-		<pre class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">[mcp_servers.seoconsole]
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
+		<pre tabindex="0" class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">[mcp_servers.seoconsole]
 url = "{data.mcpUrl}"
 bearer_token_env_var = "OSC_MCP_KEY"</pre>
-		<pre class="mt-1 overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">export OSC_MCP_KEY=osc_YOUR_KEY</pre>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
+		<pre tabindex="0" class="mt-1 overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">export OSC_MCP_KEY=osc_YOUR_KEY</pre>
 	</section>
 	<section class="card p-4 text-sm">
 		<h3 class="mb-1 font-medium">ChatGPT</h3>
@@ -72,14 +76,15 @@ bearer_token_env_var = "OSC_MCP_KEY"</pre>
 	<section class="card p-4 text-sm lg:col-span-2">
 		<h3 class="mb-1 font-medium">Cursor and other clients</h3>
 		<p class="mb-1 text-xs text-muted-foreground">Clients that take a server URL plus headers usually accept this shape (check your client's documentation for the exact file and field names):</p>
-		<pre class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">{`{ "mcpServers": { "seoconsole": { "url": "${data.mcpUrl}", "headers": { "Authorization": "Bearer osc_YOUR_KEY" } } } }`}</pre>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
+		<pre tabindex="0" class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">{`{ "mcpServers": { "seoconsole": { "url": "${data.mcpUrl}", "headers": { "Authorization": "Bearer osc_YOUR_KEY" } } } }`}</pre>
 	</section>
 </div>
 
 <h2 class="mt-6 mb-2 font-medium">Keys</h2>
 <div class="card overflow-x-auto">
 	<table class="w-full">
-		<thead><tr><th class="th">Name</th><th class="th">Key</th><th class="th">Scope</th><th class="th">Last used</th><th class="th"></th></tr></thead>
+		<thead><tr><th class="th">Name</th><th class="th">Key</th><th class="th">Scope</th><th class="th">Last used</th><th class="th relative"><span class="sr-only">Actions</span></th></tr></thead>
 		<tbody>
 			{#each data.keys as k (k.id)}
 				<tr>

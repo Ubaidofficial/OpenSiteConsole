@@ -107,6 +107,7 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 - **Eye on a card:** hides that site from the dashboard (it leaves the totals and stops syncing). A toast offers Undo, and "Show hidden sites" at the bottom brings it back.
 - **Light theme only**: there is no theme switcher, and the app ignores your OS dark-mode setting.
 - **Hover explainers:** on the Actions page, hover any chip (type, ≈ clicks / 28d, confidence, effort, "Do first: blocking") or button (Open, Done, Snooze 30d) for what it means. Done hides an item for 90 days and Snooze for 30 days; either returns if the problem is still found.
+- **Tab titles and tab hints:** every page sets its own browser-tab title (for example "Queries · SEOConsole"; it never contains a site name, because privacy mode cannot blur the tab strip or your history), and every tab on a site's page explains itself on hover.
 - **Dashed end of each chart:** the last two days, which Google may still revise.
 
 ## What it does
@@ -145,7 +146,7 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 - **Anonymised queries**: Google hides some queries, so query tables never sum to the totals. The share is shown per site.
 - **Per-day row cap** (`MAX_ROWS_PER_DAY`, default 100k): very large sites lose long-tail detail beyond it. Totals stay exact. Large sites may want Google's bulk BigQuery export instead.
 - **Not yet built**: Yandex, email delivery of digests (webhook only), multi-user roles, i18n, PDF/client reports, SERP/rank tracking, the Indexing API, a REST API and monthly / white-label client reports (planned, not built), **writing** to Tag Manager / GA4 through MCP (creating tags, key events or custom dimensions, publishing containers): everything is read-only by design for now.
-- **Verified**: unit/integration tests (`pnpm test`, 439 passing), type-check (`pnpm check`), production build, and a headless-browser crawl of the pages against **demo data**, including privacy-mode and phone-width checks.
+- **Verified**: unit/integration tests (`pnpm test`, 450 passing), type-check (`pnpm check`), production build, and a headless-browser crawl of the pages against **demo data**, including privacy-mode and phone-width checks.
   **Not verified**: a live Google OAuth round-trip and real Search Console / GA4 / Tag Manager / Clarity / Chrome UX Report responses (search types, search appearance, GA4 landing pages and Core Web Vitals are tested against documented response shapes and demo data only), the Bing OAuth flow, and the OpenSEO connection against a real instance — no credentials were available. Bing's API-key endpoint and its error format *were* confirmed against the live service (a deliberately invalid key returned Bing's documented `InvalidApiKey`). The MCP server was checked with the official MCP SDK client. Expect to debug first contact with the real APIs.
 - **Motion** is short and subtle (page settle, staggered cards, charts drawing left to right, small bars growing, press feedback), and is switched off entirely for people whose system asks for reduced motion.
 - **Comparisons wait for history.** Trends, Groups, Indexing classes and SEO tests compare against the previous period; while that period is still downloading, or has no data, they say so instead of showing every query as a winner.

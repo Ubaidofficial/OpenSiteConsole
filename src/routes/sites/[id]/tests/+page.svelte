@@ -26,7 +26,7 @@
 	<h2 class="mb-2 font-medium">New test</h2>
 	<form method="POST" action="?/create" use:enhance class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
 		<input class="input" name="name" placeholder="Name, e.g. New titles on /guides/" required />
-		<select class="input" name="kind" bind:value={kind}>{#each Object.entries(kinds) as [k, l]}<option value={k}>{l}</option>{/each}</select>
+		<select class="input" name="kind" aria-label="Kind of test" bind:value={kind}>{#each Object.entries(kinds) as [k, l]}<option value={k}>{l}</option>{/each}</select>
 		<label class="flex items-center gap-2"><span class="w-40 text-xs text-muted-foreground">Change went live on</span><input class="input" type="date" name="startDate" max={data.today} required /></label>
 		<label class="flex items-center gap-2"><span class="w-40 text-xs text-muted-foreground">Compare windows of</span><select class="input" name="windowDays"><option value="14">14 days</option><option value="28" selected>28 days</option><option value="56">56 days</option></select></label>
 		{#if kind !== 'switch'}
