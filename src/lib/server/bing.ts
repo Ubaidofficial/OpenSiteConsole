@@ -24,7 +24,14 @@ export interface BingClient {
 	dailyStats(siteUrl: string): Promise<BingDay[]>;
 	queryStats(siteUrl: string): Promise<BingTermRow[]>;
 	pageStats(siteUrl: string): Promise<BingTermRow[]>;
+	/** Tell Bing about URLs (its URL submission API, up to 500 per call). Throws BingApiError when Bing refuses. */
+	submitUrlBatch(siteUrl: string, urls: string[]): Promise<void>;
+	/** URLs Bing still accepts today and this month; null where Bing did not say. */
+	urlSubmissionQuota(siteUrl: string): Promise<{ daily: number | null; monthly: number | null }>;
 }
+
+/** Bing takes at most this many URLs in one SubmitUrlBatch call (Microsoft Learn / the Bing webmaster blog). */
+export const BING_MAX_URLS_PER_CALL = 500;
 
 /**
  * Bing returns WCF dates like "/Date(1316156400000-0700)/": epoch ms plus the offset the day was
@@ -82,7 +89,7 @@ export class RealBingClient implements BingClient {
 		private http: HttpOpts = {}
 	) {}
 
-	private async call<T>(method: string, params: Record<string, string> = {}): Promise<T> {
+	private async call<T>(method: string, params: Record<string, string> = {}, payload?: unknown): Promise<T> {
 		const f = this.http.fetchImpl ?? fetch;
 		const wait = this.http.sleepImpl ?? sleep;
 		const secret = bingSecret(this.integrationId);
@@ -94,12 +101,12 @@ export class RealBingClient implements BingClient {
 			else (base = OAUTH_BASE), (headers.authorization = `Bearer ${await bearer(this.integrationId, f)}`);
 			let res: Response;
 			try {
-				res = await f(`${base}/${method}?${q}`, { headers });
+				res = await f(`${base}/${method}?${q}`, payload === undefined ? { headers } : { method: 'POST', headers: { ...headers, 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify(payload) });
 			} catch {
 				// Never surface the raw error: its message can contain the URL, and the URL contains the API key.
 				throw new BingApiError('Could not reach Bing Webmaster API', 0);
 			}
-			if (res.ok) return ((await res.json()) as { d: T }).d;
+			if (res.ok) return ((await res.json().catch(() => ({}))) as { d: T }).d;
 			if ((res.status === 429 || res.status >= 500) && attempt < (this.http.retries ?? 3)) {
 				await wait(800 * 2 ** attempt);
 				continue;
@@ -122,6 +129,15 @@ export class RealBingClient implements BingClient {
 	}
 	async queryStats(siteUrl: string) {
 		return this.terms(await this.call('GetQueryStats', { siteUrl }));
+	}
+	async submitUrlBatch(siteUrl: string, urls: string[]) {
+		if (urls.length > BING_MAX_URLS_PER_CALL) throw new BingApiError(`At most ${BING_MAX_URLS_PER_CALL} URLs per call.`, 400);
+		await this.call('SubmitUrlBatch', {}, { siteUrl, urlList: urls });
+	}
+	async urlSubmissionQuota(siteUrl: string) {
+		const r = await this.call<{ DailyQuota?: number; MonthlyQuota?: number } | null>('GetUrlSubmissionQuota', { siteUrl });
+		const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+		return { daily: n(r?.DailyQuota), monthly: n(r?.MonthlyQuota) };
 	}
 	async pageStats(siteUrl: string) {
 		// Per Microsoft's docs GetPageStats reuses the QueryStats shape, with the page URL in `Query`.

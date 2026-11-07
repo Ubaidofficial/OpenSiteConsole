@@ -1,5 +1,5 @@
 /**
- * Pages seen by every source side by side (Google, Bing, GA4, Clarity), joined on the URL path. Pure functions, unit-tested.
+ * Pages seen by every source side by side (Google, Bing, GA4, AI assistants via GA4, Clarity), joined on the URL path. Pure functions, unit-tested.
  *
  * The join key is the path with no query string, fragment or trailing slash, because that is all GA4 reports and the other
  * sources differ in host (www or not) and scheme. Several URLs with the same path (http / https / www variants) are rolled up
@@ -9,6 +9,8 @@ import { pctChange } from './analytics';
 
 export interface Vol { url: string; clicks: number; impressions: number; position: number }
 export interface Ga4Page { page: string; sessions: number; engagedSessions: number; keyEvents: number }
+/** GA4 sessions that came from one AI assistant and landed on one page. */
+export interface AiPage { page: string; assistant: string; sessions: number; engagedSessions: number; keyEvents: number }
 export interface ClarityPage { url: string; sessions: number | null; rageClicks: number | null; deadClicks: number | null }
 
 /** Path of a URL (or of something that already is a path): no query, no fragment, no trailing slash, "/" stays "/". */
@@ -49,6 +51,10 @@ export interface PageSources {
 	bingPrev: Vol[] | null;
 	ga4: Ga4Page[] | null;
 	ga4Prev: Ga4Page[] | null;
+	/** GA4 sessions from AI assistants (ChatGPT, Perplexity, Gemini, Claude, Copilot) by landing page */
+	ai: AiPage[] | null;
+	/** null when the previous window is not stored (or had no AI sessions to compare with): no change is claimed */
+	aiPrev: AiPage[] | null;
 	clarity: ClarityPage[] | null;
 }
 
@@ -60,6 +66,8 @@ export interface InsightRow {
 	gClicks: number | null; gClicksD: number | null; gImpr: number | null; gImprD: number | null; gPos: number | null;
 	bClicks: number | null; bClicksD: number | null; bImpr: number | null; bImprD: number | null; bPos: number | null;
 	aSessions: number | null; aSessionsD: number | null; aEngaged: number | null; aKeyEvents: number | null; aKeyEventsD: number | null;
+	/** GA4 sessions that arrived from AI assistants, across all of them; aiBy is the split, busiest first */
+	aiSessions: number | null; aiSessionsD: number | null; aiEngaged: number | null; aiKeyEvents: number | null; aiTop: string | null; aiBy: { assistant: string; sessions: number }[] | null;
 	cSessions: number | null; cRage: number | null; cDead: number | null;
 }
 
@@ -88,6 +96,22 @@ export function mergePages(s: PageSources, originFor: (path: string) => string):
 		c.keyEvents += r.keyEvents;
 		gap.set(k, c);
 	}
+	// AI assistants: one row per page, summed over assistants, with the split kept for "which assistant".
+	const rollAi = (rows: AiPage[] | null) => {
+		const m = new Map<string, { sessions: number; engaged: number; keyEvents: number; by: Map<string, number> }>();
+		for (const r of rows ?? []) {
+			const k = pathKey(r.page);
+			const c = m.get(k) ?? { sessions: 0, engaged: 0, keyEvents: 0, by: new Map<string, number>() };
+			c.sessions += r.sessions;
+			c.engaged += r.engagedSessions;
+			c.keyEvents += r.keyEvents;
+			c.by.set(r.assistant, (c.by.get(r.assistant) ?? 0) + r.sessions);
+			m.set(k, c);
+		}
+		return m;
+	};
+	const ai = rollAi(s.ai);
+	const aip = s.aiPrev ? rollAi(s.aiPrev) : null;
 	const cl = new Map<string, ClarityPage>();
 	for (const r of s.clarity ?? []) {
 		const k = pathKey(r.url);
@@ -98,14 +122,16 @@ export function mergePages(s: PageSources, originFor: (path: string) => string):
 		c.deadClicks = add(c.deadClicks, r.deadClicks);
 		cl.set(k, c);
 	}
-	const paths = new Set<string>([...g.keys(), ...(b?.keys() ?? []), ...ga.keys(), ...cl.keys()]);
+	const paths = new Set<string>([...g.keys(), ...(b?.keys() ?? []), ...ga.keys(), ...ai.keys(), ...cl.keys()]);
 	const out: InsightRow[] = [];
 	for (const path of paths) {
-		const G = g.get(path), GP = gp?.get(path), B = b?.get(path), BP = bp?.get(path), A = ga.get(path), AP = gap.get(path), C = cl.get(path);
+		const G = g.get(path), GP = gp?.get(path), B = b?.get(path), BP = bp?.get(path), A = ga.get(path), AP = gap.get(path), AI = ai.get(path), AIP = aip?.get(path), C = cl.get(path);
 		// A change needs a real previous period on that source; "not stored" is different from "zero".
 		const dG = (now: number, key: 'clicks' | 'impressions') => (G && gp ? pctChange(now, GP?.[key] ?? 0) : null);
 		const dB = (now: number, key: 'clicks' | 'impressions') => (B && bp ? pctChange(now, BP?.[key] ?? 0) : null);
 		const dA = (now: number, prev: number | undefined) => (A && s.ga4Prev ? pctChange(now, prev ?? 0) : null);
+		const dAi = (now: number, prev: number | undefined) => (AI && aip ? pctChange(now, prev ?? 0) : null);
+		const aiBy = AI ? [...AI.by].map(([assistant, sessions]) => ({ assistant, sessions })).sort((x, y) => y.sessions - x.sessions || (x.assistant < y.assistant ? -1 : 1)) : null;
 		out.push({
 			path,
 			url: G?.url ?? B?.url ?? originFor(path),
@@ -113,10 +139,12 @@ export function mergePages(s: PageSources, originFor: (path: string) => string):
 			bClicks: B?.clicks ?? null, bClicksD: B ? dB(B.clicks, 'clicks') : null, bImpr: B?.impressions ?? null, bImprD: B ? dB(B.impressions, 'impressions') : null, bPos: B?.position || null,
 			aSessions: A?.sessions ?? null, aSessionsD: A ? dA(A.sessions, AP?.sessions) : null, aEngaged: A && A.sessions ? A.engagedSessions / A.sessions : null,
 			aKeyEvents: A ? r1(A.keyEvents) : null, aKeyEventsD: A ? dA(A.keyEvents, AP?.keyEvents) : null,
+			aiSessions: AI?.sessions ?? null, aiSessionsD: AI ? dAi(AI.sessions, AIP?.sessions) : null, aiEngaged: AI && AI.sessions ? AI.engaged / AI.sessions : null,
+			aiKeyEvents: AI ? r1(AI.keyEvents) : null, aiTop: aiBy?.[0]?.assistant ?? null, aiBy,
 			cSessions: C?.sessions ?? null, cRage: C?.rageClicks ?? null, cDead: C?.deadClicks ?? null
 		});
 	}
-	return out.sort((x, y) => (y.gClicks ?? -1) - (x.gClicks ?? -1) || (y.bClicks ?? -1) - (x.bClicks ?? -1) || (y.aSessions ?? -1) - (x.aSessions ?? -1) || (x.path < y.path ? -1 : 1));
+	return out.sort((x, y) => (y.gClicks ?? -1) - (x.gClicks ?? -1) || (y.bClicks ?? -1) - (x.bClicks ?? -1) || (y.aSessions ?? -1) - (x.aSessions ?? -1) || (y.aiSessions ?? -1) - (x.aiSessions ?? -1) || (x.path < y.path ? -1 : 1));
 }
 
 /**

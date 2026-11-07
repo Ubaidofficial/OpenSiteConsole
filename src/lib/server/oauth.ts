@@ -11,7 +11,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { config } from './config';
 import { audit, db } from './db';
-import { createApiKey, deleteApiKey, rotateApiKey } from './apikeys';
+import { asPermission, createApiKey, deleteApiKey, rotateApiKey } from './apikeys';
 import { callbackUrl, challengeValid, cleanName, parseForm, pkceMatches, redirectMatches, resourceMatches, resourceUrl, SCOPE } from './oauth-core';
 
 export const CODE_TTL_MS = 5 * 60_000;
@@ -132,14 +132,15 @@ function takeRequest(id: string, now: number) {
 }
 
 /** The owner approved: a one-time code, and the address to send them (and the code) back to. `siteIds` null means every site. */
-export function approveRequest(requestId: string, siteIds: number[] | null, now = Date.now(), canWrite = false): { location: string } | undefined {
+export function approveRequest(requestId: string, siteIds: number[] | null, now = Date.now(), allowSubmit = false, allowDelete = false): { location: string } | undefined {
 	const req = takeRequest(requestId, now);
 	if (!req) return undefined;
 	const client = getClient(req.client_id);
 	if (!client) return undefined;
 	const code = rand(32);
-	db().prepare('INSERT INTO oauth_codes (hash, client_id, redirect_uri, code_challenge, site_ids, expires_at, can_write) VALUES (?,?,?,?,?,?,?)').run(sha(code), req.client_id, req.redirect_uri, req.code_challenge, siteIds && siteIds.length ? JSON.stringify(siteIds) : null, now + CODE_TTL_MS, canWrite ? 1 : 0);
-	audit('oauth.approve', { detail: `${client.name}${canWrite ? ' (changes allowed)' : ' (read-only)'}` });
+	db().prepare('INSERT INTO oauth_codes (hash, client_id, redirect_uri, code_challenge, site_ids, expires_at, permission) VALUES (?,?,?,?,?,?,?)').run(sha(code), req.client_id, req.redirect_uri, req.code_challenge, siteIds && siteIds.length ? JSON.stringify(siteIds) : null, now + CODE_TTL_MS, allowDelete ? 'delete' : allowSubmit ? 'submit' : 'read');
+	const level = allowDelete ? 'delete' : allowSubmit ? 'submit' : 'read';
+	audit('oauth.approve', { detail: `${client.name} (${level === 'read' ? 'read-only' : level === 'delete' ? 'submit and delete allowed' : 'changes allowed'})` });
 	return { location: callbackUrl(req.redirect_uri, { code, state: req.state }, config.origin) };
 }
 
@@ -166,8 +167,8 @@ export function redeemCode(p: { code: string; clientId: string; redirectUri: str
 	const { code, clientId, redirectUri, verifier } = p;
 	if (!code || !clientId || !redirectUri || !verifier) return refused('invalid_request', 'code, client_id, redirect_uri and code_verifier are all required.');
 	const d = db();
-	const row = d.prepare('SELECT hash, client_id, redirect_uri, code_challenge, site_ids, expires_at, used, key_id, can_write FROM oauth_codes WHERE hash = ?').get(sha(code)) as
-		| { hash: string; client_id: string; redirect_uri: string; code_challenge: string; site_ids: string | null; expires_at: number; used: number; key_id: number | null; can_write: number }
+	const row = d.prepare('SELECT hash, client_id, redirect_uri, code_challenge, site_ids, expires_at, used, key_id, permission FROM oauth_codes WHERE hash = ?').get(sha(code)) as
+		| { hash: string; client_id: string; redirect_uri: string; code_challenge: string; site_ids: string | null; expires_at: number; used: number; key_id: number | null; permission: string }
 		| undefined;
 	if (!row) return refused('invalid_grant', 'Unknown or expired code.');
 	if (row.used) {
@@ -183,7 +184,7 @@ export function redeemCode(p: { code: string; clientId: string; redirectUri: str
 	const client = getClient(clientId);
 	if (!client) return refused('invalid_grant', 'Unknown app.');
 
-	const key = createApiKey(`${client.name} (sign-in)`, row.site_ids ? (JSON.parse(row.site_ids) as number[]) : null, now + ACCESS_TTL_MS, row.can_write === 1);
+	const key = createApiKey(`${client.name} (sign-in)`, row.site_ids ? (JSON.parse(row.site_ids) as number[]) : null, now + ACCESS_TTL_MS, asPermission(row.permission));
 	const refresh = `ocr_${rand(32)}`;
 	d.prepare('INSERT INTO oauth_grants (client_id, key_id, refresh_hash, refresh_expires_at, created_at) VALUES (?,?,?,?,?)').run(clientId, key.id, sha(refresh), now + REFRESH_TTL_MS, now);
 	d.prepare('UPDATE oauth_codes SET key_id = ? WHERE hash = ?').run(key.id, row.hash);

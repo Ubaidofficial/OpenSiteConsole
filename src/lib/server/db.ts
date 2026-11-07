@@ -224,6 +224,69 @@ CREATE TABLE IF NOT EXISTS ga4_ai (
 	pulled_on TEXT NOT NULL,
 	PRIMARY KEY (site_id, days, assistant, page)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_ai_prev (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	days INTEGER NOT NULL,              -- the window length; this is the equally long window just BEFORE the one in ga4_ai
+	assistant TEXT NOT NULL,
+	page TEXT NOT NULL,
+	sessions INTEGER NOT NULL,
+	engaged_sessions INTEGER NOT NULL,
+	key_events REAL NOT NULL,
+	pulled_on TEXT NOT NULL,
+	PRIMARY KEY (site_id, days, assistant, page)
+) WITHOUT ROWID;
+-- One row per URL per channel the app (or an agent) pushed it to. "Accepted" means the channel received it, never that the page is indexed:
+-- whether it got indexed is read later from the stored URL Inspection (the submitted URLs are also put on the indexing monitor's watch list).
+CREATE TABLE IF NOT EXISTS index_submissions (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	channel TEXT NOT NULL,              -- indexnow | bing | google_indexing_api
+	at INTEGER NOT NULL,
+	ok INTEGER NOT NULL,
+	message TEXT,
+	source TEXT NOT NULL,               -- app | mcp
+	key_id INTEGER                      -- the API key, for source = mcp
+);
+-- URLs waiting to be sent to a channel: over today's limit, or deliberately spread over several days ("drip"). release_at is when each may go.
+CREATE TABLE IF NOT EXISTS index_queue (
+	id INTEGER PRIMARY KEY,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	channel TEXT NOT NULL,
+	added_at INTEGER NOT NULL,
+	release_at INTEGER NOT NULL,        -- when it may go next (pushed back after a channel failure)
+	first_release_at INTEGER NOT NULL,  -- when it was first meant to go: a row is dropped 7 days after this, however a drip spaced it
+	source TEXT NOT NULL,
+	key_id INTEGER,
+	UNIQUE (site_id, url, channel)
+);
+-- After a URL is accepted somewhere, Google is asked again at day 1, 3 and 5 (step 0, 1, 2) whether it is indexed; the row goes when it is, or after the last step.
+CREATE TABLE IF NOT EXISTS index_rechecks (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	submitted_at INTEGER NOT NULL,
+	step INTEGER NOT NULL,
+	due_at INTEGER NOT NULL,
+	attempts INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS idx_index_submissions_site ON index_submissions (site_id, at DESC);
+CREATE INDEX IF NOT EXISTS idx_index_submissions_url ON index_submissions (site_id, url);
+-- The "Request indexing" list: pages worth asking Google about by hand (Search Console's button has no API), what the owner did with each.
+CREATE TABLE IF NOT EXISTS index_requests (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,
+	status TEXT NOT NULL,               -- pending | requested | dismissed | problem
+	tier INTEGER NOT NULL DEFAULT 0,
+	reason TEXT NOT NULL,
+	state TEXT,                         -- Google's answer when the list was built: indexed | not_indexed | unknown
+	coverage TEXT,
+	link TEXT,                          -- Search Console's own link for the URL, only if Google gave one and it points at search.google.com
+	built_at INTEGER NOT NULL,
+	acted_at INTEGER,
+	PRIMARY KEY (site_id, url)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS seo_tests (
 	id INTEGER PRIMARY KEY,
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
@@ -261,6 +324,7 @@ CREATE TABLE IF NOT EXISTS sitemap_urls (
 	url TEXT NOT NULL,
 	norm TEXT NOT NULL,                 -- host (no www) + path (no trailing slash), for matching against Search Console pages
 	lastmod TEXT,                       -- YYYY-MM-DD if the sitemap gave one
+	lastmod_bad INTEGER NOT NULL DEFAULT 0, -- 1: the sitemap had a <lastmod> that is not a valid W3C date
 	sitemap TEXT NOT NULL,              -- which sitemap file listed it
 	PRIMARY KEY (site_id, url)
 ) WITHOUT ROWID;
@@ -362,6 +426,7 @@ CREATE TABLE IF NOT EXISTS index_watch (
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
 	url TEXT NOT NULL,
 	added_at INTEGER NOT NULL,
+	source TEXT,                        -- NULL: pinned by the owner; 'submit': put there by a submission (removed again once its re-checks are done)
 	PRIMARY KEY (site_id, url)
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS index_history (
@@ -428,6 +493,17 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('index_message')) db.exec('ALTER TABLE sites ADD COLUMN index_message TEXT');
 	if (!cols('sites').includes('index_next_at')) db.exec('ALTER TABLE sites ADD COLUMN index_next_at INTEGER');
 	if (!cols('sites').includes('ga4_ai_on')) db.exec('ALTER TABLE sites ADD COLUMN ga4_ai_on TEXT');
+	if (!cols('sitemap_urls').includes('lastmod_bad')) db.exec('ALTER TABLE sitemap_urls ADD COLUMN lastmod_bad INTEGER NOT NULL DEFAULT 0');
+	if (!cols('index_watch').includes('source')) db.exec('ALTER TABLE index_watch ADD COLUMN source TEXT');
+	// read | submit | delete. Databases from the on/off "can make changes" switch (can_write) carry it over once, as the submit level.
+	if (!cols('api_keys').includes('permission')) {
+		db.exec("ALTER TABLE api_keys ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'");
+		if (cols('api_keys').includes('can_write')) db.exec("UPDATE api_keys SET permission = 'submit' WHERE can_write = 1");
+	}
+	if (!cols('oauth_codes').includes('permission')) {
+		db.exec("ALTER TABLE oauth_codes ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'");
+		if (cols('oauth_codes').includes('can_write')) db.exec("UPDATE oauth_codes SET permission = 'submit' WHERE can_write = 1");
+	}
 	if (!cols('api_keys').includes('expires_at')) db.exec('ALTER TABLE api_keys ADD COLUMN expires_at INTEGER'); // NULL = never (keys made by hand)
 	// Whether a key may use the MCP tools that change things. Off unless the owner ticked it; existing keys stay read-only.
 	if (!cols('api_keys').includes('can_write')) db.exec('ALTER TABLE api_keys ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');

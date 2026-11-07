@@ -645,3 +645,91 @@ describe('the cross-site check (it replaces SvelteKit\'s own, which cannot exemp
 		expect(readFileSync('src/hooks.server.ts', 'utf8')).toMatch(/crossSiteRefused\(\{/);
 	});
 });
+
+describe('sign-in and the submit permission', () => {
+	const signIn = (allowSubmit?: boolean) => {
+		const c = newClient();
+		const chk = checkAuthorize(authorizeQuery(c.id), ORIGIN());
+		if (chk.kind !== 'consent') throw new Error('no consent');
+		const code = new URL(approveRequest(chk.requestId, null, Date.now(), allowSubmit)!.location).searchParams.get('code')!;
+		const r = redeemCode({ code, clientId: c.id, redirectUri: CLAUDE, verifier: VERIFIER });
+		if (!r.ok) throw new Error(r.description);
+		return { ...(r.body as { access_token: string; refresh_token: string }), clientId: c.id };
+	};
+	const permissionOf = (token: string) => authenticate(new Request('http://x', { headers: { authorization: `Bearer ${token}` } }))?.permission;
+
+	it('an approved app is read-only unless the owner ticked "allow submitting", and a refresh keeps whatever was granted', () => {
+		const plain = signIn();
+		expect(permissionOf(plain.access_token)).toBe('read');
+		const granted = signIn(true);
+		expect(permissionOf(granted.access_token)).toBe('submit');
+		const next = refreshTokens({ refreshToken: granted.refresh_token, clientId: granted.clientId });
+		if (!next.ok) throw new Error(next.description);
+		expect(permissionOf((next.body as { access_token: string }).access_token)).toBe('submit');
+		expect(permissionOf(plain.access_token)).toBe('read'); // the other app is untouched
+	});
+
+	it('the consent page offers three levels with read-only the default, and the server grants only "read" in READ_ONLY mode', () => {
+		const svelte = readFileSync('src/routes/oauth/authorize/+page.svelte', 'utf8');
+		expect(svelte).toMatch(/name="level" value="read" checked/);
+		expect(svelte).toMatch(/name="level" value="submit"/);
+		expect(svelte).toMatch(/name="level" value="delete"/);
+		expect(svelte).not.toMatch(/name="level" value="(submit|delete)"[^>]*checked/);
+		expect(readFileSync('src/routes/oauth/authorize/+page.server.ts', 'utf8')).toMatch(/config\.readOnly \? 'read'/);
+	});
+	it('the allow action turns the chosen level into the key the app gets, and an unknown or missing level is read-only', async () => {
+		const grant = async (fields: Record<string, string>) => {
+			const c = newClient();
+			const chk = checkAuthorize(authorizeQuery(c.id), ORIGIN());
+			if (chk.kind !== 'consent') throw new Error('no consent');
+			const body = new FormData();
+			body.set('request_id', chk.requestId);
+			body.set('scope', 'all');
+			for (const [k, v] of Object.entries(fields)) body.set(k, v);
+			const r = (await authorizePage.actions.allow({ request: new Request('http://x', { method: 'POST', body }) } as never)) as { redirect: string };
+			const code = new URL(r.redirect).searchParams.get('code')!;
+			const t = redeemCode({ code, clientId: c.id, redirectUri: CLAUDE, verifier: VERIFIER });
+			if (!t.ok) throw new Error(t.description);
+			return permissionOf((t.body as { access_token: string }).access_token);
+		};
+		expect(await grant({})).toBe('read');
+		expect(await grant({ level: 'read' })).toBe('read');
+		expect(await grant({ level: 'submit' })).toBe('submit');
+		expect(await grant({ level: 'delete' })).toBe('delete');
+		expect(await grant({ level: 'root' })).toBe('read');
+		expect(await grant({ submit: '1' })).toBe('submit'); // the old single box still means submit
+		process.env.READ_ONLY = '1';
+		try {
+			expect(await grant({ level: 'delete' })).toBe('read');
+		} finally {
+			delete process.env.READ_ONLY;
+		}
+	});
+});
+
+describe('the privacy policy and terms pages', () => {
+	const gev = (path: string, cookie?: string) => {
+		const url = new URL(`http://localhost:5173${path}`);
+		const jar = new Map<string, string>(cookie ? [['osc_session', cookie]] : []);
+		return { url, request: new Request(url, { headers: { host: 'localhost:5173' } }), locals: {} as Record<string, unknown>, cookies: { get: (k: string) => jar.get(k) }, getClientAddress: () => '127.0.0.1' };
+	};
+	const run = (e: ReturnType<typeof gev>) => handle({ event: e as never, resolve: (async () => new Response('page')) as never });
+	it('are readable without signing in (Google\'s OAuth verification needs a public policy), while every other page still sends a visitor to the login', async () => {
+		expect(config.hasPassword).toBe(true);
+		for (const p of ['/privacy', '/terms']) expect((await run(gev(p))).status, p).toBe(200);
+		for (const p of ['/', '/accounts', '/sites/1', '/agents', '/digest']) {
+			const r = await run(gev(p));
+			expect(r.status, p).toBe(303);
+			expect(r.headers.get('location'), p).toBe('/login');
+		}
+	});
+	it('show a signed-out visitor nothing about the installation, and the operator a note until it is filled in', async () => {
+		const priv = await import('../src/routes/privacy/+page.server');
+		const out = (await priv.load({ locals: { authed: false } } as never)) as { sections: { title: string }[]; configured: boolean; authed: boolean };
+		expect(out.authed).toBe(false);
+		expect(out.sections.length).toBeGreaterThan(5);
+		expect(JSON.stringify(out)).not.toMatch(/ADMIN_PASSWORD|osc_|pw-for-oauth-tests/); // nothing but the policy text
+		const layoutData = (await import('../src/routes/+layout.server')).load({ locals: { authed: false } } as never) as { accounts: number; authed: boolean };
+		expect(layoutData).toMatchObject({ authed: false, accounts: 0 });
+	});
+});

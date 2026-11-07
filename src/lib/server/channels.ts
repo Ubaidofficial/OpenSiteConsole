@@ -105,6 +105,7 @@ export async function pullGa4Periods(siteId: number, property: string, src: Ga4S
 	const insL = d.prepare('INSERT OR REPLACE INTO ga4_landing VALUES (?,?,?,?,?,?,?)');
 	const insLP = d.prepare('INSERT OR REPLACE INTO ga4_landing_prev VALUES (?,?,?,?,?,?,?)');
 	const insA = d.prepare('INSERT OR REPLACE INTO ga4_ai VALUES (?,?,?,?,?,?,?,?)');
+	const insAP = d.prepare('INSERT OR REPLACE INTO ga4_ai_prev VALUES (?,?,?,?,?,?,?,?)');
 	let aiFailed = false;
 	try {
 		for (const days of PERIODS) {
@@ -115,11 +116,13 @@ export async function pullGa4Periods(siteId: number, property: string, src: Ga4S
 			// retention; an extra like the AI report, so a failure just means no change figures.
 			const prevStart = addDays(today, -(2 * days - 1));
 			const wantPrev = start === addDays(today, -(days - 1)) && prevStart >= horizon;
-			const [users, landing, ai, landingPrev] = await Promise.all([
+			const [users, landing, ai, landingPrev, aiPrev] = await Promise.all([
 				src.usersByChannel(property, start, today),
 				src.landing(property, start, today),
 				src.aiTraffic(property, start, today).catch(() => (aiFailed = true, null)),
-				wantPrev ? src.landing(property, prevStart, addDays(start, -1)).catch(() => null) : Promise.resolve(null)
+				wantPrev ? src.landing(property, prevStart, addDays(start, -1)).catch(() => null) : Promise.resolve(null),
+				// Same for the AI report: no previous window means no change figures for AI sessions, never a change against an assumed zero.
+				wantPrev ? src.aiTraffic(property, prevStart, addDays(start, -1)).catch(() => null) : Promise.resolve(null)
 			]);
 			d.transaction(() => {
 				d.prepare('DELETE FROM ga4_period_users WHERE site_id = ? AND days = ?').run(siteId, days);
@@ -132,6 +135,8 @@ export async function pullGa4Periods(siteId: number, property: string, src: Ga4S
 					d.prepare('DELETE FROM ga4_ai WHERE site_id = ? AND days = ?').run(siteId, days);
 					for (const a of ai) insA.run(siteId, days, a.assistant, a.page, a.sessions, a.engagedSessions, a.keyEvents, today);
 				}
+				d.prepare('DELETE FROM ga4_ai_prev WHERE site_id = ? AND days = ?').run(siteId, days);
+				for (const a of aiPrev ?? []) insAP.run(siteId, days, a.assistant, a.page, a.sessions, a.engagedSessions, a.keyEvents, today);
 			})();
 		}
 		d.prepare('UPDATE sites SET ga4_periods_on = ?, ga4_ai_on = ? WHERE id = ?').run(today, aiFailed ? null : today, siteId);

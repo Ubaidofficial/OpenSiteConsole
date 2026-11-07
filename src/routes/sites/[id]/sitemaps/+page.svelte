@@ -1,10 +1,12 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { enhance } from '$app/forms';
 	import { LoaderCircle, Send } from '@lucide/svelte';
-	import { fmtInt } from '$lib/format';
+	import { fmtInt, ago } from '$lib/format';
 	let { data, form } = $props();
 	let busy = $state(false);
+	const r = $derived(data.lastmod.report);
 </script>
 
 {#if data.error}<p class="mb-3 text-sm text-bad">{data.error}</p>{/if}
@@ -53,5 +55,41 @@
 		<ul class="space-y-1.5">{#each c.notes as n}<li class="flex gap-2 text-xs"><span class={n.level === 'bad' ? 'text-bad' : n.level === 'warn' ? 'text-warn' : 'text-muted-foreground'}>{n.level === 'bad' ? '✕' : n.level === 'warn' ? '⚠' : 'ℹ'}</span><span>{n.text}</span></li>{/each}</ul>
 	</section>
 {/if}
-{#if data.sitemaps.some((s) => s.isPending)}<p class="mt-3 max-w-3xl text-xs text-muted-foreground"><b>Pending</b> means Google has accepted the submission and has not processed the file yet. After a resubmit it is normal: “Last read” and the URL count stay at their old values until Google fetches the sitemap again, which Google decides. Use <b>Check</b> to confirm the file itself is fine.</p>{/if}
-<p class="mt-3 text-xs text-muted-foreground">Live from Search Console — not cached. Google reads a sitemap on its own schedule; resubmitting nudges it but does not guarantee immediate indexing.</p>
+{#if data.sitemaps.some((s) => s.isPending)}<Explainer lead="Pending: Google has the submission and has not processed it yet.">
+	<p><b>Pending</b> means Google has accepted the submission and has not processed the file yet. After a resubmit it is normal: “Last read” and the URL count stay at their old values until Google fetches the sitemap again, which Google decides. Use <b>Check</b> to confirm the file itself is fine.</p>
+</Explainer>{/if}
+<section class="card mt-6 p-4 text-sm">
+	<div class="mb-1 flex flex-wrap items-center gap-2">
+		<h2 class="font-medium">Are the dates in your sitemap believable?</h2>
+		{#if r.verdict !== 'unknown'}<span class="chip {r.verdict === 'bad' ? 'border-[color:var(--bad)] text-bad' : r.verdict === 'warn' ? 'text-warn' : 'text-good'}">{r.verdict === 'good' ? 'looks good' : r.verdict === 'warn' ? 'worth a look' : 'needs fixing'}</span>{/if}
+	</div>
+	<Explainer lead="Google re-crawls using each URL's lastmod, but only if it can trust it.">
+	<p>Google uses each URL's <code>lastmod</code> to decide what to re-crawl, but only when the date is valid and it can trust it: dates that keep claiming changes that did not happen get ignored. This checks yours from the last sitemap read{r.readAt ? ` (${ago(r.readAt)})` : ''}. The thresholds are this app's own rules of thumb, not Google's.</p>
+</Explainer>
+	{#if r.synced}
+		<div class="mb-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+			<span><b class="tnum text-foreground">{fmtInt(r.total)}</b> URLs</span><span><b class="tnum text-foreground">{fmtInt(r.withDate)}</b> with a date</span>
+			<span><b class="tnum text-foreground">{fmtInt(r.distinctDays)}</b> different days</span><span><b class="tnum text-foreground">{fmtInt(r.changedLast7d)}</b> changed in the last 7 days</span>
+			{#if r.oldest}<span>{r.oldest} → {r.newest}</span>{/if}
+		</div>
+	{/if}
+	<ul class="space-y-1.5">{#each r.findings as n}<li class="flex gap-2 text-xs"><span class={n.level === 'bad' ? 'text-bad' : n.level === 'warn' ? 'text-warn' : n.level === 'good' ? 'text-good' : 'text-muted-foreground'}>{n.level === 'bad' ? '✕' : n.level === 'warn' ? '!' : n.level === 'good' ? '✓' : 'i'}</span><span>{n.text}</span></li>{/each}</ul>
+	{#if r.recrawl.examples.length}
+		<details class="mt-2 text-xs"><summary class="cursor-pointer text-muted-foreground">Pages Google had not re-crawled after their date ({r.recrawl.examples.length} shown)</summary>
+			<ul class="mt-1 space-y-0.5">{#each r.recrawl.examples as e}<li class="pii break-all">{e.url} · dated {e.lastmod}, last crawled {e.lastCrawl}</li>{/each}</ul></details>
+	{/if}
+	<div class="mt-3 border-t pt-3" style="border-color:var(--border)">
+		<form method="POST" action="?/lastmodCompare" use:enhance class="flex flex-wrap items-center gap-3">
+			<button class="btn !h-8 text-xs" disabled={!r.synced || r.withDate === 0} title="Fetches up to {data.lastmod.sample} of your pages and reads the Last-Modified header each sends">Compare with the pages' own dates</button>
+			<span class="text-xs text-muted-foreground">Fetches up to {data.lastmod.sample} pages from your site (only your own host). Many sites send no such header; then it says it cannot tell.</span>
+		</form>
+		{#if data.lastmod.live}
+			{@const l = data.lastmod.live}
+			<ul class="mt-2 space-y-1.5">{#each l.findings as n}<li class="flex gap-2 text-xs"><span class={n.level === 'bad' ? 'text-bad' : n.level === 'warn' ? 'text-warn' : n.level === 'good' ? 'text-good' : 'text-muted-foreground'}>{n.level === 'bad' ? '✕' : n.level === 'warn' ? '!' : n.level === 'good' ? '✓' : 'i'}</span><span>{n.text} <span class="text-muted-foreground">(checked {ago(l.at)})</span></span></li>{/each}</ul>
+			{#if l.examples.length}<ul class="pii mt-1 space-y-0.5 text-xs text-muted-foreground">{#each l.examples.slice(0, 5) as e}<li class="break-all">{e.url} · sitemap {e.lastmod}, page header {e.header} (sitemap date {Math.abs(e.daysApart)} days {e.daysApart > 0 ? 'later' : 'earlier'})</li>{/each}</ul>{/if}
+		{/if}
+	</div>
+</section>
+<Explainer lead="Live from Search Console, not cached.">
+	<p>Live from Search Console — not cached. Google reads a sitemap on its own schedule; resubmitting nudges it but does not guarantee immediate indexing.</p>
+</Explainer>

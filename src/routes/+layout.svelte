@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { Toaster, toast } from 'svelte-sonner';
-	import { Bot, LayoutDashboard, Layers, ListChecks, Map as MapIcon, Newspaper, Plug, RefreshCw, Users } from '@lucide/svelte';
+	import { Bot, LayoutDashboard, Layers, ListChecks, Map as MapIcon, Plug, RefreshCw, Users } from '@lucide/svelte';
 	import PrivacyToggle from '$lib/components/privacy-toggle.svelte';
 	import { pageTitle } from '$lib/titles';
 	import { privacy } from '$lib/privacy.svelte';
@@ -14,7 +14,6 @@
 	const links = [
 		['/', 'Dashboard', LayoutDashboard],
 		['/actions', 'Actions', ListChecks],
-		['/digest', 'Digest', Newspaper],
 		['/portfolio', 'Portfolio', Layers],
 		['/sitemaps', 'Sitemaps', MapIcon],
 		['/connect', 'Connect', Plug],
@@ -54,7 +53,7 @@
 			<img src="/brand/mark-glyph.svg" alt="" width="24" height="24" class="size-6" />
 			SEOConsole
 		</a>
-		<nav class="order-last flex w-full gap-0.5 overflow-x-auto sm:order-none sm:w-auto" aria-label="Main">
+		{#if data.authed}<nav class="order-last flex w-full gap-0.5 overflow-x-auto sm:order-none sm:w-auto" aria-label="Main">
 			{#each links as [href, label, Icon]}
 				<a
 					{href}
@@ -64,7 +63,7 @@
 					<Icon class="size-3.5" />{label}
 				</a>
 			{/each}
-		</nav>
+		</nav>{/if}
 		<div class="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
 			{#if data.queue.active + data.queue.waiting > 0}
 				<span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-1" title="Background syncs running"><RefreshCw class="size-3 animate-spin" />{data.queue.active + data.queue.waiting} syncing</span>
@@ -82,3 +81,4 @@
 	</div>
 {/if}
 <main class="mx-auto max-w-[1400px] px-4 py-6">{#key page.url.pathname.split('/').slice(1, 3).join('/')}<div class="page-in">{@render children()}</div>{/key}</main>
+<footer class="mx-auto max-w-[1400px] px-4 pb-8 text-xs text-muted-foreground"><a class="hover:underline" href="/compare">Compare</a> · <a class="hover:underline" href="/privacy">Privacy policy</a> · <a class="hover:underline" href="/terms">Terms of service</a></footer>

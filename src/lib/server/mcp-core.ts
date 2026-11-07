@@ -1,18 +1,25 @@
 import type { allSites } from './queries';
 import { hostKey } from './hosts';
+import type { Permission } from './apikeys';
 
 /** Shared by the MCP server and its tool modules (kept apart so the tool modules can import it without a cycle). */
 export type Site = ReturnType<typeof allSites>[number];
 export interface ToolContext {
 	keyId: number;
 	keyName: string;
+	/** what this key may do: read, submit (push to search engines, make changes in the app) or delete (also the few things that cannot be undone by calling again) */
+	permission: Permission;
+	/** the key is limited to some sites */
+	scoped: boolean;
 }
 export interface Tool {
 	name: string;
 	description: string;
 	schema: Record<string, unknown>;
-	/** true for a tool that changes something: it refuses unless the key may make changes, and is recorded in the audit log */
+	/** true for a tool that changes something: it refuses unless the key may make changes (the "submit" permission), and is recorded in the audit log */
 	write?: boolean;
+	/** present only on tools that change something at a search engine: the key needs this permission or a higher one. 'delete' tools also need a confirming second call. */
+	needs?: Exclude<Permission, 'read'>;
 	run: (args: Record<string, unknown>, sites: Site[], ctx: ToolContext) => unknown | Promise<unknown>;
 }
 

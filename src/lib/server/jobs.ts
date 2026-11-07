@@ -7,6 +7,7 @@ import { syncBing, syncClarity, syncGa4, syncGtm } from './channels';
 import type { LinkKind } from './links';
 import { cruxIntegration, syncCrux } from './crux';
 import { monitorSite } from './indexmon';
+import { runSubmissionWork, submissionWorkDue } from './submission';
 import { listTests, warmTests } from './seotests';
 import { ensureGa4PageDaily } from './ga4tests';
 import { runUrgentAlerts, runWeeklyDigest } from './digest';
@@ -100,6 +101,14 @@ export function enqueueIndexMonitor(siteId: number): boolean {
 	return enqueue(`index:${siteId}`, () => monitorSite(siteId));
 }
 
+/** Send what the submission queue may release now and run the re-checks that are due (day 1, 3 and 5 after a URL was accepted). */
+export function enqueueSubmissionWork(siteId: number): boolean {
+	return enqueue(`submitwork:${siteId}`, async () => {
+		const site = getSite(siteId);
+		if (site) await runSubmissionWork(site);
+	});
+}
+
 /** Read a site's submitted sitemaps (a few HTTP requests): daily, or after 6 h if the last attempt had a problem. */
 export function enqueueSitemapSync(siteId: number): boolean {
 	return enqueue(`sitemap:${siteId}`, async () => {
@@ -153,6 +162,7 @@ export function schedulerTick() {
 		const row = d.prepare('SELECT index_monitor m, index_checked_on c, index_next_at n FROM sites WHERE id = ?').get(s.id) as { m: number; c: string | null; n: number | null };
 		// `n` is a back-off set after a refusal or a total failure, so a broken connection is not hammered every tick.
 		if (monitorDue(row, today)) enqueueIndexMonitor(s.id);
+		if (submissionWorkDue(s.id)) enqueueSubmissionWork(s.id);
 	}
 	const links = d
 		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','gtm','clarity')")

@@ -31,7 +31,7 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host. A hosted plan at $10 a month is planned but not open yet."}},
-{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 33 tools that read your stored search data, and 10 that can change things in SEOConsole: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow, submit a sitemap, set brand terms, watch URLs. Those 10 refuse unless you allowed changes for that connection, which is off by default. None can delete data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
+{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 40 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
 {"@type":"Question","name":"Where does my data live?","acceptedAnswer":{"@type":"Answer","text":"In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM."}},
 {"@type":"Question","name":"How far back does history go?","acceptedAnswer":{"@type":"Answer","text":"As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has."}},
 {"@type":"Question","name":"Which AI clients work?","acceptedAnswer":{"@type":"Answer","text":"Claude's custom connector works with one-click sign-in, and Claude Code works with a command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, though not every client has been tested."}},
@@ -75,7 +75,7 @@
         <a class="btn ghost" href="#wins">See what it digs up</a>
       </div>
       <ul class="proof mono rv" aria-label="Highlights">
-        <li><b>43</b> MCP tools, read-only until you allow changes</li>
+        <li><b>60</b> MCP tools, read-only until you allow changes</li>
         <li><b>1-click</b> sign-in from Claude</li>
         <li><b>0</b> third-party scripts on this page</li>
       </ul>
@@ -174,7 +174,7 @@
       <div>
       <p class="kicker mono rv"><span class="idx">03</span>Agents</p>
       <h2 id="h-agents" class="h-lg rv">Give your agent the whole picture.</h2>
-      <p class="sub rv">SEOConsole is a Model Context Protocol server. Your agent calls 33 tools that read your own stored data, so it can reason over every site, every source and the history you have kept. If you allow it, 10 more let it act on what it finds.</p>
+      <p class="sub rv">SEOConsole is a Model Context Protocol server. Your agent calls 40 tools that read your own stored data, so it can reason over every site, every source and the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
       </div>
       <figure class="art-card rv"><div class="spr s4 sc-agent" role="img" aria-label="Pixel illustration: a chat window sends questions through glowing packets to your SEOConsole database, and a gem comes back."></div></figure>
     </div>
@@ -234,8 +234,8 @@
     </div>
 
     <ul class="stats mono rv" aria-label="MCP server facts">
-      <li><b data-count="33">33</b><span>tools that read</span></li>
-      <li><b>10</b><span>that act, only if you allow it; none can delete</span></li>
+      <li><b data-count="40">40</b><span>tools that read</span></li>
+      <li><b>20</b><span>that act, only if you allow it; deleting is a separate level</span></li>
       <li><b>OAuth</b><span>or API key, per site scope</span></li>
       <li><b>Rate-limited</b><span>per key, with an audit log of every change</span></li>
     </ul>
@@ -359,8 +359,8 @@
         <div class="crop"><img src="/assets/shots/sitemaps-1080.webp" width="1080" height="675" alt="Sitemaps for a site: what is submitted, last read and any problems." loading="lazy"></div>
       </article>
       <article class="card c-small rv">
-        <h3>IndexNow.</h3>
-        <p>Tells Bing and other IndexNow engines the moment a page changes. Google does not take part in IndexNow.</p>
+        <h3>Indexing, the official routes.</h3>
+        <p>Send URLs to IndexNow and Bing, queue the overflow, and re-check on day 1, 3 and 5. Google has no request call for ordinary pages, so the app prepares your Request Indexing list instead.</p>
       </article>
       <article class="card c-small rv">
         <h3>Google update markers.</h3>
@@ -368,7 +368,7 @@
       </article>
       <article class="card c-small rv">
         <h3>Locked down by default.</h3>
-        <p>Tokens encrypted at rest with AES-256-GCM, password login, agent access scoped per site and read-only unless you allow changes, rate limits, an audit log of every change.</p>
+        <p>Tokens encrypted at rest with AES-256-GCM, password login, agent access scoped per site, read-only unless you pick submit or delete, rate limits, an audit log of every change.</p>
       </article>
     </div>
   </div>
@@ -419,7 +419,7 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
     <h2 id="h-faq" class="h-lg rv">Straight answers.</h2>
     <div class="qa rv">
       <details><summary>Is it really free?</summary><p>Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $10 a month is planned, and the page above says plainly that it is not open yet.</p></details>
-      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 33 tools that read your stored search data, and 10 that can change things in SEOConsole: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow, submit a sitemap, set brand terms, watch URLs. Those 10 refuse unless you allowed changes for that connection, which is off by default. None can delete data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
+      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 40 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
       <details><summary>Where does my data live?</summary><p>In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM. Whatever an agent reads is sent to that agent’s provider, so connect only agents you trust with that data.</p></details>
       <details><summary>How far back does history go?</summary><p>As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has.</p></details>
       <details><summary>Which AI clients work?</summary><p>Claude’s custom connector works with one-click sign-in, and Claude Code works with a single command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, but only Claude has been confirmed.</p></details>

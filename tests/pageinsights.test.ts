@@ -42,7 +42,7 @@ describe('pathKey and rollUp', () => {
 });
 
 describe('mergePages', () => {
-	const base: PageSources = { google: [], googlePrev: [], bing: null, bingPrev: null, ga4: null, ga4Prev: null, clarity: null };
+	const base: PageSources = { google: [], googlePrev: [], bing: null, bingPrev: null, ga4: null, ga4Prev: null, ai: null, aiPrev: null, clarity: null };
 	const origin = (p: string) => 'https://site.example' + p;
 	it('is the union of every source, null where a source knows nothing (never an assumed zero)', () => {
 		const rows = mergePages({
@@ -100,6 +100,31 @@ describe('clarityPages', () => {
 		expect(by('/b')).toEqual({ url: '/b', sessions: 50, rageClicks: null, deadClicks: 1 });
 		expect(by('/c')).toBeUndefined();
 		expect(out).toHaveLength(2);
+	});
+});
+
+describe('mergePages: AI assistants (GA4)', () => {
+	const base: PageSources = { google: [], googlePrev: [], bing: null, bingPrev: null, ga4: null, ga4Prev: null, ai: null, aiPrev: null, clarity: null };
+	const origin = (p: string) => 'https://site.example' + p;
+	const ai = (page: string, assistant: string, sessions: number, engagedSessions = 0, keyEvents = 0) => ({ page, assistant, sessions, engagedSessions, keyEvents });
+	it('sums assistants per page, keeps the split busiest first, and adds pages only AI knows', () => {
+		const rows = mergePages({ ...base, google: [{ url: '/a', clicks: 10, impressions: 100, position: 3 }], ai: [ai('/a', 'Claude', 2, 1), ai('/a/', 'ChatGPT', 6, 3, 1.25), ai('/only-ai?x=1', 'Perplexity', 4, 4)] }, origin);
+		const by = (p: string) => rows.find((r) => r.path === p)!;
+		expect(by('/a')).toMatchObject({ aiSessions: 8, aiEngaged: 0.5, aiKeyEvents: 1.3, aiTop: 'ChatGPT', aiBy: [{ assistant: 'ChatGPT', sessions: 6 }, { assistant: 'Claude', sessions: 2 }] });
+		expect(by('/only-ai')).toMatchObject({ gClicks: null, aiSessions: 4, aiTop: 'Perplexity', url: 'https://site.example/only-ai' });
+	});
+	it('null (not zero) for a page with no AI sessions, and no AI sort effect on pages that have none', () => {
+		const rows = mergePages({ ...base, google: [{ url: '/a', clicks: 10, impressions: 100, position: 3 }, { url: '/b', clicks: 10, impressions: 100, position: 3 }], ai: [ai('/b', 'Gemini', 1)] }, origin);
+		expect(rows.find((r) => r.path === '/a')).toMatchObject({ aiSessions: null, aiSessionsD: null, aiEngaged: null, aiTop: null, aiBy: null });
+		expect(rows[0].path).toBe('/b'); // equal Google clicks: the page with AI sessions comes first
+	});
+	it('change against the previous window; a brand-new AI page has no percentage; no stored window means no change', () => {
+		const withPrev = mergePages({ ...base, ai: [ai('/a', 'ChatGPT', 30), ai('/a', 'Claude', 30), ai('/new', 'ChatGPT', 5)], aiPrev: [ai('/a', 'ChatGPT', 40), ai('/gone', 'ChatGPT', 9)] }, origin);
+		expect(withPrev.find((r) => r.path === '/a')).toMatchObject({ aiSessions: 60, aiSessionsD: 0.5 });
+		expect(withPrev.find((r) => r.path === '/new')).toMatchObject({ aiSessions: 5, aiSessionsD: null });
+		expect(withPrev.find((r) => r.path === '/gone')).toBeUndefined(); // only in the previous window: no row for it now
+		const noPrev = mergePages({ ...base, ai: [ai('/a', 'ChatGPT', 30)], aiPrev: null }, origin);
+		expect(noPrev[0]).toMatchObject({ aiSessions: 30, aiSessionsD: null });
 	});
 });
 
@@ -161,6 +186,38 @@ describe('combined pages on demo data', () => {
 		expect(r.ga4.comparable).toBe(false);
 		expect(r.rows[0].aSessionsD).toBeNull(); // no change claimed without a stored previous window
 	});
+	it('AI assistants: GA4 sessions per page, with a previous window where one is stored', () => {
+		const site = getSite(1)!;
+		const r = pageInsights(site, 28);
+		expect(r.ai).toMatchObject({ linked: true, status: 'ok', hasData: true, comparable: true });
+		const withAi = r.rows.filter((x) => x.aiSessions != null);
+		expect(withAi.length).toBeGreaterThan(0);
+		const row = withAi[0];
+		const stored = db().prepare('SELECT SUM(sessions) s FROM ga4_ai WHERE site_id = 1 AND days = 28 AND page = ?').get(row.path) as { s: number };
+		expect(row.aiSessions).toBe(stored.s);
+		expect(row.aiBy!.reduce((a, b) => a + b.sessions, 0)).toBe(row.aiSessions);
+		expect(row.aiTop).toBe(row.aiBy![0].assistant);
+		expect(withAi.some((x) => x.aiSessionsD != null)).toBe(true);
+		expect(r.ai.hasData && pageInsights(site, 7).ai.comparable).toBe(true);
+		const n = (days: number) => (db().prepare('SELECT COUNT(*) n FROM ga4_ai_prev WHERE site_id = 1 AND days = ?').get(days) as { n: number }).n;
+		expect(n(28)).toBeGreaterThan(0);
+		expect(n(480)).toBe(0); // the window before 480 days reaches past GA4's retention
+		const long = pageInsights(site, 480);
+		expect(long.ai).toMatchObject({ hasData: true, comparable: false });
+		for (const x of long.rows) expect(x.aiSessionsD).toBeNull();
+	});
+	it('AI assistants: shown only when the AI report was pulled; a failed pull is not shown as zero AI traffic', () => {
+		const site = getSite(1)!;
+		const on = (db().prepare('SELECT ga4_ai_on v FROM sites WHERE id = 1').get() as { v: string }).v;
+		db().prepare('UPDATE sites SET ga4_ai_on = NULL WHERE id = 1').run();
+		const failed = pageInsights(site, 28);
+		expect(failed.ai).toMatchObject({ status: 'failed', hasData: false });
+		expect(failed.rows.every((x) => x.aiSessions == null)).toBe(true);
+		db().prepare('UPDATE sites SET ga4_periods_on = NULL WHERE id = 1').run();
+		expect(pageInsights(site, 28).ai.status).toBe('pending');
+		db().prepare('UPDATE sites SET ga4_ai_on = ?, ga4_periods_on = ? WHERE id = 1').run(on, on);
+		expect(pageInsights(site, 28).ai.status).toBe('ok');
+	});
 	it('Bing changes are only shown when its stored history reaches the previous period', () => {
 		const site = getSite(1)!;
 		const p = periodFor(site, 28);
@@ -206,6 +263,14 @@ describe('combined pages on demo data', () => {
 		const filtered = await call(key, { site: '1', path_contains: 'BLOG', limit: 50 });
 		expect(filtered.data.rows.length).toBeGreaterThan(0);
 		expect(filtered.data.rows.every((x: { path: string }) => x.path.toLowerCase().includes('blog'))).toBe(true);
+		expect(r.data.sources.ai).toMatchObject({ linked: true, status: 'ok', hasData: true });
+		const byAi = await call(key, { site: '1', sort: 'ai_sessions', limit: 10 });
+		const a = byAi.data.rows.map((x: { ai: { sessions: number } | null }) => x.ai?.sessions ?? -1);
+		expect(a[0]).toBeGreaterThan(0);
+		expect(a).toEqual([...a].sort((x: number, y: number) => y - x));
+		const aiRow = byAi.data.rows[0].ai;
+		expect(aiRow).toMatchObject({ topAssistant: expect.any(String), byAssistant: expect.any(Array) });
+		expect(aiRow.engagedShare).toMatch(/%$/);
 		const bySessions = await call(key, { site: '1', sort: 'ga4_sessions', limit: 10 });
 		const s = bySessions.data.rows.map((x: { ga4: { sessions: number } | null }) => x.ga4?.sessions ?? -1);
 		expect(s).toEqual([...s].sort((a: number, b: number) => b - a));

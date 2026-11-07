@@ -70,7 +70,7 @@ export async function verifyHost(site: SiteRow, host: string, fetchImpl?: typeof
 }
 
 export interface Batch { host: string; urls: number; status: number; ok: boolean; message: string }
-export interface SubmitResult { accepted: number; skipped: { reason: string; count: number }[]; batches: Batch[]; error: string | null }
+export interface SubmitResult { accepted: number; skipped: { reason: string; count: number }[]; batches: Batch[]; error: string | null; /** URLs left out only because the daily limit was reached: they can be sent later */ overflow: string[] }
 
 const used24h = (siteId: number, now: number) => (db().prepare('SELECT COALESCE(SUM(urls), 0) n FROM indexnow_log WHERE site_id = ? AND at >= ? AND status IN (200, 202)').get(siteId, now - DAY_MS) as { n: number }).n;
 const backoffKey = (siteId: number) => `indexnow_backoff:${siteId}`;
@@ -85,7 +85,7 @@ export const backoffUntil = (siteId: number) => Number((db().prepare('SELECT val
 export async function submitUrls(site: SiteRow, urls: string[], o: { source?: 'manual' | 'auto'; force?: boolean; fetchImpl?: typeof fetch; now?: number } = {}): Promise<SubmitResult> {
 	const { source = 'manual', force = false, fetchImpl = fetch, now = Date.now() } = o;
 	const d = db();
-	const res: SubmitResult = { accepted: 0, skipped: [], batches: [], error: null };
+	const res: SubmitResult = { accepted: 0, skipped: [], batches: [], error: null, overflow: [] };
 	const skip = (reason: string, count: number) => void (count && res.skipped.push({ reason, count }));
 	const k = getKey(site.id);
 	if (!k || !isValidKey(k.key)) return { ...res, error: 'Create a key first.' };
@@ -111,7 +111,7 @@ export async function submitUrls(site: SiteRow, urls: string[], o: { source?: 'm
 			skip('already sent in the last 24 hours', todo.length - fresh.length);
 			todo = fresh;
 		}
-		if (todo.length > budget) { skip('over the daily limit', todo.length - Math.max(0, budget)); todo = todo.slice(0, Math.max(0, budget)); }
+		if (todo.length > budget) { skip('over the daily limit', todo.length - Math.max(0, budget)); res.overflow.push(...todo.slice(Math.max(0, budget))); todo = todo.slice(0, Math.max(0, budget)); }
 		for (let i = 0; i < todo.length; i += MAX_URLS_PER_POST) {
 			const part = todo.slice(i, i + MAX_URLS_PER_POST);
 			let status = 0;

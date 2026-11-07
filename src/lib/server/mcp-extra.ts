@@ -275,23 +275,6 @@ const writeTools: Tool[] = [
 		}
 	}),
 	w({
-		name: 'submit_sitemap',
-		description: 'Submit a sitemap for this site to Google Search Console. `sitemapUrl` must be on the same site. This changes the property in Search Console (it cannot be undone from here; remove it in Search Console if needed), and is refused when the server is in read-only mode.',
-		schema: { ...siteArg, sitemapUrl: { type: 'string' } },
-		run: async (a, sites) => {
-			const site = resolveSite(sites, a.site);
-			const feed = String(a.sitemapUrl ?? '').trim();
-			if (!onSite(site, [feed]).ok.length) throw new Error('`sitemapUrl` must be a full URL on this site, such as https://example.com/sitemap.xml.');
-			const { client, site: row } = clientForSite(site.id);
-			try {
-				await client.submitSitemap(row.site_url, feed);
-			} catch (e) {
-				throw new Error(`Google did not accept it: ${e instanceof Error ? e.message : 'unknown error'}`);
-			}
-			return { ok: true, submitted: feed, next: 'Google reads it in its own time. Use read_sitemaps in a few minutes, then get_sitemap_coverage.' };
-		}
-	}),
-	w({
 		name: 'watch_urls',
 		description: 'Add URLs of this site to the indexing monitor\'s watch list: they are checked in Google\'s index before anything else. Up to 50 URLs, this site only. Checking spends URL Inspection quota only when the monitor runs.',
 		schema: { ...siteArg, urls: { type: 'array', items: { type: 'string' } } },

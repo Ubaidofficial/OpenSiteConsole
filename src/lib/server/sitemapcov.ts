@@ -35,7 +35,7 @@ export async function syncSitemapUrls(siteId: number, o: { client?: GscClient; f
 	const fetchImpl = o.fetchImpl ?? (isDemo ? demoSitemapFetch(siteId) : undefined);
 	let error: string | null = null;
 	const note = (e: string) => void (error ??= e);
-	const urls = new Map<string, { lastmod: string | null; sitemap: string }>();
+	const urls = new Map<string, { lastmod: string | null; bad: boolean; sitemap: string }>();
 	let files = 0;
 	let truncated = false;
 	let offProperty = 0;
@@ -66,7 +66,7 @@ export async function syncSitemapUrls(siteId: number, o: { client?: GscClient; f
 				if (urls.size >= MAX_URLS) { truncated = true; break; }
 				// Only URLs of this property: Google refuses to inspect others, and they are not this site's coverage.
 				if (!inProperty(e.loc, site.site_url)) { offProperty++; continue; }
-				if (!urls.has(e.loc)) urls.set(e.loc, { lastmod: e.lastmod, sitemap: item.url });
+				if (!urls.has(e.loc)) urls.set(e.loc, { lastmod: e.lastmod, bad: !!e.lastmodBad, sitemap: item.url });
 			}
 		}
 	} catch (e) {
@@ -86,10 +86,10 @@ export async function syncSitemapUrls(siteId: number, o: { client?: GscClient; f
 	// and a partial one adds what it found without deleting anything.
 	const partial = !!error && hadSnapshot;
 	const changes = before && !partial ? diffSitemaps(before, new Map([...urls].map(([u, v]) => [u, v.lastmod]))) : null;
-	const ins = d.prepare('INSERT OR REPLACE INTO sitemap_urls (site_id, url, norm, lastmod, sitemap) VALUES (?,?,?,?,?)');
+	const ins = d.prepare('INSERT OR REPLACE INTO sitemap_urls (site_id, url, norm, lastmod, sitemap, lastmod_bad) VALUES (?,?,?,?,?,?)');
 	d.transaction(() => {
 		if (!partial) d.prepare('DELETE FROM sitemap_urls WHERE site_id = ?').run(siteId);
-		for (const [url, v] of urls) ins.run(siteId, url, normalizeUrl(url), v.lastmod, v.sitemap);
+		for (const [url, v] of urls) ins.run(siteId, url, normalizeUrl(url), v.lastmod, v.sitemap, v.bad ? 1 : 0);
 		const total = (d.prepare('SELECT COUNT(*) n FROM sitemap_urls WHERE site_id = ?').get(siteId) as { n: number }).n;
 		d.prepare('INSERT OR REPLACE INTO sitemap_sync (site_id, fetched_at, sitemaps, urls, truncated, error) VALUES (?,?,?,?,?,?)').run(siteId, Date.now(), files, total, truncated ? 1 : 0, error);
 	})();

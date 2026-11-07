@@ -17,6 +17,11 @@ const dayFactor = (date: string, end: string, seed: string) => {
 };
 
 export class DemoBing implements BingClient {
+	/** Demo: Bing "accepts" every submission and keeps a small daily allowance so the quota message can be seen. */
+	async submitUrlBatch(): Promise<void> {}
+	async urlSubmissionQuota(): Promise<{ daily: number | null; monthly: number | null }> {
+		return { daily: 10_000, monthly: 300_000 };
+	}
 	async listSites(): Promise<BingSite[]> {
 		// Five of six demo sites exist in Bing; one does not, so the "unmatched" path is visible in the UI.
 		return sites.filter((s) => !s.siteUrl.includes('ledgerly')).map((s) => ({ url: s.siteUrl.startsWith('sc-domain:') ? `https://www.${s.siteUrl.slice(10)}/` : s.siteUrl, isVerified: true }));

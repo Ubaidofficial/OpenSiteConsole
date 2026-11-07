@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import AreaSpark from '$lib/components/AreaSpark.svelte';
 	import Delta from '$lib/components/Delta.svelte';
 	import { trendOf } from '$lib/trend';
@@ -10,9 +11,9 @@
 	const empty = $derived(data.types.filter((t) => !t.has));
 </script>
 
-<p class="mb-3 text-sm text-muted-foreground">
-	Google reports each kind of search separately. The Clicks, Impressions, CTR and Position cards on Overview are <b>Web</b> only, which is also what Search Console shows by default; the other types add to your reach but are not in those totals.
-</p>
+<Explainer lead="Google reports each kind of search separately; the numbers are not added up.">
+	<p>Google reports each kind of search separately. The Clicks, Impressions, CTR and Position cards on Overview are <b>Web</b> only, which is also what Search Console shows by default; the other types add to your reach but are not in those totals.</p>
+</Explainer>
 
 {#if !data.typesPulled}
 	<div class="card p-6 text-sm text-muted-foreground">Search types are fetched on the next sync of this site. Press <b>Sync</b> (top right).</div>

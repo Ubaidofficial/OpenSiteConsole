@@ -10,7 +10,7 @@ export const load: PageServerLoad = ({ url }) => {
 	const r = checkAuthorize(url.search, config.origin);
 	if (r.kind === 'error') error(400, r.message);
 	if (r.kind === 'redirect') redirect(303, r.location);
-	return { requestId: r.requestId, clientName: r.clientName, redirectHost: r.redirectHost, sites: allSites().map((s) => ({ id: s.id, name: displayName(s.site_url) })) };
+	return { requestId: r.requestId, clientName: r.clientName, redirectHost: r.redirectHost, sites: allSites().map((s) => ({ id: s.id, name: displayName(s.site_url) })), readOnly: config.readOnly };
 };
 
 const expired = 'This sign-in request expired or was already used. Start again from the app.';
@@ -25,8 +25,10 @@ export const actions: Actions = {
 			siteIds = [...new Set(f.getAll('site').map(Number).filter((n) => Number.isInteger(n) && known.has(n)))];
 			if (!siteIds.length) return fail(400, { error: 'Pick at least one site, or choose all sites.' });
 		}
-		// Changes are opt-in: only an explicitly ticked box lets this app use the tools that change things.
-		const r = approveRequest(id, siteIds, Date.now(), f.get('changes') === 'on');
+		// Three levels, none of them the default; a read-only server grants only "read". (The older single boxes, "submit=1" and "changes=on", are still understood as the submit level.)
+		const asked = String(f.get('level') ?? (f.get('submit') === '1' || f.get('changes') === 'on' ? 'submit' : 'read'));
+		const level = config.readOnly ? 'read' : asked === 'delete' ? 'delete' : asked === 'submit' ? 'submit' : 'read';
+		const r = approveRequest(id, siteIds, Date.now(), level !== 'read', level === 'delete');
 		return r ? { redirect: r.location } : fail(400, { error: expired });
 	},
 	deny: async ({ request }) => {

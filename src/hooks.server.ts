@@ -27,6 +27,8 @@ export const init: ServerInit = async () => {
  */
 const OAUTH_PROGRAM_ENDPOINTS = new Set(['/oauth/register', '/oauth/token']);
 const isDiscovery = (path: string) => path.startsWith('/.well-known/oauth-');
+/** The privacy policy, terms and comparison pages are public: Google's OAuth verification and anyone about to sign in must be able to read them. They show no data about the installation. */
+const isLegal = (path: string) => path === '/privacy' || path === '/terms' || path === '/compare' || path.startsWith('/compare/');
 
 const gate: Handle = async ({ event, resolve }) => {
 	await boot();
@@ -55,7 +57,7 @@ const gate: Handle = async ({ event, resolve }) => {
 
 	if (config.hasPassword) {
 		event.locals.authed = validSession(event.cookies.get(SESSION_COOKIE));
-		if (!event.locals.authed && path !== '/login') {
+		if (!event.locals.authed && path !== '/login' && !isLegal(path)) {
 			// Someone sent here to approve an app is returned to that request after signing in (and only to that page).
 			const back = path === '/oauth/authorize' && event.request.method === 'GET' ? `/login?next=${encodeURIComponent(path + event.url.search)}` : '/login';
 			return new Response(null, { status: 303, headers: { location: back } });

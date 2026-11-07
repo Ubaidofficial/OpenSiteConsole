@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { fmtPct } from '$lib/format';
 	import { fmtVital, type Rating } from '$lib/vitals';
 	import { privacy } from '$lib/privacy.svelte';
@@ -21,10 +22,10 @@
 		No Core Web Vitals data for this site yet. Chrome only reports a site once it has enough real visits, so small or new sites often have none. If the site should have enough traffic, press <b>Sync</b>; the data is also fetched once a day.
 	</div>
 {:else}
-	<p class="mb-3 text-sm text-muted-foreground">
-		Real Chrome users over the last 28 days (75th percentile, as Google judges them), from the Chrome UX Report. It is field data for the whole site, not for one page, and it is not the same as a lab test.
-		{#if data.snapshots}History builds up from the day you connected: {data.snapshots} daily snapshot{data.snapshots === 1 ? '' : 's'} so far.{/if}
-	</p>
+	<Explainer lead="Real Chrome users over the last 28 days, as Google judges them.">
+	<p>Real Chrome users over the last 28 days (75th percentile, as Google judges them), from the Chrome UX Report. It is field data for the whole site, not for one page, and it is not the same as a lab test.
+		{#if data.snapshots}History builds up from the day you connected: {data.snapshots} daily snapshot{data.snapshots === 1 ? '' : 's'} so far.{/if}</p>
+</Explainer>
 	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 		{#each data.devices as d (d.formFactor)}
 			<div class="rounded-2xl border bg-card p-5 shadow-xs">

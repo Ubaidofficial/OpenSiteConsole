@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Explainer from '$lib/components/Explainer.svelte';
 	import { privacy } from '$lib/privacy.svelte';
 	import { enhance } from '$app/forms';
 	import { ago } from '$lib/format';
@@ -89,7 +90,7 @@
 <section class="card mt-4 p-4">
 	<h2 class="mb-1 font-medium">4 · Google Tag Manager <span class="chip ml-1">read-only</span></h2>
 	<p class="mb-3 text-xs text-muted-foreground">
-		Reads each site's <b>published</b> container (tags, triggers, variables) and checks it against GA4 and Search Console on the site's <b>Tag Manager</b> tab: is the container published, does it send to the GA4 property linked here, are tags paused, does GA4 see the traffic Google sends. Needs the <b>Tag Manager API</b> enabled in your Google Cloud project. Containers are matched to sites by their domain, or by a name that is the site's address; SEOConsole never edits or publishes a container.
+		Reads each site's <b>published</b> container and checks it against GA4 and Search Console (Tag Manager tab). Needs the <b>Tag Manager API</b> enabled in your Google Cloud project. SEOConsole never edits or publishes a container.
 	</p>
 	<form method="POST" action="?/gtmAuto" use:enhance={submit('gtm')}><button class="btn btn-primary" disabled={busy === 'gtm'}>{busy === 'gtm' ? 'Matching…' : 'Find & link containers'}</button></form>
 	{#if msgFor('gtm')?.ok}<p class="mt-2 text-sm text-good">{msgFor('gtm')?.ok}</p>{/if}
@@ -100,8 +101,7 @@
 <section class="card mt-4 p-4">
 	<h2 class="mb-1 font-medium">5 · Microsoft Clarity</h2>
 	<p class="mb-3 text-xs text-muted-foreground">
-		Clarity has one token per project (a project is usually one site). In Clarity: open the project → <b>Settings</b> → <b>Data Export</b> → <b>Generate new API token</b> (project admins only).
-		Clarity allows <b>10 API calls per project per day</b> and only exposes the last 1–3 days, so SEOConsole stores one snapshot a day. Connecting uses one of today's calls.
+		One token per project: Clarity → <b>Settings</b> → <b>Data Export</b> → <b>Generate new API token</b>. Clarity allows <b>10 API calls per project per day</b> and shows only the last 1–3 days, so one snapshot is stored daily.
 	</p>
 	{#if msgFor('clarity')?.ok}<p class="mb-2 text-sm text-good">{msgFor('clarity')?.ok}</p>{/if}
 	{#if msgFor('clarity')?.error}<p class="mb-2 text-sm text-bad">{msgFor('clarity')?.error}</p>{/if}
@@ -152,9 +152,9 @@
 <!-- 6 Core Web Vitals -->
 <section class="card mt-4 p-4">
 	<h2 class="mb-1 font-medium">7 · Core Web Vitals <span class="chip ml-1">optional</span></h2>
-	<p class="mb-3 text-xs text-muted-foreground">
-		Real-user speed data (LCP, INP, CLS and more) from Google's Chrome UX Report, saved once a day per site. It needs a free API key: in Google Cloud Console enable the <b>Chrome UX Report API</b>, then create an API key under Credentials. Sites with too little Chrome traffic have no data, which is normal.
-	</p>
+	<Explainer lead="Real-user page speed from Google's Chrome UX Report.">
+	<p>Real-user speed data (LCP, INP, CLS and more) from Google's Chrome UX Report, saved once a day per site. It needs a free API key: in Google Cloud Console enable the <b>Chrome UX Report API</b>, then create an API key under Credentials. Sites with too little Chrome traffic have no data, which is normal.</p>
+</Explainer>
 	{#if data.crux}
 		<div class="mb-2 flex items-center gap-2 text-sm"><span>Connected</span><span class="text-xs text-muted-foreground">data for {data.crux.sites} site(s) so far</span>
 			<form method="POST" action="?/cruxRemove" use:enhance class="ml-auto"><button class="btn btn-danger">Disconnect</button></form></div>

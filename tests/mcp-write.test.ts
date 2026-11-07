@@ -57,33 +57,37 @@ afterEach(() => {
 	resetWriteLimits();
 });
 
-const WRITES = ['mark_action', 'log_change', 'start_seo_test', 'set_brand_terms', 'sync_site', 'read_sitemaps', 'run_onpage_check', 'submit_indexnow', 'submit_sitemap', 'watch_urls'];
+/** The app-changing tools (the ones marked `write`); the search-engine tools of the submit and delete levels are tested in submission.test.ts. */
+const WRITES = ['mark_action', 'log_change', 'start_seo_test', 'set_brand_terms', 'sync_site', 'read_sitemaps', 'run_onpage_check', 'submit_indexnow', 'watch_urls'];
 const NEW_READS = ['get_portfolio', 'get_change_log', 'get_history', 'get_site_settings'];
 
 describe('what the server offers', () => {
-	it('there are exactly ten tools that change things, and they are the documented ones', () => {
-		expect([...MCP_WRITE_TOOL_NAMES].sort()).toEqual([...WRITES].sort());
-		expect(MCP_READ_TOOL_NAMES).toHaveLength(33);
+	it('the nine app-changing tools are all there among the tools that change things, and the rest only read', () => {
+		for (const w of WRITES) expect(MCP_WRITE_TOOL_NAMES, w).toContain(w);
+		expect(MCP_READ_TOOL_NAMES).toHaveLength(40);
 		expect(MCP_READ_TOOL_NAMES.length + MCP_WRITE_TOOL_NAMES.length).toBe(MCP_TOOL_NAMES.length);
 		expect(new Set(MCP_TOOL_NAMES).size).toBe(MCP_TOOL_NAMES.length);
 		for (const n of NEW_READS) expect(MCP_READ_TOOL_NAMES).toContain(n);
 	});
-	it('tools/list tells clients which tools change things, and none is marked destructive', async () => {
+	it('tools/list tells clients which tools change things, and only the two delete-level ones are marked destructive', async () => {
 		const list = (await rpc(reader, { jsonrpc: '2.0', id: 2, method: 'tools/list' })).json.result.tools as { name: string; annotations: Record<string, boolean> }[];
 		for (const t of list) {
-			if (WRITES.includes(t.name)) expect(t.annotations, t.name).toEqual({ readOnlyHint: false, destructiveHint: false, openWorldHint: false });
+			if (WRITES.includes(t.name)) expect(t.annotations, t.name).toMatchObject({ readOnlyHint: false, destructiveHint: false });
+			else if (MCP_WRITE_TOOL_NAMES.includes(t.name)) expect(t.annotations.readOnlyHint, t.name).toBe(false);
 			else expect(t.annotations, t.name).toEqual({ readOnlyHint: true });
 		}
-		expect(list).toHaveLength(43);
+		// only the two tools of the delete level are marked destructive (see submission.test.ts)
+		expect(list.filter((t) => t.annotations.destructiveHint).map((t) => t.name).sort()).toEqual(['cancel_indexing_queue', 'delete_sitemap']);
+		expect(list).toHaveLength(60);
 	});
 	it('the server instructions say changes need the owner\'s permission and nothing can delete', async () => {
 		const i = (await rpc(reader, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })).json.result.instructions as string;
-		expect(i).toContain('only work if the owner allowed changes');
-		expect(i).toContain('Nothing can delete data');
+		expect(i).toContain('need a key with the submit permission');
+		expect(i).toContain('Nothing can delete your data');
 		for (const w of WRITES) expect(i, w).toContain(w);
 	});
-	it('no tool is named or built to delete, disconnect, or touch keys, tokens or passwords', () => {
-		for (const n of MCP_TOOL_NAMES) expect(n, n).not.toMatch(/delete|remove|disconnect|revoke|unlink|purge|password|credential|token|api_key|secret/);
+	it('no tool is named or built to delete, disconnect, or touch keys, tokens or passwords (the two delete-level tools are the exception, and get_site_verification_token only reads a public token Google asks you to publish)', () => {
+		for (const n of MCP_TOOL_NAMES.filter((x) => !['delete_sitemap', 'cancel_indexing_queue', 'get_site_verification_token'].includes(x))) expect(n, n).not.toMatch(/delete|remove|disconnect|revoke|unlink|purge|password|credential|token|api_key|secret/);
 		const src = readFileSync('src/lib/server/mcp-extra.ts', 'utf8');
 		expect(src).not.toMatch(/DELETE FROM|DROP TABLE|\.delete[A-Z(]|deleteSite|deleteSitemap|removeIntegration|removeLink|deleteApiKey/);
 		for (const forbidden of ['./apikeys', './oauth', './connect', './crypto', './accounts', './adminauth', './sessions', './password']) expect(src, forbidden).not.toContain(`from '${forbidden}'`);
@@ -94,14 +98,14 @@ describe('a key that cannot make changes is refused, and nothing changes', () =>
 	const ARGS: Record<string, object> = {
 		mark_action: { site: '1', key: 'x', state: 'done' }, log_change: { site: '1', date: '2026-10-01', title: 'refused' }, start_seo_test: { site: '1', name: 't', startDate: '2026-10-01', pages: ['/blog/'] },
 		set_brand_terms: { site: '1', terms: ['refused brand'] }, sync_site: { site: '1' }, read_sitemaps: { site: '1' }, run_onpage_check: { site: '1' },
-		submit_indexnow: { site: '1', urls: ['https://greenleaf.example/a'] }, submit_sitemap: { site: '1', sitemapUrl: 'https://greenleaf.example/sitemap.xml' }, watch_urls: { site: '1', urls: ['https://greenleaf.example/a'] }
+		submit_indexnow: { site: '1', urls: ['https://greenleaf.example/a'] }, watch_urls: { site: '1', urls: ['https://greenleaf.example/a'] }
 	};
-	it('every one of the ten says so in plain words and tells the owner where to allow it', async () => {
+	it('every one of them says so in plain words and tells the owner where to allow it', async () => {
 		expect(Object.keys(ARGS).sort()).toEqual([...WRITES].sort());
 		for (const [name, args] of Object.entries(ARGS)) {
 			const r = await call(reader, name, args);
 			expect(r.isError, name).toBe(true);
-			expect(r.text, name).toContain('this connection is read-only');
+			expect(r.text, name).toContain('needs an API key created with');
 			expect(r.text, name).toContain('Agents page');
 			expect(r.text, name).toContain('Do not retry until they have');
 		}
@@ -195,7 +199,7 @@ describe('a key that may make changes: limits and the audit trail', () => {
 	});
 });
 
-describe('the ten tools', () => {
+describe('the app-changing tools', () => {
 	it('mark_action: done hides a finding, open brings it back, a made-up key is refused', async () => {
 		const q = (await call(writer, 'get_action_queue', { site: '1', limit: 50 })).data.items as { key: string; title: string }[];
 		expect(q.length).toBeGreaterThan(2);
@@ -337,14 +341,6 @@ describe('the ten tools', () => {
 		}
 	});
 
-	it('submit_sitemap: a sitemap on this site only', async () => {
-		expect((await call(writer, 'submit_sitemap', { site: '1', sitemapUrl: 'https://evil.example/sitemap.xml' })).text).toContain('must be a full URL on this site');
-		expect((await call(writer, 'submit_sitemap', { site: '1', sitemapUrl: 'javascript:alert(1)' })).isError).toBe(true);
-		const ok = await call(writer, 'submit_sitemap', { site: '1', sitemapUrl: 'https://greenleaf.example/sitemap-extra.xml' });
-		expect(ok.data).toMatchObject({ ok: true, submitted: 'https://greenleaf.example/sitemap-extra.xml' });
-		expect(audits().some((a) => a.action === 'mcp.submit_sitemap' && a.detail.includes('sitemap-extra.xml'))).toBe(true);
-	});
-
 	it('watch_urls: adds this site\'s URLs to the watch list and leaves others out', async () => {
 		expect((await call(writer, 'watch_urls', { site: '1', urls: ['https://evil.example/x'] })).isError).toBe(true);
 		const r = await call(writer, 'watch_urls', { site: '1', urls: ['https://greenleaf.example/watch-me', 'https://evil.example/y', 'not a url'] });
@@ -471,14 +467,14 @@ describe('the owner decides, on the sign-in page and on the Agents page', () => 
 	});
 	it('the consent page and the Agents page both say plainly what changes mean, and that deleting is never allowed', () => {
 		const consent = readFileSync('src/routes/oauth/authorize/+page.svelte', 'utf8');
-		expect(consent).toContain('name="changes"');
-		expect(consent).not.toMatch(/name="changes"[^>]*checked/); // never pre-ticked
-		expect(consent).toContain('(optional, off by default)');
-		expect(consent).toContain('It can never delete anything, connect or disconnect accounts, or touch keys and passwords');
+		expect(consent).toContain('name="level"');
+		expect(consent).not.toMatch(/name="level" value="(submit|delete)"[^>]*checked/); // never pre-selected
+		expect(consent).toContain('(default)');
+		expect(consent).toContain('It still cannot delete your data or change a site');
 		const agents = readFileSync('src/routes/agents/+page.svelte', 'utf8');
-		expect(agents).toContain('name="changes"');
-		expect(agents).not.toMatch(/name="changes"[^>]*checked/);
-		expect(agents).toContain('(off by default)');
-		expect(agents).toContain('It can never delete or connect anything');
+		expect(agents).toContain('name="permission"');
+		expect(agents).not.toMatch(/name="permission" value="(submit|delete)"[^>]*checked/);
+		expect(agents).toContain('(default)');
+		expect(agents).toContain('Nothing can delete your data');
 	});
 });

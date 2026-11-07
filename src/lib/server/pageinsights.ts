@@ -1,5 +1,5 @@
 import { db } from './db';
-import { clarityPages, mergePages, type ClarityPage, type Ga4Page, type InsightRow, type Vol } from '../pageinsights';
+import { clarityPages, mergePages, type AiPage, type ClarityPage, type Ga4Page, type InsightRow, type Vol } from '../pageinsights';
 import { periodFor, historyCoversPrevious, topPages } from './queries';
 import { linksFor } from './links';
 import type { SiteRow } from './clients';
@@ -24,6 +24,8 @@ export interface PageInsights {
 	google: { comparable: boolean };
 	bing: { linked: boolean; hasData: boolean; comparable: boolean };
 	ga4: { linked: boolean; hasData: boolean; comparable: boolean };
+	/** AI assistants as GA4 sees them. `status`: ok = the report was pulled (it may be empty), pending = GA4 has not synced yet, failed = the last pull of this report failed */
+	ai: { linked: boolean; status: 'ok' | 'pending' | 'failed' | null; hasData: boolean; comparable: boolean };
 	clarity: { linked: boolean; hasData: boolean; day: string | null };
 }
 
@@ -55,6 +57,17 @@ export function pageInsights(site: S, days: number, limit = 5000): PageInsights 
 	const ga4PrevRows = ga4Linked ? landing('ga4_landing_prev') : [];
 	const ga4Prev = ga4 && ga4.length && ga4PrevRows.length ? ga4PrevRows : null;
 
+	// AI assistants (GA4 sessions whose source is ChatGPT, Perplexity, Gemini, Claude or Copilot). The AI report is an extra pull: when it
+	// failed, ga4_ai_on is empty and nothing here is shown, because an empty table would read as "no AI traffic".
+	const aiState = ga4Linked ? (d.prepare('SELECT ga4_periods_on periods, ga4_ai_on aion FROM sites WHERE id = ?').get(site.id) as { periods: string | null; aion: string | null }) : null;
+	const aiStatus = !aiState ? null : !aiState.periods ? ('pending' as const) : !aiState.aion ? ('failed' as const) : ('ok' as const);
+	const aiRows = (table: string) =>
+		(d.prepare(`SELECT page, assistant, sessions, engaged_sessions engagedSessions, key_events keyEvents FROM ${table} WHERE site_id = ? AND days = ?`).all(site.id, days) as AiPage[]);
+	const ai = aiStatus === 'ok' ? aiRows('ga4_ai') : null;
+	const aiPrevRows = aiStatus === 'ok' ? aiRows('ga4_ai_prev') : [];
+	// An empty previous window cannot be told apart from one that was never stored, so no change is claimed in either case.
+	const aiPrev = ai && ai.length && aiPrevRows.length ? aiPrevRows : null;
+
 	// Clarity: the newest "by URL" snapshot, which covers the last 24 hours only, not the selected period.
 	const clarityLinked = !!links.clarity;
 	const snap = clarityLinked ? (d.prepare("SELECT day, payload FROM clarity_snapshots WHERE site_id = ? AND dimension = 'URL' ORDER BY day DESC LIMIT 1").get(site.id) as { day: string; payload: string } | undefined) : undefined;
@@ -67,13 +80,14 @@ export function pageInsights(site: S, days: number, limit = 5000): PageInsights 
 		}
 	}
 
-	const rows = mergePages({ google, googlePrev, bing, bingPrev, ga4: ga4 && ga4.length ? ga4 : null, ga4Prev, clarity: clarity && clarity.length ? clarity : null }, (path) => originOf(site.site_url) + path).slice(0, limit);
+	const rows = mergePages({ google, googlePrev, bing, bingPrev, ga4: ga4 && ga4.length ? ga4 : null, ga4Prev, ai: ai && ai.length ? ai : null, aiPrev, clarity: clarity && clarity.length ? clarity : null }, (path) => originOf(site.site_url) + path).slice(0, limit);
 	return {
 		rows,
 		period: { start: p.start, end: p.end, prevStart: p.prevStart, prevEnd: p.prevEnd },
 		google: { comparable: googleComparable },
 		bing: { linked: bingLinked, hasData: !!bing && bing.length > 0, comparable: !!bingPrev },
 		ga4: { linked: ga4Linked, hasData: !!ga4 && ga4.length > 0, comparable: !!ga4Prev },
+		ai: { linked: ga4Linked, status: aiStatus, hasData: !!ai && ai.length > 0, comparable: !!aiPrev },
 		clarity: { linked: clarityLinked, hasData: !!clarity && clarity.length > 0, day: snap?.day ?? null }
 	};
 }

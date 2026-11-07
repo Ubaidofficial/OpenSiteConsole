@@ -80,16 +80,16 @@ describe('site: self-contained and safe under a strict policy', () => {
 describe('site: honest and in step with the app', () => {
 	it('the tool counts on the page are the real ones, and the page never calls the server read-only without saying changes are opt-in', () => {
 		const reads = MCP_READ_TOOL_NAMES.length, writes = MCP_WRITE_TOOL_NAMES.length;
-		expect([reads, writes, MCP_TOOL_NAMES.length]).toEqual([33, 10, 43]);
+		expect([reads, writes, MCP_TOOL_NAMES.length]).toEqual([40, 20, 60]);
 		expect(html).toContain(`<b>${MCP_TOOL_NAMES.length}</b> MCP tools, read-only until you allow changes`);
 		expect(html).toContain(`<b data-count="${reads}">${reads}</b><span>tools that read</span>`);
-		expect(html).toContain(`<b>${writes}</b><span>that act, only if you allow it; none can delete</span>`);
+		expect(html).toContain(`<b>${writes}</b><span>that act, only if you allow it; deleting is a separate level</span>`);
 		expect(html).toContain(`Your agent calls ${reads} tools that read your own stored data`);
 		expect(html).toContain(`If you allow it, ${writes} more let it act on what it finds.`);
 		expect(html).toContain(`The MCP server has ${reads} tools that read your stored search data, and ${writes} that can change things`);
 		// the ten that change things are named in the FAQ so a reader knows what "change" means, and none of them deletes
-		for (const phrase of ['mark a finding done', 'log a change', 'start a test', 'send URLs to Bing through IndexNow', 'submit a sitemap']) expect(html).toContain(phrase);
-		expect(html).toContain('None can delete data, connect accounts, or touch keys and passwords');
+		for (const phrase of ['mark a finding done', 'log a change', 'start a test', 'send URLs to Bing through IndexNow', 'submit a sitemap', 'submit level', 'delete level']) expect(html).toContain(phrase);
+		expect(html).toContain('Nothing can delete your search data, connect accounts, or touch keys and passwords');
 		// stale claims from when the server could only read
 		for (const stale of [/\b29\b/, /read-only MCP (server|tools)/i, /No writes/, /agents cannot change/i, /An agent cannot change/i]) expect(html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, (m) => m), String(stale)).not.toMatch(stale);
 		const named = [...html.matchAll(/<b>(get_[a-z_]+)<\/b>/g)].map((m) => m[1]);
