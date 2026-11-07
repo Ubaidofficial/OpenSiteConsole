@@ -25,7 +25,10 @@ export const actions: Actions = {
 			siteIds = [...new Set(f.getAll('site').map(Number).filter((n) => Number.isInteger(n) && known.has(n)))];
 			if (!siteIds.length) return fail(400, { error: 'Pick at least one site, or choose all sites.' });
 		}
-		const r = approveRequest(id, siteIds, Date.now(), f.get('submit') === '1' && !config.readOnly);
+		// Three levels, none of them the default; a read-only server grants only "read". (The old single "submit" box is still understood.)
+		const asked = String(f.get('level') ?? (f.get('submit') === '1' ? 'submit' : 'read'));
+		const level = config.readOnly ? 'read' : asked === 'delete' ? 'delete' : asked === 'submit' ? 'submit' : 'read';
+		const r = approveRequest(id, siteIds, Date.now(), level !== 'read', level === 'delete');
 		return r ? { redirect: r.location } : fail(400, { error: expired });
 	},
 	deny: async ({ request }) => {

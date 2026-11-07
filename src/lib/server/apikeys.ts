@@ -4,9 +4,16 @@ import { db } from './db';
 export const KEY_PREFIX = 'osc_';
 const hash = (k: string) => createHash('sha256').update(k).digest('hex');
 
-/** read: look at data only. submit: also push URLs and sitemaps to search engines (never anything else; there is no tool that deletes data or changes settings). */
-export type Permission = 'read' | 'submit';
-export const asPermission = (v: unknown): Permission => (v === 'submit' ? 'submit' : 'read');
+/**
+ * read: look at data only. submit: also push URLs and sitemaps to search engines, set up IndexNow and ask for checks. delete: also the few things that
+ * cannot be undone by calling the tool again (remove a sitemap from Search Console, throw away queued submissions). Each level includes the one before it.
+ * No level can delete your data or change a site's content or settings.
+ */
+export type Permission = 'read' | 'submit' | 'delete';
+const RANK: Record<Permission, number> = { read: 0, submit: 1, delete: 2 };
+export const asPermission = (v: unknown): Permission => (v === 'delete' ? 'delete' : v === 'submit' ? 'submit' : 'read');
+/** Whether a key with permission `have` may do what needs `need`. */
+export const permits = (have: Permission, need: Permission) => RANK[have] >= RANK[need];
 
 export interface ApiKeyRow { id: number; name: string; prefix: string; site_ids: string | null; created_at: number; last_used_at: number | null; expires_at: number | null; permission: Permission }
 

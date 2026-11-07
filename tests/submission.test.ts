@@ -293,6 +293,7 @@ describe('MCP: submit permission', () => {
 	let readKey = '';
 	let submitKey = '';
 	let scopedSubmit = '';
+	let deleteKey = '';
 	const call = async (k: string, name: string, args: object = {}) => {
 		resetRateLimits();
 		const res = await handleMcp(new Request('http://x/api/mcp', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${k}` }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) }));
@@ -304,6 +305,7 @@ describe('MCP: submit permission', () => {
 		readKey = createApiKey('read', null).key;
 		submitKey = createApiKey('submit', null, null, 'submit').key;
 		scopedSubmit = createApiKey('submit one site', [2], null, 'submit').key;
+		deleteKey = createApiKey('submit and delete', null, null, 'delete').key;
 	});
 
 	it('a key is read-only unless it was created with the submit permission, and the permission is stored on the key', () => {
@@ -319,12 +321,12 @@ describe('MCP: submit permission', () => {
 		const tools = (await res.json()).result.tools as { name: string; annotations: { readOnlyHint: boolean; destructiveHint?: boolean } }[];
 		const writers = tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name).sort();
 		expect(writers).toEqual(['build_request_indexing_queue', 'cancel_indexing_queue', 'delete_sitemap', 'get_site_verification_token', 'inspect_and_submit_urls', 'mark_indexing_requested', 'run_indexing_check', 'setup_indexnow', 'submit_sitemap', 'submit_urls_for_indexing', 'verify_site_ownership']);
-		expect(tools.filter((t) => t.annotations.destructiveHint).map((t) => t.name)).toEqual(['delete_sitemap']);
+		expect(tools.filter((t) => t.annotations.destructiveHint).map((t) => t.name).sort()).toEqual(['cancel_indexing_queue', 'delete_sitemap']);
 		for (const n of ['suggest_indexing_candidates', 'get_submission_status', 'check_sitemap']) expect(tools.find((t) => t.name === n)!.annotations.readOnlyHint).toBe(true);
 	});
 
 	it('a read-only key is refused by every submitting tool, with a message that says how to fix it, and nothing is sent', async () => {
-		for (const [name, args] of [['submit_urls_for_indexing', { site: '1', urls: [U('/a')] }], ['submit_sitemap', { site: '1', sitemap_url: U('/s.xml') }], ['delete_sitemap', { site: '1', sitemap_url: U('/s.xml'), confirm: true }], ['run_indexing_check', { site: '1' }], ['setup_indexnow', { site: '1', action: 'create_key' }]] as const) {
+		for (const [name, args] of [['submit_urls_for_indexing', { site: '1', urls: [U('/a')] }], ['submit_sitemap', { site: '1', sitemap_url: U('/s.xml') }], ['run_indexing_check', { site: '1' }], ['setup_indexnow', { site: '1', action: 'create_key' }]] as const) {
 			const r = await call(readKey, name, args);
 			expect(r.isError, name).toBe(true);
 			expect(r.data, name).toMatch(/needs an API key created with the "submit" permission/);
@@ -367,15 +369,20 @@ describe('MCP: submit permission', () => {
 		}
 	});
 
-	it('sitemaps: submit, resubmit all, check, and delete only with confirm', async () => {
+	it('sitemaps: submit, resubmit all and check with a submit key; removing one needs the delete permission and a second, confirming call', async () => {
 		const feed = U('/mcp-sitemap.xml');
 		expect((await call(submitKey, 'submit_sitemap', { site: '1', sitemap_url: feed })).data.submitted).toEqual([feed]);
 		expect((await call(submitKey, 'submit_sitemap', { site: '1', sitemap_url: 'https://other.example/s.xml' })).data).toMatch(/outside the property/);
 		expect((await call(submitKey, 'submit_sitemap', { site: '1' })).data.submitted).toContain(feed);
-		const noConfirm = await call(submitKey, 'delete_sitemap', { site: '1', sitemap_url: feed });
-		expect(noConfirm.isError).toBe(true);
-		expect(noConfirm.data).toMatch(/confirm: true/);
-		expect((await call(submitKey, 'delete_sitemap', { site: '1', sitemap_url: feed, confirm: true })).data.removed).toBe(feed);
+		const refused = await call(submitKey, 'delete_sitemap', { site: '1', sitemap_url: feed });
+		expect(refused.isError).toBe(true);
+		expect(refused.data).toMatch(/"delete" permission/);
+		const first = await call(deleteKey, 'delete_sitemap', { site: '1', sitemap_url: feed });
+		expect(first.data).toMatchObject({ needsConfirmation: true, willRemove: feed, confirmationToken: expect.stringMatching(/^cf_/) });
+		const listed = async () => ((await call(readKey, 'get_sitemaps', { site: '1' })).data.sitemaps as { path: string }[]).map((x) => x.path);
+		expect(await listed()).toContain(feed); // the first call removed nothing
+		expect((await call(deleteKey, 'delete_sitemap', { site: '1', sitemap_url: feed, confirmation_token: first.data.confirmationToken })).data.removed).toBe(feed);
+		expect(await listed()).not.toContain(feed);
 		expect((await call(readKey, 'check_sitemap', { site: '1', sitemap_url: 'nonsense' })).data).toMatch(/full http/); // the read-only checker is open to read keys
 	});
 

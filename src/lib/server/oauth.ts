@@ -132,13 +132,13 @@ function takeRequest(id: string, now: number) {
 }
 
 /** The owner approved: a one-time code, and the address to send them (and the code) back to. `siteIds` null means every site. */
-export function approveRequest(requestId: string, siteIds: number[] | null, now = Date.now(), allowSubmit = false): { location: string } | undefined {
+export function approveRequest(requestId: string, siteIds: number[] | null, now = Date.now(), allowSubmit = false, allowDelete = false): { location: string } | undefined {
 	const req = takeRequest(requestId, now);
 	if (!req) return undefined;
 	const client = getClient(req.client_id);
 	if (!client) return undefined;
 	const code = rand(32);
-	db().prepare('INSERT INTO oauth_codes (hash, client_id, redirect_uri, code_challenge, site_ids, expires_at, permission) VALUES (?,?,?,?,?,?,?)').run(sha(code), req.client_id, req.redirect_uri, req.code_challenge, siteIds && siteIds.length ? JSON.stringify(siteIds) : null, now + CODE_TTL_MS, allowSubmit ? 'submit' : 'read');
+	db().prepare('INSERT INTO oauth_codes (hash, client_id, redirect_uri, code_challenge, site_ids, expires_at, permission) VALUES (?,?,?,?,?,?,?)').run(sha(code), req.client_id, req.redirect_uri, req.code_challenge, siteIds && siteIds.length ? JSON.stringify(siteIds) : null, now + CODE_TTL_MS, allowDelete ? 'delete' : allowSubmit ? 'submit' : 'read');
 	audit('oauth.approve', { detail: client.name });
 	return { location: callbackUrl(req.redirect_uri, { code, state: req.state }, config.origin) };
 }

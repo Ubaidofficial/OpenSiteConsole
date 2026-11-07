@@ -364,7 +364,7 @@ describe('CSV of the status table', () => {
 });
 
 describe('MCP', () => {
-	let readKey = '', submitKey = '';
+	let readKey = '', submitKey = '', deleteKey = '';
 	const call = async (k: string, name: string, args: object = {}) => {
 		resetRateLimits();
 		const res = await handleMcp(new Request('http://x/api/mcp', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${k}` }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) }));
@@ -374,6 +374,7 @@ describe('MCP', () => {
 	beforeAll(() => {
 		readKey = createApiKey('q-read', null).key;
 		submitKey = createApiKey('q-submit', null, null, 'submit').key;
+		deleteKey = createApiKey('q-delete', null, null, 'delete').key;
 	});
 
 	it('drip_days and queue_overflow are validated; the answer says what was queued', async () => {
@@ -394,10 +395,20 @@ describe('MCP', () => {
 		expect(q.data).toMatchObject({ indexnow: { ready: false }, googleIndexingApi: { enabled: false }, urlInspection: { approxDailyLimit: 2000 }, queue: { waiting: expect.any(Number) } });
 		const fresh = await call(readKey, 'get_indexing_quotas', { site: '1', refresh_bing: true });
 		expect(fresh.data.bing).toMatchObject({ urlsLeftToday: 10_000, urlsLeftThisMonth: 300_000 }); // the demo Bing
-		expect((await call(readKey, 'cancel_indexing_queue', { site: '1' })).data).toMatch(/"submit" permission/);
-		expect((await call(submitKey, 'cancel_indexing_queue', { site: '1', channel: 'telegram' })).data).toMatch(/channel.*must be one of/);
+		expect((await call(readKey, 'cancel_indexing_queue', { site: '1' })).data).toMatch(/"delete" permission/);
+		expect((await call(submitKey, 'cancel_indexing_queue', { site: '1' })).data).toMatch(/"delete" permission/); // submit is not enough
+		expect((await call(deleteKey, 'cancel_indexing_queue', { site: '1', channel: 'telegram' })).data).toMatch(/channel.*must be one of/);
+		const empty = await call(deleteKey, 'cancel_indexing_queue', { site: '1' });
+		expect(empty.data).toMatchObject({ removed: 0 }); // nothing queued: nothing to confirm, no token
+		expect(empty.data.confirmationToken).toBeUndefined();
+		const ins = db().prepare("INSERT INTO index_queue (site_id, url, channel, added_at, release_at, first_release_at, source) VALUES (1,?,'bing',?,?,?, 'app')");
+		for (const u of many(3, '/cq')) ins.run(u, Date.now(), Date.now(), Date.now());
 		const before = queueStatus(1).total;
-		const c = await call(submitKey, 'cancel_indexing_queue', { site: '1' });
+		expect(before).toBeGreaterThan(0);
+		const first = await call(deleteKey, 'cancel_indexing_queue', { site: '1' });
+		expect(first.data).toMatchObject({ needsConfirmation: true, willDiscard: before });
+		expect(queueStatus(1).total).toBe(before); // the first call discarded nothing
+		const c = await call(deleteKey, 'cancel_indexing_queue', { site: '1', confirmation_token: first.data.confirmationToken });
 		expect(c.data).toMatchObject({ removed: before, remaining: 0 });
 	});
 });

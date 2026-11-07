@@ -669,11 +669,41 @@ describe('sign-in and the submit permission', () => {
 		expect(permissionOf(plain.access_token)).toBe('read'); // the other app is untouched
 	});
 
-	it('the consent page asks for submitting separately and is off by default; the server cannot grant it in READ_ONLY mode', async () => {
+	it('the consent page offers three levels with read-only the default, and the server grants only "read" in READ_ONLY mode', () => {
 		const svelte = readFileSync('src/routes/oauth/authorize/+page.svelte', 'utf8');
-		expect(svelte).toMatch(/name="submit" value="1"/);
-		expect(svelte).not.toMatch(/name="submit"[^>]*checked/);
-		expect(readFileSync('src/routes/oauth/authorize/+page.server.ts', 'utf8')).toMatch(/f\.get\('submit'\) === '1' && !config\.readOnly/);
+		expect(svelte).toMatch(/name="level" value="read" checked/);
+		expect(svelte).toMatch(/name="level" value="submit"/);
+		expect(svelte).toMatch(/name="level" value="delete"/);
+		expect(svelte).not.toMatch(/name="level" value="(submit|delete)"[^>]*checked/);
+		expect(readFileSync('src/routes/oauth/authorize/+page.server.ts', 'utf8')).toMatch(/config\.readOnly \? 'read'/);
+	});
+	it('the allow action turns the chosen level into the key the app gets, and an unknown or missing level is read-only', async () => {
+		const grant = async (fields: Record<string, string>) => {
+			const c = newClient();
+			const chk = checkAuthorize(authorizeQuery(c.id), ORIGIN());
+			if (chk.kind !== 'consent') throw new Error('no consent');
+			const body = new FormData();
+			body.set('request_id', chk.requestId);
+			body.set('scope', 'all');
+			for (const [k, v] of Object.entries(fields)) body.set(k, v);
+			const r = (await authorizePage.actions.allow({ request: new Request('http://x', { method: 'POST', body }) } as never)) as { redirect: string };
+			const code = new URL(r.redirect).searchParams.get('code')!;
+			const t = redeemCode({ code, clientId: c.id, redirectUri: CLAUDE, verifier: VERIFIER });
+			if (!t.ok) throw new Error(t.description);
+			return permissionOf((t.body as { access_token: string }).access_token);
+		};
+		expect(await grant({})).toBe('read');
+		expect(await grant({ level: 'read' })).toBe('read');
+		expect(await grant({ level: 'submit' })).toBe('submit');
+		expect(await grant({ level: 'delete' })).toBe('delete');
+		expect(await grant({ level: 'root' })).toBe('read');
+		expect(await grant({ submit: '1' })).toBe('submit'); // the old single box still means submit
+		process.env.READ_ONLY = '1';
+		try {
+			expect(await grant({ level: 'delete' })).toBe('read');
+		} finally {
+			delete process.env.READ_ONLY;
+		}
 	});
 });
 

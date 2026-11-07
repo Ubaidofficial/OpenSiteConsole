@@ -277,7 +277,8 @@ export function presetUrls(site: SiteRow, preset: Preset, limit = MAX_SUBMIT_URL
 }
 
 // ── sitemaps (Google) ────────────────────────────────────────────────────────
-function checkFeed(site: SiteRow, feed: string): string {
+/** The sitemap address, if it is a full URL inside the property (the only place Search Console takes sitemaps from). */
+export function checkFeed(site: SiteRow, feed: string): string {
 	const f = feed.trim();
 	if (!/^https?:\/\/\S+$/i.test(f)) throw new SubmitRefused('Give a full sitemap address, e.g. https://example.com/sitemap.xml');
 	if (!inProperty(f, site.site_url)) throw new SubmitRefused(`${f} is outside the property ${site.site_url}; Search Console only takes sitemaps from inside it.`);
