@@ -113,6 +113,12 @@ describe('a key that cannot make changes is refused, and nothing changes', () =>
 		expect(audits()).toEqual([]);
 		expect(count("SELECT COUNT(*) n FROM kv WHERE key LIKE 'mcp-cooldown:%'")).toBe(0);
 	});
+	it('get_connections no longer claims every tool is read-only, and says how changes are allowed', async () => {
+		const hint = (await call(reader, 'get_connections')).data.hint as string;
+		expect(hint).not.toMatch(/Every tool here is read-only/);
+		expect(hint).toContain('The tools listed here only read.');
+		expect(hint).toContain('only work if the owner allowed changes for this connection on the Agents page');
+	});
 	it('reading still works for it, including the new read tools', async () => {
 		for (const [n, a] of [['get_portfolio', {}], ['get_change_log', { site: '1' }], ['get_site_settings', { site: '1' }], ['get_history', { site: '1', query: 'garden tools' }]] as [string, object][]) expect((await call(reader, n, a)).isError, n).toBe(false);
 	});
