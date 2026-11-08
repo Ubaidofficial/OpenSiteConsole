@@ -158,7 +158,7 @@ export async function connectClarity(siteId: number, token: string) {
 	const id = saveIntegration('clarity', site.label || site.site_url, { token: t }, {}, demo);
 	try {
 		// The test call is not wasted: it becomes today's first snapshot.
-		const payload = await fetchInsights(id, t, { numOfDays: 1 }, demo ? demoClarityFetch() : fetch);
+		const payload = await fetchInsights(id, t, { numOfDays: 1 }, demo ? demoClarityFetch(site.site_url) : fetch);
 		db().prepare('INSERT OR REPLACE INTO clarity_snapshots VALUES (?,?,?,?,?)').run(siteId, utcDay(), '', JSON.stringify(payload), Date.now());
 	} catch (e) {
 		removeIntegration(id);

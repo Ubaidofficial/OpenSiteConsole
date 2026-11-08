@@ -17,7 +17,7 @@
 		['/portfolio', 'Portfolio', Layers],
 		['/sitemaps', 'Sitemaps', MapIcon],
 		['/connect', 'Connect', Plug],
-		['/agents', 'Agents', Bot],
+		['/agents', 'MCP', Bot],
 		['/accounts', 'Accounts', Users]
 	] as const;
 	const active = (href: string) => (href === '/' ? page.url.pathname === '/' || page.url.pathname.startsWith('/sites') : page.url.pathname.startsWith(href));

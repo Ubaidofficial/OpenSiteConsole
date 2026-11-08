@@ -88,7 +88,7 @@ export const actions: Actions = {
 			await clientForAccount(a).addSite(siteUrl);
 			audit('site.added', { accountId: id, detail: siteUrl });
 			await syncAccountSites(id);
-			return { ok: `Added ${siteUrl}. Verify ownership in Search Console to unlock data.` };
+			return { ok: `Added ${siteUrl}. Verify ownership in Search Console; its data appears once Google confirms it.` };
 		} catch (e) {
 			return fail(502, { error: e instanceof Error ? e.message : 'Could not add property' });
 		}

@@ -7,17 +7,14 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const root = document.documentElement;
 
-  /* header state, top progress bar, and the hero product tilting flat as you scroll */
+  /* header state, and the hero product tilting flat as you scroll */
   const top = $('.top'), stage = $('[data-stage]');
   let ticking = false;
   function onScroll() {
     ticking = false;
     const y = scrollY;
     top.classList.toggle('scrolled', y > 8);
-    const max = root.scrollHeight - innerHeight;
-    root.style.setProperty('--sp', max > 0 ? (y / max).toFixed(4) : '0');
     if (stage && !still) {
       const r = stage.getBoundingClientRect();
       const p = clamp((innerHeight * 0.9 - r.top) / (innerHeight * 0.9 - 64), 0, 1);
@@ -28,17 +25,23 @@
   addEventListener('resize', onScroll);
   onScroll();
 
-  /* the floating "connect Claude" pill appears after the hero and steps aside near the setup steps and the closing panel */
-  const pill = $('[data-pill]'), agents = $('#agents'), closing = $('.final');
-  function pillState() {
-    if (!pill) return;
-    const vh = innerHeight, past = scrollY > vh * 0.8;
-    const over = (el) => el && el.getBoundingClientRect().top < vh * 0.7 && el.getBoundingClientRect().bottom > vh * 0.3;
-    const connect = $('.connect');
-    pill.classList.toggle('show', past && !over(closing) && !over(connect));
-  }
-  addEventListener('scroll', () => requestAnimationFrame(pillState), { passive: true });
-  pillState();
+  /* blur-in headings (after Shadcn Space's text reveal, MIT): split each section heading into words before the reveal
+     observer below sees it, so the words fade in one after another. Screen readers still get the plain heading text. */
+  if (!still) $$('h2.rv').forEach((h) => {
+    if (h.children.length) return; // only plain-text headings
+    const words = h.textContent.trim().split(/\s+/);
+    h.setAttribute('aria-label', words.join(' '));
+    h.textContent = '';
+    words.forEach((w, i) => {
+      const s = document.createElement('span');
+      s.className = 'wd';
+      s.setAttribute('aria-hidden', 'true');
+      s.style.setProperty('--wi', String(i));
+      s.textContent = w;
+      h.append(s, i < words.length - 1 ? ' ' : '');
+    });
+    h.classList.add('words');
+  });
 
   /* reveal on scroll, staggered among siblings */
   const reveals = $$('.rv');
@@ -57,6 +60,44 @@
     sprites.forEach((el) => spo.observe(el));
   } else sprites.forEach((el) => el.classList.add('on'));
 
+  /* the data-flow beam only animates while it is on screen */
+  const beam = $('[data-beam]');
+  /* The lines are written in percent (a 0-100 box). Redraw them in real pixels so each pulse is one even segment:
+     a stretched SVG would distort the stroke and break the dash lengths. */
+  const bsvg = beam && $('.beam-svg', beam);
+  if (bsvg) {
+    const paths = $$('path', bsvg);
+    paths.forEach((pa) => { pa.dataset.d = pa.getAttribute('d'); });
+    const draw = () => {
+      const w = bsvg.clientWidth, h = bsvg.clientHeight;
+      if (!w || !h) return;
+      bsvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      paths.forEach((pa) => {
+        let k = 0;
+        pa.setAttribute('d', pa.dataset.d.replace(/-?\d*\.?\d+/g, (n) => ((k++ % 2 ? h : w) * Number(n) / 100).toFixed(1)));
+      });
+    };
+    draw();
+    addEventListener('resize', draw);
+  }
+  if (beam && 'IntersectionObserver' in window) new IntersectionObserver((es) => es.forEach((e) => beam.classList.toggle('on', e.isIntersecting))).observe(beam);
+  else if (beam) beam.classList.add('on');
+
+  /* animated list (after Shadcn Space, MIT): the digest's alerts drop in at the top one by one, once, when the card is in view.
+     The list is written in its final order, so the last item arrives first and each newer one pushes the others down. */
+  const alist = $('[data-alist]');
+  if (alist && !still && 'IntersectionObserver' in window) {
+    const items = $$('li', alist).reverse();
+    alist.style.setProperty('min-height', alist.offsetHeight + 'px'); // keep the final height, so nothing below moves while the list fills (no layout shift)
+    alist.classList.add('live');
+    new IntersectionObserver((es, ob) => es.forEach(async (e) => {
+      if (!e.isIntersecting) return;
+      ob.disconnect();
+      for (const li of items) { li.classList.add('show'); await sleep(850); }
+      alist.style.removeProperty('min-height'); // full again: let it follow the card's width from here on
+    }), { threshold: 0.4 }).observe(alist);
+  }
+
   /* the eight scene cards lean toward the pointer */
   if (!still) $$('.win').forEach((c) => {
     c.addEventListener('pointermove', (e) => {
@@ -69,13 +110,13 @@
 
   /* pinned story: the screenshot on the right follows the step in the middle of the screen */
   const steps = $$('.step'), frames = $$('.frame'), dots = $$('.dots li');
-  const labels = ['Actions', 'Portfolio', 'Pages', 'Opportunities', 'Tests', 'Indexing'];
+  const labels = ['Overview', 'Portfolio', 'Pages', 'Opportunities', 'Tests', 'Indexing'];
   const pinUrl = $('[data-pin-url]');
   function setActive(i) {
     steps.forEach((s, k) => s.classList.toggle('on', k === i));
     frames.forEach((f, k) => f.classList.toggle('on', k === i));
     dots.forEach((d, k) => d.classList.toggle('on', k === i));
-    if (pinUrl) pinUrl.textContent = 'demo data · ' + labels[i];
+    if (pinUrl) pinUrl.textContent = labels[i] + ' · demo data';
   }
   if (steps.length && 'IntersectionObserver' in window) {
     const so = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setActive(Number(e.target.dataset.i)); }), { rootMargin: '-45% 0px -45% 0px' });

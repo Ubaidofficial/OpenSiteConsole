@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SegBar from '$lib/components/viz/SegBar.svelte';
+	import BarList from '$lib/components/viz/BarList.svelte';
 	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import DataTable from '$lib/components/DataTable.svelte';
@@ -36,8 +38,16 @@
 </Explainer>
 	{#if data.message}<p class="mt-2 rounded-md border border-[color:var(--warn)] p-2 text-xs text-warn">{data.message}{#if data.nextAt && data.nextAt > Date.now()} Next attempt {new Date(data.nextAt).toLocaleTimeString()}.{/if}</p>{/if}
 	{#if form?.ok}<p class="mt-2 text-sm text-good">{form.ok}</p>{/if}{#if form?.error}<p class="mt-2 text-sm text-bad">{form.error}</p>{/if}
+	{#if data.summary.checked}
+	<!-- not indexed is grey, not red, as in Search Console: some exclusions are deliberate (noindex, a chosen canonical) -->
+	<div class="mt-3 max-w-2xl"><SegBar title="Inspected pages by index status" format={(v) => `${v} pages`} parts={[
+		{ label: 'Indexed', value: data.summary.counts.indexed, color: 'var(--st-good)' },
+		{ label: 'Not indexed', value: data.summary.counts.not_indexed, color: 'var(--muted-foreground)' },
+		{ label: 'Unknown', value: data.summary.counts.unknown, color: 'var(--border)', ink: 'var(--foreground)' }
+	]} /></div>
+	{/if}
 	<div class="mt-3 flex flex-wrap gap-3 text-sm">
-		<span><b>{data.summary.counts.indexed}</b> indexed</span><span class={data.summary.counts.not_indexed ? 'text-bad' : ''}><b>{data.summary.counts.not_indexed}</b> not indexed</span><span class="text-muted-foreground"><b>{data.summary.counts.unknown}</b> unknown</span><span class="text-muted-foreground">of {data.summary.checked} inspected</span>{#if data.summary.indexedShare != null}<span class="ml-auto"><b>{(data.summary.indexedShare * 100).toFixed(0)}%</b> of inspected URLs are indexed</span>{/if}
+			<span><b>{data.summary.counts.indexed}</b> indexed</span><span class={data.summary.counts.not_indexed ? 'text-bad' : ''}><b>{data.summary.counts.not_indexed}</b> not indexed</span><span class="text-muted-foreground"><b>{data.summary.counts.unknown}</b> unknown</span><span class="text-muted-foreground">of {data.summary.checked} inspected</span>{#if data.summary.indexedShare != null}<span class="ml-auto"><b>{(data.summary.indexedShare * 100).toFixed(0)}%</b> of inspected URLs are indexed</span>{/if}
 	</div>
 	<p class="mt-2 text-[11px] text-muted-foreground">Order of checking: your watch list, then pages that appeared for the first time this period (indexing still open), then pages that lost visibility, then the biggest pages. The inspected set is a rotating sample, not the whole site.</p>
 </section>
@@ -46,7 +56,7 @@
 	<section class="card p-4">
 		<h2 class="mb-1 font-medium">Why pages are not indexed</h2>
 		{#if data.summary.reasons.length}
-			<table class="w-full text-sm"><tbody>{#each data.summary.reasons as r}<tr><td class="td">{r.reason}</td><td class="td tnum w-12 text-right">{r.count}</td></tr>{/each}</tbody></table>
+			<div class="mt-2"><BarList items={data.summary.reasons.map((r) => ({ label: r.reason, value: r.count }))} color="var(--muted-foreground)" unit="pages" /></div>
 			<p class="mt-2 text-[11px] text-muted-foreground">Google's own wording. “Crawled, currently not indexed” usually means quality or duplication; “Discovered, currently not indexed” usually means crawl budget or weak internal links; a “duplicate / canonical” reason means another URL was chosen instead.</p>
 		{:else}<p class="text-sm text-muted-foreground">No non-indexed URLs among those inspected.</p>{/if}
 		{#if data.history.length > 1}

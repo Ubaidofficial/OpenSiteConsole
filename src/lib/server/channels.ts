@@ -218,7 +218,7 @@ export async function syncClarity(siteId: number, o: { force?: boolean; fetchImp
 	if (!link?.integration_id) throw new Error('Site is not linked to Clarity');
 	const integ = getIntegration(link.integration_id)!;
 	const token = integrationSecret<{ token: string }>(integ).token;
-	const fetchImpl = o.fetchImpl ?? (integ.is_demo ? demoClarityFetch() : fetch);
+	const fetchImpl = o.fetchImpl ?? (integ.is_demo ? demoClarityFetch(link.external_id) : fetch);
 	markLink(siteId, 'clarity', 'running');
 	try {
 		const day = utcDay();

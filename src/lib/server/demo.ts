@@ -69,10 +69,19 @@ interface Atom {
 	position: number;
 }
 
+/**
+ * Planted patterns, so every kind of hidden opportunity has at least one row on demo data. They are relative to the newest demo
+ * day, so they stay true whatever today's date is: a search that collapses in the last four weeks, one whose demand arrives in the
+ * last four weeks, one that ranks far worse on phones than on desktop, and one that Google ranks low and Bing ranks near the top.
+ */
+export type Planted = 'lost' | 'rising' | 'device' | 'bing';
+export const plantedQuery = (topic: string, kind: Planted) =>
+	({ lost: `${topic} storage ideas`, rising: `best electric ${topic}`, device: `${topic} set`, bing: `${topic} kit` })[kind];
+
 interface Profile {
 	site: DemoSite;
 	origin: string;
-	queries: { q: string; pop: number; pos: number; pages: string[]; brand: boolean }[];
+	queries: { q: string; pop: number; pos: number; pages: string[]; brand: boolean; planted?: Planted }[];
 }
 
 function originOf(siteUrl: string): string {
@@ -105,6 +114,12 @@ function profile(siteUrl: string, sites: DemoSite[]): Profile {
 			});
 		}
 	}
+	queries.push(
+		{ q: plantedQuery(site.topic, 'lost'), pop: 0.07, pos: 3, pages: [pages[11]], brand: false, planted: 'lost' },
+		{ q: plantedQuery(site.topic, 'rising'), pop: 0.5, pos: 9.5, pages: [pages[5]], brand: false, planted: 'rising' },
+		{ q: plantedQuery(site.topic, 'device'), pop: 0.6, pos: 6, pages: [pages[2]], brand: false, planted: 'device' },
+		{ q: plantedQuery(site.topic, 'bing'), pop: 0.45, pos: 14.6, pages: [pages[6]], brand: false, planted: 'bing' }
+	);
 	for (const b of [site.brand, `${site.brand} login`, `${site.brand} reviews`, `www ${site.brand}`]) {
 		queries.push({ q: b, pop: 0.9, pos: 1.2, pages: [origin], brand: true });
 	}
@@ -136,14 +151,17 @@ function atomsFor(siteUrl: string, sites: DemoSite[], date: string, lastDay: str
 			// decay: pages 1-2 slide ~40% over the last 5 weeks
 			const decay = !q.brand && (pageIdx === 1 || pageIdx === 2) && age < 35 ? 1 - 0.4 * (1 - age / 35) : 1;
 			const split = q.pages.length === 1 ? 1 : pi === 0 ? 0.6 : 0.4; // cannibalizing pages split visibility
+			// planted: 'lost' nearly vanishes in the last 28 days; 'rising' had about a fifth of today's demand before that
+			const plantVol = q.planted === 'lost' && age < 28 ? 0.1 : q.planted === 'rising' && age >= 28 ? 0.22 : 1;
 			for (const [country, cs] of COUNTRIES) {
 				for (const [device, ds] of DEVICES) {
 					const noise = 0.75 + h01(siteUrl, date, qi, pi, country, device) * 0.5;
 					const impressions = Math.round(
-						260 * p.site.scale * q.pop * cs * ds * weekday * trend * anomaly * decay * split * noise * (q.brand ? 1.4 : 1)
+						260 * p.site.scale * q.pop * cs * ds * weekday * trend * anomaly * decay * split * noise * plantVol * (q.brand ? 1.4 : 1)
 					);
 					if (impressions < 1) continue;
-					const position = Math.max(1, q.pos + (pi ? 2.5 : 0) + (h01(siteUrl, date, 'p', qi, pi) - 0.5) * 1.6 + (decay < 1 ? (1 - decay) * 4 : 0));
+					const plantPos = (q.planted === 'lost' && age < 28 ? 14 : 0) + (q.planted === 'device' && device === 'MOBILE' ? 8 : 0);
+					const position = Math.max(1, q.pos + plantPos + (pi ? 2.5 : 0) + (h01(siteUrl, date, 'p', qi, pi) - 0.5) * 1.6 + (decay < 1 ? (1 - decay) * 4 : 0));
 					const clicks = Math.round(impressions * ctrAt(position) * (0.8 + h01(siteUrl, date, 'c', qi, pi, country, device) * 0.4));
 					out.push({ query: q.q, page, country, device, clicks, impressions, position });
 				}

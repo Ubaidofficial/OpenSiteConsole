@@ -106,7 +106,7 @@ describe('a key that cannot make changes is refused, and nothing changes', () =>
 			const r = await call(reader, name, args);
 			expect(r.isError, name).toBe(true);
 			expect(r.text, name).toContain('needs an API key created with');
-			expect(r.text, name).toContain('Agents page');
+			expect(r.text, name).toContain('MCP page');
 			expect(r.text, name).toContain('Do not retry until they have');
 		}
 	});
@@ -121,7 +121,7 @@ describe('a key that cannot make changes is refused, and nothing changes', () =>
 		const hint = (await call(reader, 'get_connections')).data.hint as string;
 		expect(hint).not.toMatch(/Every tool here is read-only/);
 		expect(hint).toContain('The tools listed here only read.');
-		expect(hint).toContain('only work if the owner allowed changes for this connection on the Agents page');
+		expect(hint).toContain('only work if the owner allowed changes for this connection on the MCP page');
 	});
 	it('reading still works for it, including the new read tools', async () => {
 		for (const [n, a] of [['get_portfolio', {}], ['get_change_log', { site: '1' }], ['get_site_settings', { site: '1' }], ['get_history', { site: '1', query: 'garden tools' }]] as [string, object][]) expect((await call(reader, n, a)).isError, n).toBe(false);

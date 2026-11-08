@@ -8,6 +8,7 @@ import { displayName } from '$lib/server/clients';
 import { intParam } from '$lib/server/params';
 import { MCP_TOOL_NAMES, MCP_WRITE_TOOLS, MCP_WRITE_TOOL_NAMES } from '$lib/server/mcp';
 import { oauthLabels } from '$lib/server/oauth';
+import { allowedExtraRedirects } from '$lib/server/oauth-http';
 
 export const load: PageServerLoad = () => {
 	const signIns = oauthLabels(); // keys that exist because an app was approved with "Sign in", by app name
@@ -15,6 +16,9 @@ export const load: PageServerLoad = () => {
 		keys: listApiKeys().map((k) => ({ id: k.id, name: k.name, prefix: k.prefix, scope: k.site_ids ? (JSON.parse(k.site_ids) as number[]) : null, createdAt: k.created_at, lastUsedAt: k.last_used_at, permission: k.permission, canWrite: k.permission !== 'read', signInApp: signIns.get(k.id) ?? null })),
 		sites: allSites().map((s) => ({ id: s.id, name: displayName(s.site_url) })),
 		mcpUrl: `${config.origin}/api/mcp`,
+		/** Claude's sign-in callback is built in; any other app (ChatGPT, Cursor...) needs its callback in MCP_OAUTH_REDIRECTS. */
+		chatgptCallbacks: allowedExtraRedirects().filter((u) => /^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(u)),
+		publicOrigin: /^https:\/\//.test(config.origin) && !/localhost|127\.0\.0\.1/.test(config.origin),
 		tools: MCP_TOOL_NAMES,
 		writeTools: MCP_WRITE_TOOLS,
 		changeTools: MCP_WRITE_TOOL_NAMES,

@@ -73,7 +73,7 @@ export function loadConfig(env: Env = process.env): CloudConfig {
 		graceDays: num('CLOUD_GRACE_DAYS', 7, 0, 60),
 		retentionDays: num('CLOUD_RETENTION_DAYS', 30, 1, 365),
 		allowDestroy: env.CLOUD_ALLOW_DESTROY === '1',
-		priceLabel: (env.CLOUD_PRICE_LABEL ?? '$10 / month').trim().slice(0, 40),
+		priceLabel: (env.CLOUD_PRICE_LABEL ?? '$9 / month').trim().slice(0, 40),
 		dbPath: (env.CLOUD_DB_PATH ?? './cloud-data/cloud.db').trim(),
 		port: num('PORT', 8080, 1, 65535),
 		trustProxy: env.CLOUD_TRUST_PROXY === '1'

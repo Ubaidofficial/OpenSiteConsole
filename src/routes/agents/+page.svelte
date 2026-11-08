@@ -3,16 +3,19 @@
 	import { enhance } from '$app/forms';
 	import { ago } from '$lib/format';
 	import Explainer from '$lib/components/Explainer.svelte';
+	import McpGuide from '$lib/components/McpGuide.svelte';
 	let { data, form } = $props();
 	const nameOf = (id: number) => data.sites.find((s) => s.id === id)?.name ?? `#${id}`;
 </script>
 
-<h1 class="mb-1 text-lg font-semibold">Agents &amp; MCP</h1>
-<Explainer lead="Let an AI agent read your search data, and only if you allow it, send URLs and sitemaps to search engines.">
-	<p>It is an MCP server, <b>read-only by default</b>, so Claude Code, Claude Desktop, Cursor or any MCP client can query your Search Console, GA4, Tag Manager, Bing, Clarity and Core Web Vitals data in one place. Connect it next to OpenSEO's MCP: <code>get_openseo_project</code> hands a site's project id to OpenSEO's keyword, rank-tracking and audit tools.</p>
+<h1 class="mb-1 text-lg font-semibold">MCP</h1>
+<Explainer lead="Connect Claude, ChatGPT or any MCP app to your search data. It reads by default, and changes things only where you allow it.">
+	<p>SEOConsole is an MCP server: an AI app can query your Search Console, GA4, Tag Manager, Bing, Clarity and Core Web Vitals data in one place. Connect it next to OpenSEO's MCP: <code>get_openseo_project</code> hands a site's project id to OpenSEO's keyword, rank-tracking and audit tools.</p>
 	<p>A key can also be given the <b>submit</b> permission (push URLs and sitemaps to IndexNow, Bing, Search Console and, for job and livestream pages, Google's Indexing API; start an indexing check), or <b>submit and delete</b>, which adds the few actions that cannot be undone and need a confirming second call. Nothing can delete your data or change a site's content.</p>
-	<p>The table at the bottom lists every change an agent made, and every time a key was given or lost a permission.</p>
+	<p>The table at the bottom lists every change an app made, and every time a key was given or lost a permission.</p>
 </Explainer>
+
+<McpGuide url={data.mcpUrl} chatgptCallbacks={data.chatgptCallbacks} publicOrigin={data.publicOrigin} />
 
 {#if form?.newKey}
 	<div class="card mb-4 border-[color:var(--good)] p-4">
@@ -47,53 +50,13 @@
 	</section>
 
 	<section class="card p-4 text-sm">
-		<h2 class="mb-2 font-medium">Endpoint</h2>
-		<code class="block break-all rounded bg-black/5 p-2 dark:bg-white/10">{data.mcpUrl}</code>
+		<h2 class="mb-2 font-medium">Using a key</h2>
 		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address.</p>
 		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools</b> ({data.tools.length - data.changeTools.length} only read; {data.writeTools.submit.length} need submit, {data.writeTools.delete.length} need delete): <span class="font-mono">{data.tools.join(', ')}</span>.</p>
 	</section>
 </div>
 
-<details class="mt-6">
-<summary class="cursor-pointer select-none font-medium">Connect your AI client (Claude Code, Claude, ChatGPT, Cursor…)</summary>
-<div class="mt-2">
-<p class="mb-3 max-w-3xl text-xs text-muted-foreground">Replace <code>osc_YOUR_KEY</code> with a key from above. The key is a bearer token. Claude (the apps) and ChatGPT reach the server from the internet, so for them the app needs a public https address; Claude Code and Codex run on your computer and can use <code>http://localhost</code>.</p>
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-	<section class="card p-4 text-sm">
-		<h3 class="mb-1 font-medium">Claude Code</h3>
-		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
-		<pre tabindex="0" class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">claude mcp add --transport http seoconsole {data.mcpUrl} --header "Authorization: Bearer osc_YOUR_KEY"</pre>
-		<p class="mt-2 text-xs text-muted-foreground">Run it in a terminal on your own computer, then check with <code>claude mcp list</code>. By default the server is available only in the folder you ran it in. Add <code>--scope user</code> right after <code>mcp add</code> to have it in every project; Claude Code's documentation says user-scope servers are stored in <code>~/.claude.json</code>, which sessions in the desktop app's Code tab also read. Cloud sessions run on Anthropic's servers and cannot reach a <code>localhost</code> address.</p>
-	</section>
-	<section class="card p-4 text-sm">
-		<h3 class="mb-1 font-medium">Claude (claude.ai and the desktop app)</h3>
-		<p class="text-xs text-muted-foreground"><b>Sign in (recommended).</b> Customize → Connectors → Add custom connector. URL: <code>{data.mcpUrl}</code>. Authentication: <b>Sign in now</b>, and if it asks how Claude identifies itself, choose <b>Register automatically</b>. Add it, click Connect, and approve on the page that opens (you sign in with your admin password). No key to paste. Revoke it any time from the keys table below.</p>
-		<p class="mt-2 text-xs text-muted-foreground"><b>Fixed key instead.</b> Authentication: no sign-in, and under Request headers add <code>authorization</code> with the value <code>Bearer osc_YOUR_KEY</code>. Anthropic describes request headers as a beta for some organizations only. Menu names move around, so follow their current article if a label differs.</p>
-	</section>
-	<section class="card p-4 text-sm">
-		<h3 class="mb-1 font-medium">Codex</h3>
-		<p class="mb-1 text-xs text-muted-foreground">In <code>~/.codex/config.toml</code> (or a trusted project's <code>.codex/config.toml</code>), with the key in an environment variable:</p>
-		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
-		<pre tabindex="0" class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">[mcp_servers.seoconsole]
-url = "{data.mcpUrl}"
-bearer_token_env_var = "OSC_MCP_KEY"</pre>
-		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
-		<pre tabindex="0" class="mt-1 overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">export OSC_MCP_KEY=osc_YOUR_KEY</pre>
-	</section>
-	<section class="card p-4 text-sm">
-		<h3 class="mb-1 font-medium">ChatGPT</h3>
-		<p class="text-xs text-muted-foreground"><b>May not work.</b> ChatGPT's custom connectors (Developer Mode) are reported to expect OAuth sign-in, and SEOConsole authenticates with a bearer key instead; whether your plan offers a bearer-token field is unverified. Use Claude, Claude Code or Codex if ChatGPT will not accept the key.</p>
-	</section>
-	<section class="card p-4 text-sm lg:col-span-2">
-		<h3 class="mb-1 font-medium">Cursor and other clients</h3>
-		<p class="mb-1 text-xs text-muted-foreground">Clients that take a server URL plus headers usually accept this shape (check your client's documentation for the exact file and field names):</p>
-		<!-- svelte-ignore a11y_no_noninteractive_tabindex: a scrollable code block must be reachable by keyboard -->
-		<pre tabindex="0" class="overflow-x-auto rounded bg-black/5 p-2 text-xs dark:bg-white/10">{`{ "mcpServers": { "seoconsole": { "url": "${data.mcpUrl}", "headers": { "Authorization": "Bearer osc_YOUR_KEY" } } } }`}</pre>
-	</section>
-</div>
 
-</div>
-</details>
 
 <h2 class="mt-6 mb-2 font-medium">Keys</h2>
 <div class="card overflow-x-auto">

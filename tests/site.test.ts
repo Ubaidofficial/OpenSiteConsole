@@ -32,13 +32,13 @@ describe('site: files and links', () => {
 		}
 	});
 	it('screenshots exist in both sizes and stay within a weight budget', () => {
-		const shots = readdirSync('site/assets/shots').filter((f) => !f.includes('-1080'));
+		const shots = readdirSync('site/assets/shots').filter((f) => !/-\d+\.webp$/.test(f)); // the base files; -1080 and other -NNN files are extra sizes
 		expect(shots.length).toBeGreaterThanOrEqual(10);
 		for (const f of shots) {
 			expect(existsSync(`site/assets/shots/${f.replace('.webp', '-1080.webp')}`), f).toBe(true);
 			expect(statSync(`site/assets/shots/${f}`).size, f).toBeLessThan(400_000);
 		}
-		const total = walk('site').reduce((n, f) => n + statSync(f).size, 0);
+		const total = walk('site').filter((f) => !f.startsWith(join('site', 'tools'))).reduce((n, f) => n + statSync(f).size, 0); // site/tools (capture scripts and their output) is not served
 		expect(total).toBeLessThan(6_000_000);
 	});
 });
@@ -204,16 +204,17 @@ describe('site: the pixel art and the animation built from it', () => {
 		for (const c of cards) {
 			expect(c).toMatch(/<div class="spr s2 sc-[a-z]+" aria-hidden="true">/);
 			expect(c).toMatch(/<h3>[^<]{8,60}<\/h3>/);
-			expect(c).toMatch(/<p class="eg mono"><span>(demo data|needs GA4)<\/span>/);
+			// a real demo row, or (when the demo data has none to quote) the source it needs and what it shows: never an invented number
+			expect(c).toMatch(/<p class="eg mono"><span>(?:<img class="lg"[^>]*>)?(demo data|shows|needs (?:Bing|GA4|Clarity))<\/span>/);
 		}
 		expect(new Set(cards.map((c) => /sc-([a-z]+)/.exec(c)![1])).size).toBe(8); // eight different scenes
 		expect(html).toContain('<a href="#wins">Hidden wins</a>');
 	});
-	it('the section numbers run 01 to 07 once each, in order', () => {
-		expect([...html.matchAll(/<span class="idx">(\d\d)<\/span>/g)].map((m) => m[1])).toEqual(['01', '02', '03', '04', '05', '06', '07']);
+	it('section labels are plain words, not a numbered 01-07 template', () => {
+		expect(html).not.toMatch(/<span class="idx">/);
 	});
 	it('the screenshot of the hidden-opportunities block is real, sized, and described', () => {
-		expect(html).toMatch(/<img src="\/assets\/shots\/hidden-1080\.webp"[^>]*width="1080" height="675"[^>]*alt="The Hidden opportunities block/);
+		expect(html).toMatch(/<img src="\/assets\/shots\/hidden-1080\.webp"[^>]*width="1080" height="659"[^>]*alt="The Opportunities tab/);
 		for (const f of ['hidden', 'hidden-1080', 'activity', 'activity-1080']) expect(existsSync(`site/assets/shots/${f}.webp`), f).toBe(true);
 	});
 	it('animation plays only while a sprite is on screen, always runs without JavaScript, and shows the first frame for people who ask for less motion', () => {
@@ -223,6 +224,50 @@ describe('site: the pixel art and the animation built from it', () => {
 		const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
 		for (const sel of ['.spr, .spr.s2, .spr.s4 { animation: none; background-position: 0 0; }', '.dig-clouds::before { animation: none; }', '.dchip, .dchip i::after { animation: none; }', '.win { transform: none; transition: none; }', 'html.js .wipe.rv { clip-path: none; transition: none; }', '.ls-far, .ls-near { transform: none; }']) expect(block, sel).toContain(sel);
 		expect(js).toMatch(/if \(!still\) \$\$\('\.win'\)/); // the cards only tilt when motion is welcome
+	});
+	it('screenshots are shown whole: the story frames are not zoomed, the hero shot is not faded out or covered by decoration', () => {
+		expect(css).not.toMatch(/\.frame\s*\{[^}]*--z:/);
+		expect(css).not.toMatch(/\.device\s*\{[^}]*mask-image/);
+		for (const gone of ['class="layer', 'class="glare', 'class="hud-row', 'class="marquee', 'data-pill']) expect(html, gone).not.toContain(gone);
+		// every story frame is a 16:10 capture, so object-fit: cover in the 16:10 box crops nothing
+		for (const m of html.matchAll(/<img class="frame[^"]*"[^>]*width="(\d+)" height="(\d+)"/g)) expect(Number(m[1]) / Number(m[2]), m[0].slice(0, 60)).toBeCloseTo(1.6, 2);
+	});
+	it('the motion borrowed from Shadcn Space is credited, and its MIT notice ships with the site', () => {
+		expect(css).toMatch(/adapted from Shadcn Space/);
+		const readme = readFileSync('site/README.md', 'utf8');
+		expect(readme).toMatch(/Copyright \(c\) 2026 Shadcn Space/);
+		expect(readme).toMatch(/Permission is hereby granted, free of charge/);
+	});
+	it('the data-flow beam has one pulse per line, measured in percent so the script can redraw it at real size', () => {
+		const svg = /<svg class="beam-svg"[\s\S]*?<\/svg>/.exec(html)![0];
+		const lines = [...svg.matchAll(/<path d="([^"]+)"\/>/g)].map((m) => m[1]);
+		const pulses = [...svg.matchAll(/<path class="pulse" pathLength="100" d="([^"]+)"\/>/g)].map((m) => m[1]);
+		expect(lines.length).toBe(8);
+		expect(pulses).toEqual(lines);
+		for (const d of lines) expect(d, d).toMatch(/^M[\d. ]+(?:[CL][\d. ]+)+$/); // x/y pairs only, which is what the redraw expects
+		expect(css).toMatch(/html:not\(\.js\) \.beam \.pulse \{ display: none; \}/);
+	});
+	it('the animated list keeps its final height while it fills, so nothing below it moves', () => {
+		expect(js).toMatch(/alist\.style\.setProperty\('min-height', alist\.offsetHeight \+ 'px'\)/);
+		expect(html.match(/<ol class="alist" data-alist[\s\S]*?<\/ol>/)![0].match(/<li>/g)).toHaveLength(4);
+	});
+	it('product logos are local files, decorative next to the product name, and the footer says whose they are', () => {
+		const logos = [...html.matchAll(/<img class="lg" src="(\/assets\/logos\/[^"]+)"[^>]*>/g)];
+		expect(logos.length).toBeGreaterThanOrEqual(15);
+		for (const m of logos) {
+			expect(existsSync('site' + m[1]), m[1]).toBe(true);
+			expect(m[0], m[1]).toMatch(/alt=""/); // the product's name is always written right next to it
+		}
+		for (const f of readdirSync('site/assets/logos')) expect(html, `${f} is not used`).toContain(`/assets/logos/${f}`);
+		expect(html).toMatch(/names and logos here belong to their owners/);
+		expect(html).toMatch(/not affiliated with or endorsed by them/);
+	});
+	it('the comparison keeps the rows where the others are ahead, and says when it was checked', () => {
+		const t = /<section class="sec compare"[\s\S]*?<\/section>/.exec(html)![0];
+		expect(t).toMatch(/Where they are ahead/);
+		expect((t.match(/<span class="v n">No<\/span>/g) ?? []).length).toBeGreaterThanOrEqual(4); // our own "No"s are in it
+		expect(t).toMatch(/7 November 2026/);
+		expect(t).toContain('https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/src/lib/compare.ts');
 	});
 	it('the wipe-in of the wide screenshot hides content only once the script has marked the page', () => {
 		expect(css).toMatch(/html\.js \.wipe\.rv \{ clip-path: inset\(0 100% 0 0\)/);
@@ -252,7 +297,7 @@ describe('site: light mode only, and gentle on people who ask for less motion', 
 	it('every animation and scroll effect has a reduced-motion fallback that shows the final state', () => {
 		const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
 		expect(block).toBeTruthy();
-		for (const sel of ['.w {', '.hl::before', 'html.js .rv', '.track', '.stack', '.frame', '.term.live .t-line', '.tl-svg .line', '.hud-row']) expect(block, sel).toContain(sel);
+		for (const sel of ['.w {', '.hl::before', 'html.js .rv', '.stack', '.frame', '.term.live .t-line', '.tl-svg .line', '.beam-svg .pulse', 'html.js .words .wd', 'html.js .alist.live li', '.plan.on::before']) expect(block, sel).toContain(sel);
 		expect(js).toMatch(/prefers-reduced-motion: reduce/);
 		expect(js).toMatch(/still/);
 	});

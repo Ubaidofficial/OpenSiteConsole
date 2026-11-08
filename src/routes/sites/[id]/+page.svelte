@@ -5,6 +5,10 @@
 	import Chart from '$lib/components/Chart.svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { fmtInt, fmtPct, fmtPos, fmtSigned } from '$lib/format';
+	import PlanList from '$lib/components/PlanList.svelte';
+	import RankMix from '$lib/components/viz/RankMix.svelte';
+	import SegBar from '$lib/components/viz/SegBar.svelte';
+	import { POSITION_BUCKETS } from '$lib/plan';
 
 	let { data, form } = $props();
 	const markers = $derived([
@@ -20,6 +24,8 @@
 	let title = $state('');
 	let prefix = $state('');
 	let busy = $state(false);
+	let logOpen = $state(false);
+	const planMax = $derived(Math.max(0, ...[...data.plan.blocking, ...data.plan.quick, ...data.plan.bigger].map((a) => a.impact ?? 0)) || null);
 
 	const addNote = () => {
 		busy = true;
@@ -35,13 +41,67 @@
 	const dot = (k: string) => (k === 'experiment' ? 'var(--c-impr)' : k === 'migration' ? 'var(--bad)' : k === 'other' ? 'var(--muted-foreground)' : 'var(--warn)');
 </script>
 
+<!-- The plan comes first: what to do in the next two weeks, from the ranked findings. The chart and the log follow. -->
+<section class="mb-8" aria-labelledby="plan-h">
+	<div class="mb-3 flex flex-wrap items-end gap-x-4 gap-y-1">
+		<div>
+			<h2 id="plan-h" class="text-lg font-semibold tracking-tight">Your next two weeks</h2>
+			<p class="text-sm text-muted-foreground">The most valuable things to do on this site now, picked from {data.plan.total} open findings. Tick one off when it is done.</p>
+		</div>
+		<div class="ml-auto flex gap-2 text-sm">
+			<a class="btn !h-8 text-xs" href="/sites/{page.params.id}/quickwins">All quick wins</a>
+			<a class="btn !h-8 text-xs" href="/sites/{page.params.id}/actions">All {data.plan.total} findings →</a>
+		</div>
+	</div>
+	{#if data.plan.blocking.length + data.plan.quick.length + data.plan.bigger.length === 0}
+		<div class="rounded-xl border border-dashed p-6 text-center text-sm"><p class="font-medium text-good">Nothing to do right now.</p><p class="mt-1 text-muted-foreground">Either the site is in good shape or there is not enough data yet. Connecting GA4, Bing and Clarity widens what is looked at.{#if data.plan.done} {data.plan.done} done item(s) come back if the problem returns.{/if}</p></div>
+	{:else}
+		<div class="space-y-5">
+			{#if data.plan.blocking.length}
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold text-bad">Fix first</h3><span class="text-xs text-muted-foreground">These stop the site earning, or stop you measuring it.</span></div><PlanList items={data.plan.blocking} tone="bad" max={planMax} /></div>
+			{/if}
+			{#if data.plan.quick.length}
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold">Quick wins</h3><span class="text-xs text-muted-foreground">Small edits, usually minutes each.</span></div><PlanList items={data.plan.quick} start={data.plan.blocking.length + 1} max={planMax} /></div>
+			{/if}
+			{#if data.plan.bigger.length}
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold">Bigger opportunities</h3><span class="text-xs text-muted-foreground">More work each, for more clicks.</span></div><PlanList items={data.plan.bigger} start={data.plan.blocking.length + data.plan.quick.length + 1} max={planMax} /></div>
+			{/if}
+		</div>
+		<p class="mt-2 text-xs text-muted-foreground">Click estimates come from this site's own click curve. They are model figures, not promises, and are not added up because findings overlap.</p>
+	{/if}
+</section>
+
 <section class="mb-5 rounded-2xl border bg-card p-5 shadow-xs">
 	<div class="mb-3 flex items-baseline justify-between gap-3">
 		<h2 class="text-base font-semibold tracking-tight">Traffic</h2>
 		<p class="text-xs text-muted-foreground">Shaded bands = unusual days · dots = your change log · dashed end = last 2 days (Google may still revise them)</p>
 	</div>
 	<Chart data={data.series} {markers} anomalies={data.anomalies} />
-</section>
+	</section>
+
+	<div class="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
+	<section class="rounded-2xl border bg-card p-5 shadow-xs lg:col-span-2" aria-labelledby="rank-h">
+		<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+			<h2 id="rank-h" class="text-base font-semibold tracking-tight">Where your searches rank</h2>
+			<p class="text-xs text-muted-foreground">Searches with at least a few impressions this period, by average position{data.positions.prev ? '; the change is against the previous period' : ''}.</p>
+		</div>
+		<RankMix now={data.positions.now} prev={data.positions.prev} weeks={data.positions.weeks} hrefFor={(i) => `/sites/${page.params.id}/queries?days=${data.days}&pos=${POSITION_BUCKETS[i].key}`} />
+	</section>
+	<section class="rounded-2xl border bg-card p-5 shadow-xs" aria-labelledby="brand-h">
+		<h2 id="brand-h" class="mb-1 text-base font-semibold tracking-tight">Brand vs non-brand</h2>
+		{#if data.brand}
+			{@const b = data.brand}
+			{@const total = b.now.brand + b.now.other}
+			{@const d = b.prev && b.prev.other ? b.now.other / b.prev.other - 1 : null}
+			<p class="mb-3 text-xs text-muted-foreground">Non-brand clicks are the ones SEO work moves.</p>
+			<div class="flex items-baseline gap-2"><span class="text-2xl font-semibold">{fmtInt(b.now.other)}</span><span class="text-xs text-muted-foreground">non-brand clicks</span>{#if d != null}<span class="tnum text-xs font-medium {d >= 0 ? 'text-good' : 'text-bad'}">{fmtSigned(d)}</span>{/if}</div>
+			{#if total}<div class="mt-3"><SegBar title="Clicks from brand and non-brand searches" format={(v) => `${fmtInt(v)} clicks`} parts={[{ label: 'Non-brand', value: b.now.other, color: 'var(--chart-1)' }, { label: 'Brand', value: b.now.brand, color: 'var(--chart-2)' }]} /></div>{/if}
+			<p class="mt-2 text-[11px] text-muted-foreground">Brand = contains <span class="pii">{b.terms.join(', ')}</span>. <a class="underline" href="/sites/{page.params.id}/settings">Change</a> · <a class="underline" href="/sites/{page.params.id}/queries?b=nonbrand">See non-brand searches</a></p>
+		{:else}
+			<p class="text-sm text-muted-foreground">Set your brand terms in <a class="underline" href="/sites/{page.params.id}/settings">Settings</a> to split brand from non-brand clicks.</p>
+		{/if}
+	</section>
+</div>
 
 <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
 	<section>
@@ -68,8 +128,10 @@
 	</section>
 
 	<section>
-		<h2 class="mb-2 text-base font-semibold tracking-tight">Change log &amp; experiments</h2>
-		<form method="POST" action="?/addNote" use:enhance={addNote} class="mb-3 grid gap-3 rounded-xl border bg-card p-4 shadow-xs">
+		<div class="mb-2 flex items-center gap-2"><h2 class="text-base font-semibold tracking-tight">Change log</h2>
+				<details class="group ml-auto" bind:open={logOpen}><summary class="btn !h-8 cursor-pointer list-none text-xs [&::-webkit-details-marker]:hidden"><Plus class="size-3.5" />Log a change</summary></details></div>
+				{#if logOpen}
+				<form method="POST" action="?/addNote" use:enhance={addNote} class="mb-3 grid gap-3 rounded-xl border bg-card p-4 shadow-xs">
 			<div class="grid grid-cols-2 gap-3">
 				<label class="grid gap-1.5 text-xs font-medium text-muted-foreground">Date<input class="input w-full text-foreground" type="date" name="date" bind:value={date} required /></label>
 				<label class="grid gap-1.5 text-xs font-medium text-muted-foreground">Type
@@ -85,9 +147,10 @@
 			<label class="grid gap-1.5 text-xs font-medium text-muted-foreground">Measure only this URL prefix <span class="font-normal">(optional)</span><input class="input w-full text-foreground" name="prefix" bind:value={prefix} placeholder="https://example.com/guides/" /></label>
 			<div class="flex items-center gap-3">
 				<button class="btn btn-primary" disabled={busy || !title.trim()}>{#if busy}<LoaderCircle class="size-4 animate-spin" />Saving…{:else}<Plus class="size-4" />Add to log{/if}</button>
-				{#if form?.error}<p class="text-sm text-bad">{form.error}</p>{/if}
-			</div>
-		</form>
+						{#if form?.error}<p class="text-sm text-bad">{form.error}</p>{/if}
+					</div>
+				</form>
+				{/if}
 
 		<div class="space-y-2.5">
 			{#each data.annotations as a (a.id)}
