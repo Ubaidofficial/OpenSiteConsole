@@ -91,7 +91,7 @@ describe('site: self-contained and safe under a strict policy', () => {
 describe('site: honest and in step with the app', () => {
 	it('the tool counts on the page are the real ones, and the page never calls the server read-only without saying changes are opt-in', () => {
 		const reads = MCP_READ_TOOL_NAMES.length, writes = MCP_WRITE_TOOL_NAMES.length;
-		expect([reads, writes, MCP_TOOL_NAMES.length]).toEqual([40, 20, 60]);
+		expect([reads, writes, MCP_TOOL_NAMES.length]).toEqual([41, 20, 61]);
 		expect(html).toContain(`<b>${MCP_TOOL_NAMES.length}</b> MCP tools, read-only until you allow changes`);
 		expect(html).toContain(`<b data-count="${reads}">${reads}</b><span>tools that read</span>`);
 		expect(html).toContain(`<b>${writes}</b><span>that act, only if you allow it; deleting is a separate level</span>`);

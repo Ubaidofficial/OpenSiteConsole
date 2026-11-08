@@ -17,6 +17,7 @@ import { getSite } from './clients';
 import { importGoogleUpdates, lastUpdatesCheck } from './gupdates';
 import { syncSitemapUrls } from './sitemapcov';
 import { autoSubmit } from './indexnow';
+import { crawlLinks, RECRAWL_MS } from './internallinks';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -132,6 +133,14 @@ export function enqueueSitemapSync(siteId: number): boolean {
 	});
 }
 
+/** Crawl the site's pages for the internal-link suggestions (up to LINK_CRAWL_PAGES, four at a time): weekly, or when asked. */
+export function enqueueLinkCrawl(siteId: number): boolean {
+	const queued = enqueue(`links:${siteId}`, () => crawlLinks(siteId));
+	// Shown as running from the moment it is queued, so the Internal links tab polls until it has finished.
+	if (queued) db().prepare("INSERT INTO link_crawls (site_id, status, started_at) VALUES (?, 'running', ?) ON CONFLICT(site_id) DO UPDATE SET status = 'running', started_at = excluded.started_at").run(siteId, Date.now());
+	return queued;
+}
+
 const SIX_HOURS = 6 * 3600_000;
 const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, gtm: 12 * 3600_000, clarity: 22 * 3600_000 };
 
@@ -179,6 +188,9 @@ export function schedulerTick() {
 		if (!process.env.VITEST) {
 			const cs = d.prepare('SELECT checked_at FROM clarity_scans WHERE site_id = ?').get(s.id) as { checked_at: number } | undefined;
 			if (!cs || Date.now() - cs.checked_at > 24 * 3600_000) enqueueClarityScan(s.id);
+			// The internal-link crawl fetches up to LINK_CRAWL_PAGES of the site's pages: once a week (a site with no data yet is retried).
+			const lc = d.prepare('SELECT finished_at f, pages n FROM link_crawls WHERE site_id = ?').get(s.id) as { f: number | null; n: number } | undefined;
+			if (!lc || !lc.n || Date.now() - (lc.f ?? 0) > RECRAWL_MS) enqueueLinkCrawl(s.id);
 		}
 	}
 	const links = d
@@ -202,6 +214,7 @@ export function startScheduler() {
 	// Anything left "running"/"queued" belongs to a process that no longer exists.
 	db().prepare("UPDATE sites SET sync_status = 'idle' WHERE sync_status IN ('running','queued')").run();
 	db().prepare("UPDATE site_links SET sync_status = 'idle' WHERE sync_status IN ('running','queued')").run();
+	db().prepare("UPDATE link_crawls SET status = 'idle' WHERE status = 'running'").run();
 	setTimeout(schedulerTick, 3000);
 	globalThis.__openSiteConsoleScheduler = setInterval(() => {
 		schedulerTick();

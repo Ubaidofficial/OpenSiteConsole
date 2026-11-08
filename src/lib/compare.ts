@@ -49,13 +49,13 @@ export const COMPETITORS: Competitor[] = [
 		price: 'From $50 a month for one site; $125 for 5 sites; $375 for 20 sites; larger plans on request. 14-day free trial, no card.',
 		weWin: [
 			'Free to self-host, with no per-site price: add every site and account you have.',
+			'Internal-link suggestions with no credit allowance: crawl and re-crawl as often as you like.',
 			'An indexing toolkit (submit, request list, re-checks, monitoring) next to the tests.',
 			'Bing, Clarity and Tag Manager data beside Search Console, and an MCP server so an AI agent can read and act on it.',
 			'Your data stays on your own server and history is kept beyond Search Console’s 16 months.',
 			'Unlimited users, free, with roles (admin, editor, viewer) and per-user site limits.'
 		],
 		theyWin: [
-			'An internal-linking tool: we do not have one.',
 			'A monthly plain-English report and a daily watch that includes robots.txt changes.',
 			'It is hosted, supported and established: nothing to run, and it names customers on its site.'
 		],
@@ -75,7 +75,7 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Reports', feature: 'Question-shaped queries', ours: y(), theirs: y() },
 			{ group: 'Reports', feature: 'Monthly plain-English report', ours: p('A weekly digest and urgent alerts to Slack, Discord or a webhook; no monthly report yet.'), theirs: y('A forwardable monthly summary.') },
 			{ group: 'Reports', feature: 'Daily watch for changes', ours: p('Traffic-drop detection, indexing-change events and sitemap reads; no robots.txt watch.'), theirs: y('Pages that gained or lost clicks, new queries, sitemap and robots.txt changes.') },
-			{ group: 'Reports', feature: 'Internal-linking tool', ours: n('Not built.'), theirs: y('A monthly credit allowance per plan.') },
+			{ group: 'Reports', feature: 'Internal-linking tool', ours: y('Free, with no credits: crawls up to 60 of your pages weekly (more if you set it) and suggests which pages should link to the ones ranking 4 to 20, with the anchor text already on the page. HTML only: JavaScript is not run.'), theirs: y('A monthly credit allowance per plan.') },
 			{ group: 'Beyond testing', feature: 'Indexing toolkit (submit, request list, re-checks, monitor)', ours: y('IndexNow, Bing and (for job and livestream pages) Google’s Indexing API, plus a Request Indexing list and day 1/3/5 re-checks.'), theirs: u() },
 			{ group: 'Beyond testing', feature: 'Bing, Clarity and Tag Manager next to Search Console', ours: y(), theirs: u('Its pages list Search Console and Google Analytics only.') },
 			{ group: 'Beyond testing', feature: 'MCP server for AI agents', ours: y('Read tools for all the data; anything that changes something needs a key created for it.'), theirs: y('An API and an MCP server are listed on its features page (read on 2026-11-08).') },

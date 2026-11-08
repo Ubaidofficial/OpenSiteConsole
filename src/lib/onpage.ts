@@ -30,7 +30,7 @@ export const decode = (s: string) =>
 		.trim();
 
 /** ASCII-only lower-casing keeps every index aligned with the original string (toLowerCase can change its length). */
-const asciiLower = (s: string) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+export const asciiLower = (s: string) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
 
 const MAX_TAG = 20_000;
 
@@ -39,7 +39,7 @@ const MAX_TAG = 20_000;
  * "<!--", "<h1>" or "<meta" must cost time proportional to its size, not its size squared. Where something is unterminated
  * the scan simply stops.
  */
-function stripInert(html: string): string {
+export function stripInert(html: string): string {
 	const lower = asciiLower(html);
 	const next: Record<'c' | 's' | 'y', number> = { c: -2, s: -2, y: -2 }; // -2 unknown, -1 none left
 	const nextOf = (k: 'c' | 's' | 'y', needle: string, from: number) => {
@@ -129,7 +129,7 @@ export function stripTags(s: string): string {
 }
 
 /** Attribute value of a tag, whichever order the attributes are in. */
-function attr(tag: string, name: string): string | null {
+export function attr(tag: string, name: string): string | null {
 	const m = new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag);
 	return m ? decode(m[2] ?? m[3] ?? m[4] ?? '') : null;
 }
