@@ -110,7 +110,7 @@
 
   /* pinned story: the screenshot on the right follows the step in the middle of the screen */
   const steps = $$('.step'), frames = $$('.frame'), dots = $$('.dots li');
-  const labels = ['Actions', 'Portfolio', 'Pages', 'Opportunities', 'Tests', 'Indexing'];
+  const labels = ['Overview', 'Portfolio', 'Pages', 'Opportunities', 'Tests', 'Indexing'];
   const pinUrl = $('[data-pin-url]');
   function setActive(i) {
     steps.forEach((s, k) => s.classList.toggle('on', k === i));

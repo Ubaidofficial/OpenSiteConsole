@@ -34,6 +34,8 @@
 	$effect(() => {
 		void page.url.pathname;
 		moreOpen = false; // close the menu after choosing a tab
+		// on a phone the tab row scrolls sideways: bring the open tab into view
+		queueMicrotask(() => document.querySelector('nav[aria-label="Site sections"] [aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
 	});
 	const kpis = $derived([
 		{ l: 'Clicks', v: fmtInt(data.kpis.clicks), d: data.kpis.clicksDelta, inv: false },
@@ -79,11 +81,14 @@
 	{@const [, label, about] = tabOf(t)}
 	<a href="{base}{t}?days={data.days}" title={about} aria-current={isActive(t) ? 'page' : undefined} class="-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-[13px] transition-colors duration-150 {isActive(t) ? 'border-[color:var(--link)] font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{@render tabBadges(t)}</a>
 {/snippet}
-<nav class="relative mb-5 flex flex-wrap items-end border-b" style="border-color:var(--border)" aria-label="Site sections">
-	{#each SITE_PRIMARY_TABS as t}{@render tab(t)}{/each}
-	{#if activeExtra}{@render tab(activeExtra)}{/if}
-	<details class="group" bind:open={moreOpen}>
-		<summary class="-mb-px flex cursor-pointer list-none items-center gap-1 border-b-2 border-transparent px-3 py-2 text-[13px] text-muted-foreground select-none hover:text-foreground [&::-webkit-details-marker]:hidden">More<ChevronDown class="size-3.5 transition-transform group-open:rotate-180" /></summary>
+<nav class="relative mb-5 flex items-end border-b" style="border-color:var(--border)" aria-label="Site sections">
+	<!-- one line on every screen: the tabs scroll sideways on a phone, and More stays put outside the scrolling part -->
+	<div class="-mb-px flex min-w-0 flex-1 items-end overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+		{#each SITE_PRIMARY_TABS as t}{@render tab(t)}{/each}
+		{#if activeExtra}{@render tab(activeExtra)}{/if}
+	</div>
+	<details class="group shrink-0" bind:open={moreOpen}>
+		<summary class="-mb-px flex cursor-pointer list-none items-center gap-1 border-b-2 border-transparent bg-background px-3 py-2 text-[13px] text-muted-foreground select-none hover:text-foreground [&::-webkit-details-marker]:hidden">More<ChevronDown class="size-3.5 transition-transform group-open:rotate-180" /></summary>
 		<div class="absolute top-full right-0 left-0 z-30 mt-2 grid gap-x-6 gap-y-4 rounded-xl border bg-card p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-4">
 			{#each SITE_TAB_GROUPS as [caption, paths]}
 				{@const rest = paths.filter((t) => !(SITE_PRIMARY_TABS as readonly string[]).includes(t))}

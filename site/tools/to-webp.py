@@ -8,7 +8,9 @@ for f in sorted(os.listdir(SRC)):
     if not f.endswith('.png'):
         continue
     name, im = f[:-4], Image.open(os.path.join(SRC, f)).convert('RGB')
-    for width, suffix in ((min(2160, im.width), ''), (1080, '-1080')):
+    # the two biggest images on the page also get in-between sizes (phones, and 1x desktop screens)
+    extra = {'dashboard': ((720, '-720'), (1600, '-1600')), 'hidden': ((1600, '-1600'),)}.get(name, ())
+    for width, suffix in ((min(2160, im.width), ''), (1080, '-1080'), *extra):
         out = os.path.join(DST, f'{name}{suffix}.webp')
         im.resize((width, round(im.height * width / im.width)), Image.LANCZOS).save(out, 'WEBP', quality=82, method=6)
         print(out, os.path.getsize(out) // 1024, 'KB')

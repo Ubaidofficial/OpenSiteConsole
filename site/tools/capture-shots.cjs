@@ -81,19 +81,15 @@ async function seed(b) {
   const S = {
     dashboard: ['/', { w: 1440, keepChrome: true, fullX: false, end: 'main article:nth-of-type(4)', pad: 16, start: null }],
     privacy: ['/', { w: 1100, privacy: true, start: 'main .stagger', ratio: 1.6 }],
+    plan: ['/sites/1', { w: 1000, start: 'section[aria-labelledby=plan-h]', ratio: 1.6 }],
     actions: ['/actions', { w: 960, start: 'main h1', ratio: 1.6 }],
     portfolio: ['/portfolio', { w: 960, start: 'main h1', ratio: 1.6 }],
     pages: ['/sites/1/pages', { w: 1900, start: '.page-in', ratio: 1.6, prep: async (p) => { await p.addStyleTag({ content: 'main{max-width:none!important}' }); } }],
-    opportunities: ['/sites/1/opportunities', { w: 960, start: '.page-in', ratio: 1.6 }],
+    opportunities: ['/sites/1/opportunities', { w: 960, start: '#op-list', ratio: 1.6 }],
     tests: ['/sites/4/tests', { w: 1200, start: 'text=Rewrote titles', ratio: 1.6, prep: async (p) => { await p.addStyleTag({ content: 'form[action="?/create"]{display:none!important}' }); } }],
     indexing: ['/sites/4/indexing', { w: 960, start: '.page-in', ratio: 1.6 }],
-    hidden: ['/sites/1/opportunities', { w: 1240, start: 'text=Hidden opportunities', end: 'section.mb-6:last-of-type', pad: 20, prep: async (p) => { await p.evaluate(() => {
-  const secs = [...document.querySelectorAll('section.mb-6')];
-  secs.forEach((s) => { const t = s.querySelector('h3').innerText; if (!/^(Lost searches|Pages on the edge)/.test(t.trim())) s.remove(); /* only the two tables the page's cards quote */ });
-  const edge = [...document.querySelectorAll('section.mb-6')].find((s) => /Pages on the edge/.test(s.innerText));
-  if (edge) { edge.querySelectorAll('tbody tr').forEach((tr, i) => { if (i >= 6) tr.remove(); }); edge.querySelectorAll('.mt-3.flex').forEach((e)=>e.remove()); }
-  const h = document.querySelector('h3'); });
-  await p.addStyleTag({ content: 'section.mb-6:last-of-type{margin-bottom:0!important}' }); } }],
+    // the Opportunities tab's overview: every kind found, how many, and the biggest estimate for each
+    hidden: ['/sites/1/opportunities', { w: 1240, start: 'main .page-in h2', end: 'main .page-in .stagger', pad: 20 }],
     vitals: ['/sites/1/vitals', { w: 960, start: '.page-in', ratio: 1.6 }],
     sitemaps: ['/sites/4/indexing', { w: 960, start: 'text=Sitemap coverage', ratio: 1.6 }],
   };

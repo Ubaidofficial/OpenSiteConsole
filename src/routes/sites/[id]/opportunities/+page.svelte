@@ -1,9 +1,9 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
 	import { fmtInt, fmtPct } from '$lib/format';
 	import { HIDDEN_GROUPS, HIDDEN_INTRO, HIDDEN_SOURCE_HINT } from '$lib/explain';
 	let { data } = $props();
-	const gain = $derived(data.striking.reduce((a, r) => a + r.expectedGain, 0));
 	const sCols = [
 		{ key: 'query', label: 'Query', type: 'text' as const },
 		{ key: 'expectedGain', label: 'Est. +clicks', type: 'int' as const, bar: true, title: 'Extra clicks per period if this query reached position 3, using your own CTR curve' },
@@ -38,41 +38,78 @@
 		{ id: 'friction', rows: h.friction, sort: 'rate', cols: [pcol, num('rate', 'Sessions with friction', 'pct', undefined, true), num('sessions', 'Sessions', 'int'), num('googleClicks', 'Google clicks', 'int')], src: 'clarity' as const },
 		{ id: 'device', rows: h.device, sort: 'gain', cols: [qcol, num('gain', 'Est. +clicks', 'int', undefined, true), num('mobilePosition', 'Phone position', 'pos'), num('desktopPosition', 'Desktop position', 'pos'), num('mobileImpressions', 'Phone impressions', 'int')], src: null }
 	].map((t) => ({ ...t, rows: t.rows as unknown as Record<string, unknown>[], ...HIDDEN_GROUPS.find((g) => g.id === t.id)! })));
+
+	/**
+	 * One list of every kind of opportunity, the two Search Console tables first. The page opens on a grid of tiles (what was found,
+	 * how many, the biggest estimate); each table opens from its tile, so the tab is one screen instead of thirteen tables.
+	 */
+	const GAIN_KEYS = new Set(['expectedGain', 'missedClicks', 'gain', 'lostClicks', 'lostEngagedSessions', 'expectedKeyEvents']);
+	const UNIT: Record<string, string> = { expectedGain: 'clicks', missedClicks: 'clicks', gain: 'clicks', lostClicks: 'clicks lost', lostEngagedSessions: 'engaged visits', expectedKeyEvents: 'key events' };
+	const sections = $derived([
+		{ id: 'striking', title: 'Striking distance', blurb: 'Searches at positions 4 to 20, ranked by the extra clicks position 3 would bring on your own click curve.', rows: data.striking as unknown as Record<string, unknown>[], cols: sCols, sort: 'expectedGain', src: null },
+		{ id: 'ctr', title: 'Title and snippet fixes', blurb: 'Pages earning far fewer clicks than your site normally gets at that position: the snippet is the weak part, not the ranking.', rows: data.ctrGaps as unknown as Record<string, unknown>[], cols: gCols, sort: 'missedClicks', src: null },
+		...tables
+	].map((t) => {
+		const missing = !!t.src && h.sources[t.src as keyof typeof h.sources] !== 'ok';
+		const best = !missing && t.rows.length && GAIN_KEYS.has(t.sort) ? Math.max(...t.rows.map((r) => Number(r[t.sort]) || 0)) : null;
+		return { ...t, missing, best, unit: UNIT[t.sort] ?? '' };
+	}));
+	const found = $derived(sections.filter((t) => !t.missing && t.rows.length));
+	const none = $derived(sections.filter((t) => !t.missing && !t.rows.length));
+	const needs = $derived(sections.filter((t) => t.missing));
+	/** The tiles pick which list is shown under them; the first kind found is shown to start with. */
+	let picked = $state<string | null>(null);
+	const sel = $derived(found.find((t) => t.id === picked) ?? found[0] ?? null);
+	const pick = async (id: string) => {
+		picked = id;
+		await tick();
+		document.getElementById('op-list')?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+	};
+	const SRC_LABEL: Record<string, string> = { previousPeriod: 'the previous period', bing: 'Bing', ga4: 'GA4', clarity: 'Clarity' };
 </script>
 
-<div class="card mb-4 p-4">
-	<div class="mb-1 font-medium">Your CTR by position <span class="chip ml-1">{data.curve.source === 'fitted' ? 'fitted to your data' : data.curve.source === 'mixed' ? 'partly fitted' : 'industry default'}</span></div>
-	<div class="tnum flex gap-4 overflow-x-auto text-xs">
-		{#each data.curve.values as v, i}
-			<div><div class="text-muted-foreground">#{i + 1}</div><div class={data.curve.fitted[i] ? 'font-semibold' : 'text-muted-foreground'}>{fmtPct(v)}</div></div>
-		{/each}
+<div class="mb-4 flex flex-wrap items-end gap-x-4 gap-y-1">
+	<div>
+		<h2 class="text-lg font-semibold tracking-tight">{found.length} kinds of opportunity found</h2>
+		<p class="text-sm text-muted-foreground">Pick a kind to see its list. Estimates use this site's own click curve: model figures, not promises.</p>
 	</div>
-	<p class="mt-2 text-xs text-muted-foreground">Non-branded rows only. Bold = measured on this site (500+ impressions at that position); grey = fallback benchmark.</p>
+	<details class="ml-auto text-xs">
+		<summary class="cursor-pointer select-none text-muted-foreground">Your click curve <span class="chip ml-1">{data.curve.source === 'fitted' ? 'fitted to your data' : data.curve.source === 'mixed' ? 'partly fitted' : 'industry default'}</span></summary>
+		<div class="card absolute right-4 z-20 mt-2 max-w-md p-3">
+			<div class="tnum flex gap-3 overflow-x-auto">
+				{#each data.curve.values as v, i}<div><div class="text-muted-foreground">#{i + 1}</div><div class={data.curve.fitted[i] ? 'font-semibold' : 'text-muted-foreground'}>{fmtPct(v)}</div></div>{/each}
+			</div>
+			<p class="mt-2 text-muted-foreground">Click-through rate by position, non-branded searches only. Bold = measured on this site (500+ impressions at that position); grey = a fallback benchmark.</p>
+		</div>
+	</details>
 </div>
 
-<h2 class="mb-1 font-medium">Striking distance <span class="font-normal text-muted-foreground">· positions 4–20, ranked by estimated gain</span></h2>
-<p class="mb-2 text-xs text-muted-foreground">Moving all of these to position 3 is worth roughly <b class="text-[color:var(--foreground)]">{fmtInt(gain)}</b> extra clicks per period (an estimate, not a forecast).</p>
-<DataTable rows={data.striking} cols={sCols} sortKey="expectedGain" />
-
-<h2 class="mb-1 mt-8 font-medium">Title/snippet candidates <span class="font-normal text-muted-foreground">· CTR well below your curve for the position</span></h2>
-<DataTable rows={data.ctrGaps} cols={gCols} sortKey="missedClicks" empty="No pages are significantly under-performing their position." />
-
-<h2 class="mb-1 mt-10 text-lg font-semibold">Hidden opportunities</h2>
-<p class="mb-3 max-w-3xl text-xs text-muted-foreground">{HIDDEN_INTRO}</p>
-<div class="mb-4 flex flex-wrap gap-2 text-xs">
-	{#each [['previousPeriod', 'Previous period'], ['bing', 'Bing'], ['ga4', 'GA4'], ['clarity', 'Clarity']] as const as [k, label]}
-		<span class="chip" title={h.sources[k] === 'ok' ? `${label}: in use` : HIDDEN_SOURCE_HINT[k]}>{label}: {h.sources[k] === 'ok' ? 'in use' : h.sources[k] === 'not-connected' ? 'not connected' : h.sources[k] === 'no-previous-period' ? 'history not downloaded' : 'no data'}</span>
+<div class="stagger mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+	{#each found as t (t.id)}
+		<button type="button" onclick={() => pick(t.id)} aria-pressed={sel?.id === t.id} aria-controls="op-list" class="card block p-4 text-left transition-colors hover:border-[color:var(--link)] {sel?.id === t.id ? 'border-[color:var(--link)] ring-1 ring-[color:var(--link)]' : ''}">
+			<div class="flex items-baseline gap-2"><span class="font-medium">{t.title}</span><span class="chip ml-auto">{fmtInt(t.rows.length)}</span></div>
+			<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">{t.blurb}</p>
+			{#if t.best != null}<p class="tnum mt-2 text-sm"><span class="text-muted-foreground">Biggest:</span> <b>≈ {fmtInt(Math.round(t.best))}</b> <span class="text-muted-foreground">{t.unit}</span></p>{/if}
+		</button>
 	{/each}
 </div>
-{#each tables as t (t.id)}
-	{@const missing = t.src && h.sources[t.src] !== 'ok'}
-	<section class="mb-6">
-		<h3 class="mb-0.5 font-medium">{t.title} <span class="chip ml-1">{t.rows.length}</span></h3>
-		<p class="mb-2 max-w-3xl text-xs text-muted-foreground">{t.blurb}</p>
-		{#if missing}
-			<p class="rounded-md border border-dashed p-3 text-xs text-muted-foreground">{HIDDEN_SOURCE_HINT[t.src!]}</p>
-		{:else}
-			<DataTable rows={t.rows} cols={t.cols} sortKey={t.sort} empty="Nothing found for this period." />
-		{/if}
+
+{#if sel}
+	<section id="op-list" class="card mb-6 scroll-mt-20 p-4" aria-live="polite">
+		<div class="mb-1 flex flex-wrap items-baseline gap-2"><h3 class="font-medium">{sel.title}</h3><span class="chip">{fmtInt(sel.rows.length)}</span>{#if sel.best != null}<span class="tnum ml-auto text-xs text-muted-foreground">biggest ≈ {fmtInt(Math.round(sel.best))} {sel.unit}</span>{/if}</div>
+		<p class="mb-3 max-w-3xl text-xs text-muted-foreground">{sel.blurb}</p>
+		{#key sel.id}<DataTable rows={sel.rows} cols={sel.cols} sortKey={sel.sort} pageSize={15} />{/key}
 	</section>
-{/each}
+{/if}
+{#if none.length || needs.length}
+	<div class="mb-6 space-y-1 text-xs text-muted-foreground">
+		{#if none.length}<p><b class="font-medium text-foreground">Nothing found this period:</b> {none.map((t) => t.title).join(', ')}.</p>{/if}
+		{#each ['previousPeriod', 'bing', 'ga4', 'clarity'] as const as k}
+			{@const ts = needs.filter((t) => t.src === k)}
+			{#if ts.length}<p><b class="font-medium text-foreground">Needs {SRC_LABEL[k]}:</b> {ts.map((t) => t.title).join(', ')}. <span>{HIDDEN_SOURCE_HINT[k]}</span></p>{/if}
+		{/each}
+	</div>
+{/if}
+
+
+<p class="mt-6 max-w-3xl text-xs text-muted-foreground">{HIDDEN_INTRO}</p>
