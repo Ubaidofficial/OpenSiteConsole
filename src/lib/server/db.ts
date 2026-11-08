@@ -529,6 +529,35 @@ CREATE TABLE IF NOT EXISTS clarity_scans (          -- is Clarity's script on th
 	checked_at INTEGER NOT NULL,
 	payload TEXT NOT NULL               -- JSON ScannedPage[]
 );
+CREATE TABLE IF NOT EXISTS ai_prompts (             -- AI visibility: the questions asked of AI assistants, per site
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	prompt TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS ai_competitors (         -- domains to compare against in AI answers
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	domain TEXT NOT NULL,
+	PRIMARY KEY (site_id, domain)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ai_runs (                -- one answer from one assistant to one prompt
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	prompt_id INTEGER NOT NULL REFERENCES ai_prompts(id) ON DELETE CASCADE,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	engine TEXT NOT NULL,                -- claude | chatgpt | perplexity
+	model TEXT,
+	ran_at INTEGER NOT NULL,
+	status TEXT NOT NULL,                -- ok | error
+	error TEXT,
+	answer TEXT,                         -- third-party text: shown as data, never followed
+	citations TEXT,                      -- JSON {url,title}[]
+	sources TEXT,                        -- JSON {url,title}[]
+	verdict TEXT,                        -- JSON AnswerVerdict (from src/lib/aivis.ts), as judged when it ran
+	searches INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS ai_runs_site ON ai_runs (site_id, ran_at);
+CREATE INDEX IF NOT EXISTS ai_runs_prompt ON ai_runs (prompt_id, engine, ran_at);
 CREATE TABLE IF NOT EXISTS robots_checks (          -- the newest robots.txt read per host of a site
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
 	origin TEXT NOT NULL,                -- https://www.example.com

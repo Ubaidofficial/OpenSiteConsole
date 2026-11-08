@@ -28,6 +28,7 @@ import { parseScope } from '../experiments';
 import { isRealDate } from '../performance';
 import { parseTerms, pctChange, ctrOf } from '../analytics';
 import { days, daysArg, limit, r2, resolveSite, siteArg, type Site, type Tool } from './mcp-core';
+import { aiVisReport } from './aivis';
 
 /** A row of any of the cross-site lists (each has its own further fields). */
 type Row = { siteId: number; site: string } & Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -62,7 +63,7 @@ const listTerms = (s: string) => s.split(/[,\n]/).map((t) => t.replace(/\s+/g, '
 const readTools: Tool[] = [
 	{
 		name: 'get_portfolio',
-		description: 'All the sites this key can see at once. type: summary (one line per site: clicks, impressions, CTR, position and the change against the previous period, with totals that count a property once), striking (the best striking-distance searches across all sites), cannibalization (the most serious competing-page cases), decay (pages losing the most clicks), anomalies (unusual days). Sites that are hidden or not yet synced are left out.',
+		description: 'All the sites this key can see at once. type: summary (per site: clicks, impressions, CTR, position and change vs the previous period; totals count a property once), striking (best striking-distance searches), cannibalization (most serious cases), decay (pages losing most clicks), anomalies (unusual days). Hidden or unsynced sites are left out.',
 		schema: { ...daysArg, type: { type: 'string', enum: ['summary', 'striking', 'cannibalization', 'decay', 'anomalies'] }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const ids = new Set(sites.map((s) => s.id));
@@ -293,6 +294,24 @@ const writeTools: Tool[] = [
 		}
 	})
 ];
+
+readTools.push({
+	name: 'get_ai_visibility',
+	description: 'AI answers per assistant (Claude, ChatGPT, Perplexity), from stored runs: mention and citation rates, share of voice vs competitors, most-cited domains, latest verdict per prompt.',
+	schema: { ...siteArg, include_answers: { type: 'boolean', description: 'Include answer texts' } },
+	run: (a, sites) => {
+		const site = resolveSite(sites, a.site);
+		const r = aiVisReport(site);
+		const pct = (x: number) => r2(x * 100) + '%';
+		return {
+			site: displayName(site.site_url), days: r.days, assistants: r.engines, simulated: r.demo || undefined, competitors: r.competitors,
+			byAssistant: r.summary.byEngine.map((e) => ({ assistant: e.engine, answers: e.runs, mention: pct(e.mentionRate), citation: pct(e.citationRate), avgRankWhenCited: e.avgPosition == null ? null : r2(e.avgPosition) })),
+			shareOfVoice: r.summary.voice.map((v) => ({ domain: v.domain, you: v.ours, mentioned: pct(v.mentionShare), cited: pct(v.citationShare) })),
+			mostCited: r.summary.topCited,
+			prompts: r.prompts.map((p) => ({ prompt: p.prompt, answers: p.answers.map((x) => !x.ran ? { assistant: x.engine, asked: false } : { assistant: x.engine, at: new Date(x.at).toISOString(), error: x.ok ? undefined : x.error, mentioned: x.verdict?.mentioned, cited: x.verdict?.cited, rank: x.verdict?.position, ourCitations: x.verdict?.ourCitations, competitors: x.verdict ? [...new Set([...x.verdict.competitorsMentioned, ...x.verdict.competitorsCited])] : undefined, answer: a.include_answers === true ? x.answer : undefined }) }))
+		};
+	}
+});
 
 export const EXTRA_READ_TOOLS = readTools;
 export const WRITE_TOOLS = writeTools;

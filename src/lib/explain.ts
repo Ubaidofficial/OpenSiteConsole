@@ -106,6 +106,7 @@ export const SITE_TABS = [
 	['/bing', 'Bing', 'Bing Webmaster data for this site, once Bing is linked.'],
 	['/analytics', 'GA4', 'Google Analytics 4 organic sessions beside Search Console clicks, once GA4 is linked.'],
 	['/tags', 'Tag Manager', 'What is in your Google Tag Manager container, checked against GA4 and Search Console, once it is linked.'],
+	['/ai', 'AI answers', 'What ChatGPT, Claude and Perplexity answer to the questions you track: whether they mention your brand, cite your pages, and which sites they cite instead. Needs their API keys.'],
 	['/clarity', 'Clarity', 'Microsoft Clarity snapshot, once linked. Clarity only exposes the last 1 to 3 days and 10 API calls a day, so the daily snapshot is refreshed three times a day (every 8½ hours) (9 calls) and kept.'],
 	['/settings', 'Settings', 'Site preferences such as label, tags and brand terms, and what data is stored.']
 ] as const;
@@ -126,7 +127,7 @@ export const SITE_TAB_GROUPS = [
 	['Traffic', ['', '/queries', '/pages', '/trends', '/groups', '/segments', '/types']],
 	['Findings', ['/quickwins', '/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/links', '/vitals', '/tests']],
 	['Indexing', ['/submit', '/request', '/indexing', '/indexnow', '/sitemaps', '/inspect']],
-	['Other sources', ['/bing', '/analytics', '/tags', '/clarity']],
+	['Other sources', ['/bing', '/analytics', '/tags', '/clarity', '/ai']],
 	['Site', ['/settings']]
 ] as const;
 

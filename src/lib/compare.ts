@@ -110,7 +110,7 @@ export const COMPETITORS: Competitor[] = [
 		theyWin: [
 			'It can check any URL, including third-party backlinks. SEOConsole checks only pages in properties you own, because that is all Google’s URL Inspection allows.',
 			'It handles batches of 10,000 and promises crawls for links you do not control; SEOConsole does not do that at all.',
-			'An API that covers checking and submission: SEOConsole has an MCP server but no REST API yet.'
+			'Its API checks and submits any URL; SEOConsole’s REST API covers only properties you own.'
 		],
 		rows: [
 			{ group: 'Checking', feature: 'Check whether your own pages are indexed', ours: y('Google’s URL Inspection, with the reason (for example “Crawled – currently not indexed”).'), theirs: y() },
@@ -125,7 +125,7 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Submitting', feature: '“Instant” indexing', ours: n('No such promise: no tool can make Google index a page.'), theirs: y('An instant mode (5 minutes claimed, 60 credits a URL); its FAQ also says no one can guarantee indexing.') },
 			{ group: 'Beyond indexing', feature: 'Search Console toolkit (tests, decay, sitemaps, request list)', ours: y(), theirs: n() },
 			{ group: 'Beyond indexing', feature: 'CSV export', ours: y('The submission and result table.'), theirs: y() },
-			{ group: 'Beyond indexing', feature: 'API', ours: p('An MCP server for AI agents; no REST API yet.'), theirs: y('Covers checking and submission.') },
+			{ group: 'Beyond indexing', feature: 'API', ours: y('A REST API and an MCP server, with the same API keys and permission levels; only for properties you own.'), theirs: y('Covers checking and submission.') },
 			{ group: 'Price and maturity', feature: 'Free tier', ours: y('Free for good when self-hosted.'), theirs: n('None listed; test credits can be requested from support.') },
 			MATURITY(y('Reports 33,968,266 links submitted by 16,263 SEOs on its site (its own figures).'))
 		],
@@ -148,14 +148,14 @@ export const COMPETITORS: Competitor[] = [
 			'A full SEO toolkit alongside: tests, indexing, decay, quick wins.'
 		],
 		theyWin: [
-			'Prompt tracking across AI models, citation and source analysis, competitor share of voice and AI crawler logs. SEOConsole has none of these.',
+			'Prompt tracking at scale with citation and content-type analysis, and AI crawler logs. SEOConsole’s prompt tracking is basic (three assistants through their APIs, your own keys) and it has no crawler logs.',
 			'Content writing and refresh, and country-level tracking.',
 			'A hosted, supported product that does one thing deeply.'
 		],
 		rows: [
-			{ group: 'AI visibility', feature: 'Track prompts across AI models', ours: n('Not built.'), theirs: y('50, 150 or 350 prompts depending on the plan.') },
-			{ group: 'AI visibility', feature: 'Citation and source analysis', ours: n('Not built.'), theirs: y('Which sources and content types get cited.') },
-			{ group: 'AI visibility', feature: 'Competitor share of voice', ours: n('Not built.'), theirs: y() },
+			{ group: 'AI visibility', feature: 'Track prompts across AI models', ours: p('Basic: up to 50 prompts per site, asked of Claude, ChatGPT and Perplexity through their APIs with web search, with your own API keys and a daily cap; API answers, not the consumer apps.'), theirs: y('50, 150 or 350 prompts depending on the plan.') },
+			{ group: 'AI visibility', feature: 'Citation and source analysis', ours: p('Which domains each answer cites, whether yours is among them and at what rank, and the most-cited domains; no content-type analysis.'), theirs: y('Which sources and content types get cited.') },
+			{ group: 'AI visibility', feature: 'Competitor share of voice', ours: p('Mention and citation share against up to 10 competitor domains you list, on the same answers.'), theirs: y() },
 			{ group: 'AI visibility', feature: 'AI crawler logs', ours: n('Not built.'), theirs: y('It describes a Cloudflare integration for them.') },
 			{ group: 'AI visibility', feature: 'Visits from AI assistants, by page', ours: y('From Google Analytics referrers, beside Google and Bing clicks for the same page; an assistant that sends no referrer is missed.'), theirs: y('AI-referred traffic.') },
 			{ group: 'AI visibility', feature: 'Question-shaped searches you already rank for', ours: y('In Quick wins, from Search Console.'), theirs: u() },
@@ -189,7 +189,7 @@ export const COMPETITORS: Competitor[] = [
 		theyWin: [
 			'Hosted: nothing to install or run, and it reports serving tens of thousands of properties (its own claim).',
 			'Yandex Webmaster and Google Merchant Center, which SEOConsole does not read; its forecasting, topic clusters and hreflang reports go further than SEOConsole’s simpler versions.',
-			'A ChatGPT app, a REST API and a Looker Studio connector.'
+			'A ChatGPT app and a Looker Studio connector.'
 		],
 		rows: [
 			{ group: 'Data', feature: 'Many sites and Google accounts in one place', ours: y('No limit.'), theirs: y('15, 75 or 650 properties by plan; extra Google accounts can be linked.') },
@@ -238,7 +238,7 @@ export const COMPETITORS: Competitor[] = [
 			'An indexing toolkit with IndexNow and Bing submission, and your data on your own server.'
 		],
 		theyWin: [
-			'AI visibility tracking (citations, mentions and share of voice across AI assistants) and an in-app AI assistant.',
+			'Deeper AI visibility tracking and an in-app AI assistant; SEOConsole’s prompt tracking is basic.',
 			'AI content writing, briefs and a site audit: SEOConsole does not write content.',
 			'Hosted, with white-label client reports on its Agency plan (its pages are not consistent on this).'
 		],
@@ -256,7 +256,8 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Access', feature: 'MCP server for AI agents', ours: y('Reads by default; acting needs a level you grant.'), theirs: y('On all plans; a REST API is not out yet (its own words).') },
 			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('Hosted, with exports to Sheets, CSV and PDF.') },
 			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted.') },
-			{ group: 'More', feature: 'AI visibility tracking, AI assistant, AI content writing', ours: n('Not built.'), theirs: y('Token and content allowances by plan.') },
+			{ group: 'More', feature: 'AI visibility tracking', ours: p('Basic prompt tracking: mentions, citations and share of voice in Claude, ChatGPT and Perplexity answers, with your own API keys.'), theirs: y() },
+				{ group: 'More', feature: 'In-app AI assistant and AI content writing', ours: n('Not built.'), theirs: y('Token and content allowances by plan.') },
 			{ group: 'Price and maturity', feature: 'Price', ours: y('Free to self-host.'), theirs: p('From $129.99 a month for 10 websites.') },
 			MATURITY(y('Established; it says it is trusted by over 5,000 users (its own claim).'))
 		],
@@ -269,6 +270,172 @@ export const COMPETITORS: Competitor[] = [
 			{ label: 'SEO Stack vs Google Search Console', url: 'https://www.seo-stack.io/compare/vs-google-search-console' },
 			{ label: 'SEO Stack for agencies', url: 'https://www.seo-stack.io/solutions/agencies' },
 			{ label: 'SEO Stack AI experiments', url: 'https://www.seo-stack.io/platform/ai-experiments' }
+		]
+	},
+	{
+		slug: 'seo-gets',
+		name: 'SEO Gets',
+		url: 'https://seogets.com/',
+		blurb: 'Hosted Search Console and GA4 analytics for SEOs: a master dashboard, content groups, opportunity reports, annotations, client portals and an MCP connector.',
+		checkedOn: '2026-11-08',
+		price: '$49 a month, billed monthly, for the platform and the first core site; each extra core site $4 a month, unlimited from 35 core sites ($185 a month). Super Site add-on $4 a month per core site (5 years of history, index reporting, content change tracking). A yearly option is offered; its terms were not readable on the page. Free sites are always free, no card. Prices shown in $; VAT not stated. Its features page prices the same storage and index reporting at $10 a month per site.',
+		weWin: [
+			'Free to self-host, with every feature on every site: no per-site price and no paid add-on for history or indexing.',
+			'History beyond Search Console’s 16 months for every property, not only sites with a paid add-on.',
+			'Bing, Clarity and Tag Manager next to Search Console and GA4.',
+			'Split and redirect tests with a control group and a significance figure, not only before/after.',
+			'IndexNow, Bing and sitemap submission from the app, a REST API, and basic AI prompt tracking with citation detection.'
+		],
+		theyWin: [
+			'White-labeled live client portals and shareable links, and email notifications; SEOConsole sends to Slack, Discord or a webhook only and has no client portal.',
+			'One-click topic clustering and content groups, a Chrome extension for annotations, and automatic content change tracking.',
+			'Hosted and established: nothing to run, human onboarding and support, and it says 4,000+ SEO professionals use it (its own claim).'
+		],
+		rows: [
+			{ group: 'Data', feature: 'Many sites and Google accounts in one place', ours: y('No limit; it runs on your own server.'), theirs: y('Unlimited free sites, users and Google accounts per team; the full toolkit is priced per core site.') },
+			{ group: 'Data', feature: 'History beyond Search Console’s 16 months', ours: y('Kept for every property from the first sync.'), theirs: p('Up to 5 years with the Super Site add-on on a core site; free and core sites show 16 months.') },
+			{ group: 'Data', feature: 'GA4 next to Search Console', ours: y(), theirs: y('On core sites.') },
+			{ group: 'Data', feature: 'Bing, Clarity and Tag Manager', ours: y('Including a tracking audit and a one-click Clarity install through Tag Manager.'), theirs: u('Its pages list Search Console and GA4 only.') },
+			{ group: 'Analysis', feature: 'Decay, cannibalization, striking distance and CTR gaps', ours: y(), theirs: y('Content decay, cannibalization, striking distance and CTR by position, on core sites.') },
+			{ group: 'Analysis', feature: 'Topic clusters and content groups', ours: p('Pages grouped by URL folder and queries clustered by shared words on the Groups tab: transparent word matching, not semantic.'), theirs: y('One-click topic clustering and content groups, showing which are growing or slipping.') },
+			{ group: 'Analysis', feature: 'Before/after SEO tests', ours: y('Against control pages, with the noise level measured on your own earlier weeks.'), theirs: y('Before-and-after tests on the changes you log.') },
+			{ group: 'Analysis', feature: 'Split and redirect tests with a significance figure', ours: y('Control pages, a 95% range and a p-value.'), theirs: u() },
+			{ group: 'Analysis', feature: 'Annotations and change tracking', ours: y('A change log with a before/after readout adjusted for the site’s trend.'), theirs: y('Annotations from any page with a Chrome extension; content, HTTP status and internal-link changes tracked on Super Sites.') },
+			{ group: 'Analysis', feature: 'AI prompt tracking with citation detection', ours: y('Basic: runs your prompts through AI APIs with your own API keys on a schedule and records whether your domain is mentioned or cited.'), theirs: n('Its home page says it is not a fit if you want AI “visibility tracking”.') },
+			{ group: 'Indexing', feature: 'Indexing monitor', ours: y('Opt-in daily re-inspection of your biggest pages: de-indexed, canonical changed, blocked, fetch errors.'), theirs: y('Up to 5,000 sitemap URLs checked every 2–3 days, with the Super Site add-on.') },
+			{ group: 'Indexing', feature: 'Sitemap submission from the app', ours: y('List, submit, resubmit and remove, per site and in bulk.'), theirs: n('Its FAQ says you still rely on Search Console for sitemap submissions.') },
+			{ group: 'Indexing', feature: 'Submit URLs to IndexNow and Bing', ours: y(), theirs: u() },
+			{ group: 'Reports', feature: 'Scheduled summaries', ours: y('A weekly digest, a monthly report and urgent alerts to Slack, Discord or a webhook.'), theirs: y('Weekly summaries; a weekly indexing report for Super Sites.') },
+			{ group: 'Reports', feature: 'Email delivery', ours: n('Webhook only: Slack, Discord or generic JSON.'), theirs: y('Email notification preferences for the weekly indexing report (its changelog, May 15, 2026).') },
+			{ group: 'Reports', feature: 'Client portal and shareable links', ours: n('Not built: no client or white-label reports.'), theirs: y('White-labeled live client portals and “magic links” for stakeholders.') },
+			{ group: 'Access', feature: 'MCP server for AI agents', ours: y('Reads by default; acting needs a level you grant.'), theirs: y('For core and Super Sites (not free sites): Search Console, GA4 and annotation data, with annotations read and written.') },
+			{ group: 'Access', feature: 'REST API', ours: y('Read-only by default, with the same API keys as the MCP server.'), theirs: u() },
+			{ group: 'Access', feature: 'More than one user', ours: y('Unlimited users, free, with roles (admin, editor, viewer) and optional per-user site limits.'), theirs: y('Unlimited users per team.') },
+			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('A hosted service (app.seogets.com).') },
+			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted, with human onboarding and support on core sites.') },
+			{ group: 'Price and maturity', feature: 'Price', ours: y('Free to self-host.'), theirs: p('Free sites free; $49 a month for the first core site and $4 for each extra one.') },
+			MATURITY(y('Established; it says it is trusted by 4,000+ SEO professionals and names agency, consultant and in-house users (its own claims).'))
+		],
+		shots: [
+			{ src: '/img/compare/tests.jpg', alt: 'A SEOConsole SEO test result with clicks against control pages, a Google update overlap warning and conversions', caption: 'A test result: clicks against control pages, the smallest change the test could detect, and conversions.' },
+			{ src: '/img/compare/actions.jpg', alt: 'The Actions page with filters by site, kind and effort', caption: 'A ranked to-do list across every site, free for every site.' }
+		],
+		sources: [
+			{ label: 'SEO Gets home page', url: 'https://seogets.com/' },
+			{ label: 'SEO Gets pricing', url: 'https://seogets.com/pricing' },
+			{ label: 'SEO Gets features', url: 'https://seogets.com/features' },
+			{ label: 'SEO Gets changelog', url: 'https://seogets.com/changelog' }
+		]
+	},
+	{
+		slug: 'quickseo',
+		name: 'QuickSEO',
+		url: 'https://quickseo.ai/',
+		blurb: 'A hosted, free Search Console dashboard for all your websites, with opportunities, a weekly technical audit and an MCP server on a paid plan.',
+		checkedOn: '2026-11-08',
+		price: 'Free ($0 a month) for unlimited websites, no card. Lite $39 a month (USD in its page data), billed monthly, no contract. New customers get a 14-day free trial of Lite; the card is collected at checkout but not charged during the trial. VAT not stated.',
+		weWin: [
+			'Every feature free when self-hosted, including the index monitor, page groups, alerts and the MCP server that QuickSEO keeps for its paid plan.',
+			'History kept beyond Search Console’s 16 months, and GA4, Bing, Clarity and Tag Manager next to Search Console.',
+			'SEO tests with a control group and significance, an indexing toolkit that submits to IndexNow and Bing, a REST API, and basic AI prompt tracking with citation detection.',
+			'An MCP server that can also act (submit URLs, sitemaps, IndexNow) when you allow it, and reads across all sites.'
+		],
+		theyWin: [
+			'Hosted and free for unlimited websites: nothing to install or run.',
+			'A weekly technical SEO audit of every site with a health score and 26 checks, including AI crawler access in robots.txt; SEOConsole checks pages one at a time and has no health score.',
+			'A weekly email and alert emails; SEOConsole sends to Slack, Discord or a webhook only.'
+		],
+		rows: [
+			{ group: 'Data', feature: 'Many sites in one place', ours: y('No limit.'), theirs: y('Unlimited websites on the free plan.') },
+			{ group: 'Data', feature: 'Several Google accounts together', ours: y(), theirs: u('Not stated; its FAQ speaks of the properties “your Google account” can access.') },
+			{ group: 'Data', feature: 'History beyond Search Console’s 16 months', ours: y('Kept for every property from the first sync.'), theirs: u('Not stated; its FAQ says dashboards fetch Search Console data from Google when you open them.') },
+			{ group: 'Data', feature: 'GA4, Bing, Clarity and Tag Manager', ours: y(), theirs: u('Its pages list Google Search Console only.') },
+			{ group: 'Analysis', feature: 'Opportunities with estimated extra clicks', ours: y('Striking distance and CTR gaps on a CTR curve fitted to your own data, plus quick wins and hidden opportunities.'), theirs: y('Low CTR, striking distance and content decay with an estimated range; top three per site free, all on Lite.') },
+			{ group: 'Analysis', feature: 'Growing and decaying keywords and pages', ours: y('Winners and losers tested against noise, and significance-tested decay.'), theirs: y('Against the previous period.') },
+			{ group: 'Analysis', feature: 'Branded vs non-branded split', ours: y(), theirs: y() },
+			{ group: 'Analysis', feature: 'Google updates with a per-site verdict', ours: y('On the traffic chart, in tests that overlap one, in the action queue and in the digest.'), theirs: y('Shaded on every chart, with a verdict on whether each site moved more than its usual week.') },
+			{ group: 'Analysis', feature: 'SEO tests with a control group and significance', ours: y('Before/after, split and redirect tests.'), theirs: p('Before/after measurement on each opportunity you mark done (all of them on Lite); a control group is not stated.') },
+			{ group: 'Analysis', feature: 'Site-wide technical SEO audit', ours: p('An on-page check of a page’s title, description and H1 against its queries, plus noindex and canonical; daily robots.txt and sitemap checks. No site-wide health score.'), theirs: y('26 checks every week on a sample of pages, with a health score and issues ranked by severity.') },
+			{ group: 'Analysis', feature: 'AI prompt tracking with citation detection', ours: y('Basic: runs your prompts through AI APIs with your own API keys on a schedule and records whether your domain is mentioned or cited.'), theirs: n('Retired on October 9, 2026, per its changelog.') },
+			{ group: 'Indexing', feature: 'Indexing monitor', ours: y('Opt-in daily re-inspection of your biggest pages and a watch list.'), theirs: y('On Lite: URL Inspection on a schedule, showing which pages dropped out of the index.') },
+			{ group: 'Indexing', feature: 'Submit URLs and sitemaps (IndexNow, Bing, Search Console)', ours: y(), theirs: u() },
+			{ group: 'Reports', feature: 'Scheduled summaries and alerts', ours: y('A weekly digest, a monthly report and urgent alerts to Slack, Discord or a webhook.'), theirs: y('A weekly email (free); on Lite, an email when a Google update starts and when clicks fall well below normal.') },
+			{ group: 'Reports', feature: 'Email delivery', ours: n('Webhook only: Slack, Discord or generic JSON.'), theirs: y('A weekly email on the free plan.') },
+			{ group: 'Access', feature: 'MCP server for AI agents', ours: y('Reads by default; acting needs a level you grant.'), theirs: y('On Lite: read-only tools over OAuth, one website at a time.') },
+			{ group: 'Access', feature: 'REST API', ours: y('Read-only by default, with the same API keys as the MCP server.'), theirs: u() },
+			{ group: 'Access', feature: 'More than one user', ours: y('Unlimited users, free, with roles and optional per-user site limits.'), theirs: u() },
+			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('Hosted; it stores opportunities, index status and encrypted Google tokens, and fetches the rest from Google live.') },
+			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted.') },
+			{ group: 'Price and maturity', feature: 'Free tier', ours: y('Free for good when self-hosted, every feature included.'), theirs: y('Free for unlimited websites, no card; Lite is $39 a month.') },
+			MATURITY(p('Running since at least March 2024 by the Hacker News quote it shows, and relaunched as a free Search Console dashboard on October 9, 2026 (its own changelog); it publishes no customer numbers.'))
+		],
+		shots: [
+			{ src: '/img/compare/quickwins.jpg', alt: 'The Quick wins tab listing titles to rewrite with estimated extra clicks', caption: 'Quick wins with an estimate of the extra clicks, for every site and free.' },
+			{ src: '/img/compare/pages.jpg', alt: 'The Pages table with Google, Bing, Google Analytics and AI-assistant columns side by side', caption: 'Search Console beside Bing, Analytics and AI visits for the same page.' }
+		],
+		sources: [
+			{ label: 'QuickSEO home page', url: 'https://quickseo.ai/' },
+			{ label: 'QuickSEO pricing', url: 'https://quickseo.ai/pricing' },
+			{ label: 'QuickSEO MCP server', url: 'https://quickseo.ai/features/mcp' },
+			{ label: 'QuickSEO MCP docs', url: 'https://quickseo.ai/docs/mcp' },
+			{ label: 'QuickSEO technical SEO audit', url: 'https://quickseo.ai/features/technical-seo-audit' },
+			{ label: 'QuickSEO Google update tracker', url: 'https://quickseo.ai/features/google-update-tracker' },
+			{ label: 'QuickSEO multi-site dashboard', url: 'https://quickseo.ai/features/multi-site-dashboard' },
+			{ label: 'QuickSEO changelog', url: 'https://quickseo.ai/changelog' }
+		]
+	},
+	{
+		slug: 'powersearchconsole',
+		name: 'PowerSearchConsole',
+		url: 'https://powersearchconsole.com/',
+		blurb: 'A hosted reporting layer on Search Console: 45+ ready-made reports, a filterable data explorer, email reports and keyword alerts, without storing your data.',
+		checkedOn: '2026-11-08',
+		price: 'Early-bird prices (“50% discounted”, kept for good): Grow $29 USD a month or $290 a year (3 sites), Power $59 or $590 (10 sites, 3 users), Enterprise $129 or $1,290 (25 sites, 10 users); the struck-through list prices are $59, $119 and $259 a month. Extra users $5 a month. Free forever for one small site (under 50 daily clicks). 30-day free trial, no card. VAT not stated.',
+		weWin: [
+			'Free to self-host, with no limit on sites or users.',
+			'History kept beyond Search Console’s 16 months, and GA4, Bing, Clarity and Tag Manager next to Search Console.',
+			'SEO tests with a control group, an indexing toolkit, decay, cannibalization and a ranked to-do list.',
+			'An MCP server and a REST API, and basic AI prompt tracking with citation detection.'
+		],
+		theyWin: [
+			'Custom email reports (daily, weekly or monthly, filtered by section) and keyword or page alerts by email; SEOConsole has neither email nor alerts on thresholds you set.',
+			'A data explorer with 60+ filters, thresholds and sorting, and saved reports to share.',
+			'Hosted, with a demo account to try without signing up, and it does not store your Search Console data.'
+		],
+		rows: [
+			{ group: 'Data', feature: 'Many sites in one place', ours: y('No limit.'), theirs: p('An all-sites dashboard; 3, 10 or 25 websites by plan (more on Enterprise on request), or one small site free.') },
+			{ group: 'Data', feature: 'Several Google accounts together', ours: y(), theirs: y('Sites “from different Google accounts all to the same PowerSearchConsole report suite”.') },
+			{ group: 'Data', feature: 'History beyond Search Console’s 16 months', ours: y('Kept for every property from the first sync.'), theirs: u('Not stated; it says it queries Search Console live for every report and does not store your data.') },
+			{ group: 'Data', feature: 'GA4, Bing, Clarity and Tag Manager', ours: y(), theirs: u('Its pages list Google Search Console only.') },
+			{ group: 'Analysis', feature: 'Ready-made reports', ours: y('Trends (winners and losers, new and lost queries, position bands), decay, cannibalization, striking distance and quick wins.'), theirs: y('45+ SEO reports, such as keywords that lost their Top-3 position.') },
+			{ group: 'Analysis', feature: 'Filters and a report builder', ours: p('Country, device and branded filters, search and segments; no free-form report builder.'), theirs: y('A data explorer with 60+ filters, thresholds and sorting; reports can be saved and shared with the team.') },
+			{ group: 'Analysis', feature: 'Site sections', ours: y('Pages grouped by URL folder on the Groups tab.'), theirs: y('Compare sections, with alerts and email reports for each.') },
+			{ group: 'Analysis', feature: 'SEO tests with a control group and significance', ours: y('Before/after, split and redirect tests.'), theirs: n('Its roadmap lists SEO tests under “Later” (its Power plan blurb still mentions “SEO Tests”).') },
+			{ group: 'Indexing', feature: 'Indexing monitor and URL submission', ours: y('Daily re-inspection, IndexNow, Bing and sitemap submission, and a Request Indexing list.'), theirs: u() },
+			{ group: 'Reports', feature: 'Custom email reports', ours: n('Webhook only (Slack, Discord or generic JSON): no email.'), theirs: y('Daily, weekly or monthly, with filters and report sections, to any team member; 1, 10, 50 or unlimited by plan.') },
+			{ group: 'Reports', feature: 'Alerts on a keyword, page or section', ours: p('Urgent alerts for blocking problems and traffic-drop detection; no alerts on a threshold you set for a keyword or page.'), theirs: y('Clicks, position or CTR for the site, a keyword, a page or a group, checked daily and sent by email; not on the free plan.') },
+			{ group: 'Reports', feature: 'CSV export', ours: y('Queries and pages.'), theirs: y('Up to 25,000 rows from the data explorer.') },
+			{ group: 'Access', feature: 'More than one user', ours: y('Unlimited users, free, with roles and optional per-user site limits.'), theirs: p('3 users on Power, 10 on Enterprise, $5 a month per extra user; site-level access on Enterprise only.') },
+			{ group: 'Access', feature: 'MCP server or REST API', ours: y('An MCP server and a read-only-by-default REST API, with the same API keys.'), theirs: u() },
+			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: p('Hosted, but it says it does not store your Search Console data; on-prem hosting on request.') },
+			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted, with a demo account to try without signing up.') },
+			{ group: 'Price and maturity', feature: 'Price', ours: y('Free to self-host.'), theirs: p('From $29 a month for 3 sites (early-bird price); free for one small site.') },
+			{ group: 'Price and maturity', feature: 'Free trial', ours: y('Free for good when self-hosted: nothing to trial.'), theirs: y('30 days, no card.') },
+			MATURITY(p('New: “We just launched”, and its plans are discounted “as PowerSearchConsole just launched” (its own claims); its pages are written by its founder.'))
+		],
+		shots: [
+			{ src: '/img/compare/pages.jpg', alt: 'The Pages table with Google, Bing, Google Analytics and AI-assistant columns side by side', caption: 'Pages: Search Console beside Bing, GA4 and AI-assistant visits for the same URL.' },
+			{ src: '/img/compare/decay.jpg', alt: 'The Decay tab with a choice between the previous period and the same time last year', caption: 'Decay against the previous period, or the same time last year once history is stored.' }
+		],
+		sources: [
+			{ label: 'PowerSearchConsole home page', url: 'https://powersearchconsole.com/' },
+			{ label: 'PowerSearchConsole pricing', url: 'https://powersearchconsole.com/pricing/' },
+			{ label: 'PowerSearchConsole teams', url: 'https://powersearchconsole.com/features/teams/' },
+			{ label: 'PowerSearchConsole SEO alerts', url: 'https://powersearchconsole.com/features/seo-alerts/' },
+			{ label: 'PowerSearchConsole export', url: 'https://powersearchconsole.com/features/export-all-data/' },
+			{ label: 'PowerSearchConsole data policy', url: 'https://powersearchconsole.com/fineprint/data-policy/' },
+			{ label: 'PowerSearchConsole feature roadmap', url: 'https://powersearchconsole.com/about/feature-roadmap/' },
+			{ label: 'PowerSearchConsole white label', url: 'https://powersearchconsole.com/work-together/white-label/' }
 		]
 	},
 	{

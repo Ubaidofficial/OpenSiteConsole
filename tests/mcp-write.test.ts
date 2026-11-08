@@ -64,7 +64,7 @@ const NEW_READS = ['get_portfolio', 'get_change_log', 'get_history', 'get_site_s
 describe('what the server offers', () => {
 	it('the nine app-changing tools are all there among the tools that change things, and the rest only read', () => {
 		for (const w of WRITES) expect(MCP_WRITE_TOOL_NAMES, w).toContain(w);
-		expect(MCP_READ_TOOL_NAMES).toHaveLength(41);
+		expect(MCP_READ_TOOL_NAMES).toHaveLength(42);
 		expect(MCP_READ_TOOL_NAMES.length + MCP_WRITE_TOOL_NAMES.length).toBe(MCP_TOOL_NAMES.length);
 		expect(new Set(MCP_TOOL_NAMES).size).toBe(MCP_TOOL_NAMES.length);
 		for (const n of NEW_READS) expect(MCP_READ_TOOL_NAMES).toContain(n);
@@ -78,7 +78,7 @@ describe('what the server offers', () => {
 		}
 		// only the two tools of the delete level are marked destructive (see submission.test.ts)
 		expect(list.filter((t) => t.annotations.destructiveHint).map((t) => t.name).sort()).toEqual(['cancel_indexing_queue', 'delete_sitemap']);
-		expect(list).toHaveLength(61);
+		expect(list).toHaveLength(62);
 	});
 	it('the server instructions say changes need the owner\'s permission and nothing can delete', async () => {
 		const i = (await rpc(reader, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })).json.result.instructions as string;

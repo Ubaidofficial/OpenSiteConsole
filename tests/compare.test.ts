@@ -9,7 +9,7 @@ const all = COMPETITORS.flatMap((c) => c.rows.map((r) => ({ c, r })));
 
 describe('the comparison pages are fair', () => {
 	it('cover the tools people weigh SEOConsole against, each with a distinct address', () => {
-		expect(COMPETITORS.map((c) => c.slug)).toEqual(['seotesting', 'indexchex', 'promptwatch', 'gsc-wizard', 'seo-stack', 'google-search-console']);
+		expect(COMPETITORS.map((c) => c.slug)).toEqual(['seotesting', 'indexchex', 'promptwatch', 'gsc-wizard', 'seo-stack', 'seo-gets', 'quickseo', 'powersearchconsole', 'google-search-console']);
 		expect(new Set(COMPETITORS.map((c) => c.slug)).size).toBe(COMPETITORS.length);
 		for (const c of COMPETITORS) expect(bySlug(c.slug)).toBe(c);
 		expect(bySlug('nope')).toBeUndefined();
@@ -39,7 +39,7 @@ describe('the comparison pages are fair', () => {
 		const mustBeNo: [RegExp, string][] = [
 
 			[/Check any URL, such as backlinks/, 'indexchex'], [/Get third-party or backlink URLs crawled/, 'indexchex'], [/Instant/i, 'indexchex'],
-			[/Track prompts across AI models/, 'promptwatch'], [/Citation and source analysis/, 'promptwatch'], [/Competitor share of voice/, 'promptwatch'], [/AI crawler logs/, 'promptwatch'],
+			[/AI crawler logs/, 'promptwatch'], [/In-app AI assistant and AI content writing/, 'seo-stack'], [/Email delivery/, 'seo-gets'], [/Client portal/, 'seo-gets'], [/Custom email reports/, 'powersearchconsole'],
 			[/Removals, Manual actions/, 'google-search-console'], [/Yandex Webmaster and Google Merchant Center/, 'gsc-wizard']
 		];
 		for (const [re, slug] of mustBeNo) {
@@ -62,6 +62,10 @@ describe('the comparison pages are fair', () => {
 		expect(links.ours.note).toMatch(/no credits/);
 		expect(links.ours.note).toMatch(/JavaScript is not run/);
 		expect(existsSync('src/routes/sites/[id]/links/+page.svelte')).toBe(true);
+		// built since: the REST API (backed by the code), and basic prompt tracking (partly, above: it is not Promptwatch)
+		expect(bySlug('indexchex')!.rows.find((r) => r.feature === 'API')!.ours.v).toBe('yes');
+		expect(existsSync('src/routes/api/v1/[...path]/+server.ts')).toBe(true);
+		expect(existsSync('src/routes/sites/[id]/ai/+page.svelte')).toBe(true);
 		// built since: the monthly report and the robots.txt watch, each a yes that names its limit, backed by the code
 		const monthly = bySlug('seotesting')!.rows.find((r) => /Monthly plain-English report/.test(r.feature))!;
 		expect(monthly.ours.v).toBe('yes');
@@ -72,7 +76,7 @@ describe('the comparison pages are fair', () => {
 		expect(watch.ours.note).toMatch(/robots\.txt/);
 		expect(existsSync('src/lib/server/robotswatch.ts')).toBe(true);
 		// what it only half does says "partly", with the reason: never a flat No that undersells nor a Yes that oversells
-		for (const [slug, re] of [['gsc-wizard', /^Traffic forecasting$/], ['gsc-wizard', /^Topic clusters$/], ['gsc-wizard', /^hreflang report$/], ['indexchex', /Google’s Indexing API/], ['google-search-console', /^Request Indexing$/]] as const) {
+		for (const [slug, re] of [['promptwatch', /Track prompts across AI models/], ['promptwatch', /Citation and source analysis/], ['promptwatch', /Competitor share of voice/], ['gsc-wizard', /^Traffic forecasting$/], ['gsc-wizard', /^Topic clusters$/], ['gsc-wizard', /^hreflang report$/], ['indexchex', /Google’s Indexing API/], ['google-search-console', /^Request Indexing$/]] as const) {
 			const row = bySlug(slug)!.rows.find((r) => re.test(r.feature))!;
 			expect(row.ours.v, `${slug}: ${row.feature}`).toBe('partial');
 			expect(row.ours.note!.length).toBeGreaterThan(20);

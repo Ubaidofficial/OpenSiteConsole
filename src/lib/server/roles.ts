@@ -78,6 +78,7 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/sites/[id]': { addNote: E, makeTest: E, deleteNote: E },
 	'/sites/[id]/actions': { state: E },
 	'/sites/[id]/clarity': { check: E, plan: E, install: A },
+	'/sites/[id]/ai': { addPrompts: E, deletePrompt: E, competitors: E, run: E },
 	'/sites/[id]/links': { crawl: E, done: E },
 	'/sites/[id]/indexing': { sitemapRefresh: E, watchAdd: E, watchRemove: E, toggle: E, check: E },
 	'/sites/[id]/indexnow': { createKey: E, regenerate: E, verify: E, verifyAll: E, auto: E, submit: E, presetRecent: E, presetRemoved: E },

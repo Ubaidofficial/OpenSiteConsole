@@ -20,6 +20,7 @@ import { syncSitemapUrls } from './sitemapcov';
 import { autoSubmit } from './indexnow';
 import { crawlLinks, RECRAWL_MS } from './internallinks';
 import { robotsCheckDue, runRobotsCheck } from './robotswatch';
+import { aiVisDue, runDue as runAiVis } from './aivis';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -46,6 +47,13 @@ export function enqueue(key: string, fn: () => Promise<unknown>): boolean {
 	pump();
 	return true;
 }
+
+/** Whether a job with this key is queued or running. */
+export const jobPending = (key: string) => active.has(key) || waiting.some((j) => j.key === key);
+
+/** AI visibility for one site now (the Run now button): everything not asked in the last hour, within today's cap. */
+export const enqueueAiVis = (siteId: number) => enqueue(`aivis:${siteId}`, () => runAiVis({ siteId, force: true }));
+export const aiVisRunning = (siteId: number) => jobPending(`aivis:${siteId}`) || jobPending('aivis');
 
 export function queueDepth() {
 	return { waiting: waiting.length, active: active.size };
@@ -163,6 +171,8 @@ export function schedulerTick() {
 			}
 		});
 	}
+	// AI visibility: prompts due for another answer, one at a time, within the daily cap (they cost money on the owner's API accounts).
+	if (!process.env.VITEST && aiVisDue()) enqueue('aivis', () => runAiVis());
 	// Google's list of ranking updates changes a few times a year: a daily look is plenty, and a failure just waits for tomorrow.
 	if (!process.env.VITEST && Date.now() - (lastUpdatesCheck() ?? 0) > 20 * 3600_000) void importGoogleUpdates();
 	const sites = d
