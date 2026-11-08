@@ -61,10 +61,13 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 			'ga4-gap': 'Check the GA4 tag fires on every template, and consent or ad-blocker losses; compare with Search Console over a longer window.',
 			'gtm-no-ga4-tag': 'If GA4 should load through Tag Manager, add the Google tag; if it loads another way, ignore this.',
 			'gtm-ua': 'Delete the Universal Analytics tags; they do nothing.',
-			'gtm-paused': 'Un-pause the tags that should run, or delete the ones that should not.'
+			'gtm-paused': 'Un-pause the tags that should run, or delete the ones that should not.',
+			'clarity-script-missing': 'Add Clarity’s tracking code to every page: in the site’s <head>, or with one click through Tag Manager on the Clarity tab.',
+			'clarity-gtm-not-firing': 'In Tag Manager, give the Clarity tag the All Pages trigger (or un-pause it) and publish, or install it again from the Clarity tab.',
+			'clarity-two-projects': 'Remove all but one Clarity snippet, in the site code and in Tag Manager.'
 		};
 		for (const f of h.findings.filter((x) => x.severity !== 'info')) {
-			add({ key: `tracking:${f.id}`, type: 'tracking', title: f.title, why: f.detail, how: how[f.id] ?? 'Open the Tag Manager tab for details.', impact: null, confidence: 'high', effort: f.severity === 'critical' ? 'medium' : 'low', blocking: f.severity === 'critical', href: `${base}/tags`, evidence: [] });
+			add({ key: `tracking:${f.id}`, type: 'tracking', title: f.title, why: f.detail, how: how[f.id] ?? 'Open the Tag Manager tab for details.', impact: null, confidence: 'high', effort: f.severity === 'critical' ? 'medium' : 'low', blocking: f.severity === 'critical', href: f.id.startsWith('clarity-') ? `${base}/clarity` : `${base}/tags`, evidence: [] });
 		}
 	} catch {
 		/* a missing source must not stop the queue */

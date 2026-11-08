@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { MCP_READ_TOOL_NAMES, MCP_TOOL_NAMES, MCP_WRITE_TOOL_NAMES } from '../src/lib/server/mcp';
 
 /** Static guards for the marketing site in site/: it must stay honest, self-contained, accessible and in step with the app. */
@@ -13,7 +14,7 @@ const REPO = 'https://github.com/Ubaidofficial/OpenSiteConsole';
 describe('site: files and links', () => {
 	it('every local file the page loads or links to exists', () => {
 		const refs = new Set<string>();
-		for (const m of html.matchAll(/\b(?:src|href)="(\/[^"#?]*)"/g)) refs.add(m[1]);
+		for (const m of html.matchAll(/\b(?:src|href)="(\/[^"#?]*)(?:\?[^"#]*)?"/g)) refs.add(m[1]);
 		for (const m of html.matchAll(/srcset="([^"]+)"/g)) for (const part of m[1].split(',')) refs.add(part.trim().split(/\s+/)[0]);
 		for (const m of css.matchAll(/url\('?([^')]+)'?\)/g)) if (!m[1].startsWith('data:')) refs.add('/assets/' + m[1].replace(/^\//, ''));
 		expect(refs.size).toBeGreaterThan(20);
@@ -65,6 +66,12 @@ describe('site: self-contained and safe under a strict policy', () => {
 		expect(conf).toMatch(/style-src 'self'/);
 		expect(conf).not.toMatch(/unsafe-inline|unsafe-eval/);
 		expect(conf).toMatch(/frame-ancestors 'none'/);
+	});
+	it('the stylesheet and script are linked with ?v= the hash of the file, so a changed file is never served from an old cache', () => {
+		for (const f of ['styles.css', 'main.js']) {
+			const v = createHash('sha256').update(readFileSync(`site/assets/${f}`)).digest('hex').slice(0, 10);
+			expect(html, `${f}: update ?v= to ${v}`).toContain(`/assets/${f}?v=${v}"`);
+		}
 	});
 	it('the nginx config includes the headers in every location (nginx drops inherited headers otherwise) and the Dockerfile ships every file the page needs', () => {
 		const nginx = readFileSync('site/nginx.conf', 'utf8');

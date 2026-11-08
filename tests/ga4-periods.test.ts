@@ -85,7 +85,7 @@ describe('GA4 period reports in sync', () => {
 		expect(unique).toBeLessThan(summed);
 		await pullGa4Periods(1, link.external_id, src, today);
 		expect(calls).toBe(expectedCalls); // second call the same day does nothing
-	});
+	}, 30_000); // syncs every period length for a whole demo property: about 4 s alone, more when the suite runs in parallel
 
 	it('a failing report never fails the GA4 sync, and is retried next time', async () => {
 		const link = await linked();

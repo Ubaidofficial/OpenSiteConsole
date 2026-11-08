@@ -4,6 +4,7 @@ import { auditTracking, type Finding, type TrackingInput } from '../tracking';
 import type { GtmTag, GtmTrigger, GtmVariable } from './gtm';
 import { periodFor, summary } from './queries';
 import type { SiteRow } from './clients';
+import { clarityInstallInput } from './clarityscan';
 
 export interface GtmSnapshot {
 	containerPath: string;
@@ -57,7 +58,8 @@ export function trackingHealth(site: Pick<SiteRow, 'id' | 'synced_through'>, day
 	const input: TrackingInput = {
 		gtm: snap ? { publicId: snap.publicId ?? snap.containerPath, published: snap.published, tags: snap.tags } : null,
 		ga4: ga4Linked ? { measurementIds: snap?.ga4MeasurementIds ?? [] } : null,
-		traffic: { days, gscClicks: summary(site.id, p.start, p.end).clicks, ga4OrganicSessions: synced ? (ga4Sessions?.s ?? 0) : null }
+		traffic: { days, gscClicks: summary(site.id, p.start, p.end).clicks, ga4OrganicSessions: synced ? (ga4Sessions?.s ?? 0) : null },
+		clarity: clarityInstallInput(site.id)
 	};
 	return { findings: auditTracking(input), input, sources: { gtm: !!snap, ga4: ga4Linked } };
 }

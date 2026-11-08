@@ -92,7 +92,7 @@ export const SCOPE_WRITE = 'https://www.googleapis.com/auth/webmasters';
 export const SCOPE_READ = 'https://www.googleapis.com/auth/webmasters.readonly';
 
 export const SCOPE_GA4_READ = 'https://www.googleapis.com/auth/analytics.readonly';
-/** Read-only on purpose: SEOConsole inspects Tag Manager containers, it never edits or publishes them. */
+/** Read-only by default. Editing and publishing (only to add Microsoft Clarity) is a separate opt-in: see gtmwrite.ts. */
 export const SCOPE_GTM_READ = 'https://www.googleapis.com/auth/tagmanager.readonly';
 
 /** One consent covers Search Console and (unless GOOGLE_INCLUDE_GA4=0 / GOOGLE_INCLUDE_GTM=0) GA4 and Tag Manager, so users click once. */
@@ -109,12 +109,13 @@ export function redirectUri(): string {
 	return config.oauthRedirectUri || `${config.origin}/auth/callback`;
 }
 
-export function buildAuthUrl(state: string): string {
+/** extra: scopes asked for on top of the usual ones, only when the owner opts in (e.g. editing Tag Manager to install Clarity). */
+export function buildAuthUrl(state: string, extra: string[] = []): string {
 	const p = new URLSearchParams({
 		client_id: config.googleClientId,
 		redirect_uri: redirectUri(),
 		response_type: 'code',
-		scope: scopes(),
+		scope: [scopes(), ...extra].join(' '),
 		access_type: 'offline',
 		prompt: 'consent select_account',
 		include_granted_scopes: 'true',

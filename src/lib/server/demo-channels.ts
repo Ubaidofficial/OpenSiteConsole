@@ -6,6 +6,12 @@ import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01, plantedQuery } from 
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
 import { db } from './db';
+import { claritySnippet } from '../clarityinstall';
+
+/** The Clarity project the demo greenleaf site's pages load. */
+export const DEMO_CLARITY_ID = 'gl4demo7x2';
+/** Demo containers that "installed" Clarity through SEOConsole (container path -> project ID), until the server restarts. */
+export const demoInstalled = new Map<string, string>();
 
 const sites = DEMO_ACCOUNTS.flatMap((a) => a.sites);
 const siteOf = (urlOrHost: string) => sites.find((s) => hostKey(s.siteUrl) === hostKey(urlOrHost)) ?? sites[0];
@@ -117,8 +123,11 @@ export function demoGtmLive(containerPath: string): GtmLive | null {
 					tag('2', 'GA4 - outbound click', 'gaawe', { firing: ['Click: outbound link'], measurementId: mid, eventName: 'outbound_click' }),
 					tag('3', 'GA4 - lead form', 'gaawe', { firing: ['Form submit'], measurementId: mid, eventName: 'generate_lead' }),
 					...(brand === 'pixelforge' ? [tag('4', 'Old remarketing', 'sp', { paused: true })] : []),
-					...(brand === 'coffeelab' ? [tag('4', 'Heatmap script', 'html', { firing: [] })] : [])
+					// a Clarity tag someone added but never gave a trigger: the Clarity check flags it
+					...(brand === 'coffeelab' ? [tag('4', 'Heatmap script', 'html', { firing: [], clarity: true, clarityId: 'cf8demo3k1' })] : [])
 				];
+	const added = demoInstalled.get(containerPath);
+	if (added) tags.push(tag('99', 'Microsoft Clarity (added by SEOConsole)', 'html', { clarity: true, clarityId: added }));
 	return {
 		versionId: '12',
 		versionName: 'Demo live version',
@@ -161,6 +170,13 @@ const slug = s.topic.replace(/\s+/g, '-');
 		const sess = dim === 'URL' ? [3200, 900, 140, 600] : [3200, 2600, 2000];
 		const dead = dim === 'URL' ? [120, 30, 19, 14] : [120, 100, 80];
 		const rage = dim === 'URL' ? [36, 8, 11, 4] : [36, 30, 24];
+		// pixelforge and northwind have no Clarity script (see demoPageFetch), so they record nothing until it is installed through Tag Manager
+		const container = demoGtmContainers().find((c) => c.name === hostOfDemo(s.siteUrl))?.path;
+		if ((s.brand === 'pixelforge' || s.brand === 'northwind') && !(container && demoInstalled.has(container))) {
+			sess.fill(0);
+			dead.fill(0);
+			rage.fill(0);
+		}
 		const pct = (n: number, d: number) => Math.round((n / d) * 1000) / 10;
 		const body: ClarityMetric[] = [
 			{ metricName: 'Traffic', information: values.map((v, i) => row({ _k: v ?? '', totalSessionCount: String(sess[i]), totalBotSessionCount: String(Math.round(sess[i] * 0.07)), distantUserCount: String(Math.round(sess[i] * 0.84)), PagesPerSessionPercentage: 1.9 + i * 0.1 }, i)) },
@@ -237,7 +253,10 @@ export function demoPageFetch(siteUrl: string): typeof fetch {
 		const desc = r > 0.55 && r < 0.75 ? '' : `<meta name="description" content="A practical guide to ${def.topic}: ${words}.">`;
 		const robots = r > 0.94 ? '<meta name="robots" content="noindex,follow">' : '';
 		const h1 = r > 0.8 && r < 0.9 ? '' : `<h1>${r < 0.45 ? words : def.topic}</h1>${r > 0.9 && r <= 0.94 ? '<h1>Welcome</h1>' : ''}`;
-		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}"></head><body>${h1}<p>demo</p></body></html>`;
+		// Tracking snippets, so the Clarity check has every case: Clarity in the page (greenleaf), Tag Manager only (the rest), nothing (northwind).
+		const gtmSnip = def.brand === 'northwind' ? '' : `<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s);j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId(def.brand)}');</script>`;
+		const claritySnip = def.brand === 'greenleaf' ? claritySnippet(DEMO_CLARITY_ID) : '';
+		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}">${gtmSnip}${claritySnip}</head><body>${h1}<p>demo</p></body></html>`;
 		return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
 	}) as typeof fetch;
 }

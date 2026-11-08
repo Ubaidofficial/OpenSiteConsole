@@ -451,6 +451,11 @@ CREATE TABLE IF NOT EXISTS onpage_checks (
 	payload TEXT NOT NULL,              -- JSON {status, finalUrl, error?, parsed, queries, issues, score}
 	PRIMARY KEY (site_id, url)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS clarity_scans (          -- is Clarity's script on the site's pages? (newest check only)
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	checked_at INTEGER NOT NULL,
+	payload TEXT NOT NULL               -- JSON ScannedPage[]
+);
 CREATE TABLE IF NOT EXISTS api_keys (
 	id INTEGER PRIMARY KEY,
 	name TEXT NOT NULL, prefix TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,

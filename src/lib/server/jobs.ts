@@ -1,3 +1,4 @@
+import { runClarityScan } from './clarityscan';
 import { db } from './db';
 import { config } from './config';
 import { pacificToday } from './dates';
@@ -85,10 +86,21 @@ export function enqueueLinkSync(siteId: number, kind: Exclude<LinkKind, 'openseo
 		warmTests(id);
 		return r;
 	};
-	const run = kind === 'bing' ? syncBing : kind === 'ga4' ? syncGa4AndPages : kind === 'gtm' ? syncGtm : syncClarity;
+	// After a Tag Manager or Clarity sync, look at the pages again: a tag may have been added, or a token just connected.
+	const thenScan = (f: (id: number) => Promise<unknown>) => async (id: number) => {
+		const r = await f(id);
+		if (!process.env.VITEST) await runClarityScan(id).catch(() => {});
+		return r;
+	};
+	const run = kind === 'bing' ? syncBing : kind === 'ga4' ? syncGa4AndPages : kind === 'gtm' ? thenScan(syncGtm) : thenScan(syncClarity);
 	const queued = enqueue(`${kind}:${siteId}`, () => (run as (id: number) => Promise<unknown>)(siteId));
 	if (queued) db().prepare("UPDATE site_links SET sync_status = 'queued' WHERE site_id = ? AND kind = ? AND sync_status != 'running'").run(siteId, kind);
 	return queued;
+}
+
+/** Is Clarity's script on the site's pages? Fetches three pages; run daily, and after Clarity or Tag Manager changes. */
+export function enqueueClarityScan(siteId: number): boolean {
+	return enqueue(`clarityscan:${siteId}`, () => runClarityScan(siteId));
 }
 
 /** Core Web Vitals snapshot for one site (CrUX data changes daily, so at most once a day). */
@@ -163,6 +175,11 @@ export function schedulerTick() {
 		// `n` is a back-off set after a refusal or a total failure, so a broken connection is not hammered every tick.
 		if (monitorDue(row, today)) enqueueIndexMonitor(s.id);
 		if (submissionWorkDue(s.id)) enqueueSubmissionWork(s.id);
+		// The Clarity check fetches the site's own pages, so it stays out of the test run.
+		if (!process.env.VITEST) {
+			const cs = d.prepare('SELECT checked_at FROM clarity_scans WHERE site_id = ?').get(s.id) as { checked_at: number } | undefined;
+			if (!cs || Date.now() - cs.checked_at > 24 * 3600_000) enqueueClarityScan(s.id);
+		}
 	}
 	const links = d
 		.prepare("SELECT l.site_id, l.kind, l.last_sync_at FROM site_links l JOIN sites s ON s.id = l.site_id WHERE s.hidden = 0 AND l.kind IN ('bing','ga4','gtm','clarity')")

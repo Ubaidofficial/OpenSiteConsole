@@ -2,7 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { fmtInt, ago } from '$lib/format';
-	let { data } = $props();
+	import ClarityInstall from '$lib/components/ClarityInstall.svelte';
+	let { data, form } = $props();
 
 	type Metric = { metricName: string; information: Record<string, string | number>[] };
 	const pretty = (s: string) => s.replace(/([a-z])([A-Z])/g, '$1 $2');
@@ -17,8 +18,10 @@
 	});
 </script>
 
+<ClarityInstall install={data.install} scan={data.scan} gtm={data.gtm} readOnly={data.readOnly} connected={data.linked} sessions={data.linked && data.totals ? headline.sessions : null} form={form ?? null} />
+
 {#if !data.linked}
-	<div class="card p-6 text-center"><p class="mb-3">No Clarity project is linked to this site yet.</p><a class="btn btn-primary" href="/connect">Connect Clarity</a></div>
+	<div class="card p-5 text-sm"><p class="mb-1 font-medium">Connect Clarity's data</p><p class="mb-3 text-muted-foreground">The script records visits; an API token lets SEOConsole read them (Clarity: <b>Settings → Data Export → Generate new API token</b>). Then rage clicks, dead clicks and scroll depth show next to your search data.</p><a class="btn btn-primary" href="/connect">Paste the token on Connect</a></div>
 {:else}
 	<div class="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
 		<div class="card px-3 py-2"><div class="text-xs text-muted-foreground">Sessions (last 24h at snapshot)</div><div class="tnum text-xl font-semibold">{fmtInt(headline.sessions)}</div></div>

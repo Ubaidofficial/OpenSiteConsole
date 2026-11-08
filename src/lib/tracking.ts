@@ -2,6 +2,7 @@
  * Cross-source tracking audit: does the traffic Search Console sees show up in GA4, and is Tag Manager sending it there?
  * Pure functions, no I/O, so the rules are unit-tested.
  */
+import { clarityInstall, type ClarityInstallInput } from './clarityinstall';
 
 export type Severity = 'critical' | 'warning' | 'info';
 
@@ -32,6 +33,8 @@ export interface TrackingInput {
 	ga4: { measurementIds: string[] } | null;
 	/** Window totals; ga4OrganicSessions is null when GA4 is not linked or has not synced. */
 	traffic: { days: number; gscClicks: number; ga4OrganicSessions: number | null };
+	/** Is Clarity's script on the pages? Omitted or null = not checked. */
+	clarity?: ClarityInstallInput | null;
 }
 
 const GA4_TYPES = new Set(['googtag', 'gaawc', 'gaawe']);
@@ -86,6 +89,8 @@ export function auditTracking(input: TrackingInput): Finding[] {
 			out.push({ id: 'ga4-gap', severity: 'warning', title: 'GA4 sees far fewer organic sessions than Google sent', detail: `${traffic.ga4OrganicSessions.toLocaleString('en-US')} GA4 organic sessions against ${traffic.gscClicks.toLocaleString('en-US')} Search Console clicks in ${traffic.days} days. Consent banners, blockers and tags that do not fire on every page all cause a gap; this is a prompt to check, not proof.` });
 		}
 	}
+
+	if (input.clarity) out.push(...clarityInstall(input.clarity).findings);
 
 	const rank = { critical: 0, warning: 1, info: 2 } as const;
 	return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
