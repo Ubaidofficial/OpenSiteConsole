@@ -10,10 +10,12 @@ import { ctrOf, pctChangeMin, positionShift } from '$lib/analytics';
 import { allLinks } from '$lib/server/links';
 import { hideCoveredDuplicates, hideableDuplicates, purgeRemovedSite } from '$lib/server/duplicates';
 
-export const load: PageServerLoad = ({ url }) => {
+export const load: PageServerLoad = ({ url, locals }) => {
 	const days = daysParam(url);
 	const showHidden = url.searchParams.get('hidden') === '1';
-	const cards = siteCards(days, { includeHidden: showHidden });
+	// A team member limited to some sites sees only those, and the totals cover only those.
+	const scope = locals?.user?.siteIds ?? null;
+	const cards = siteCards(days, { includeHidden: showHidden }).filter((c) => scope === null || scope.includes(c.site.id));
 	const totals = portfolioTotals(cards.filter((c) => !c.site.hidden && c.site.permission !== 'none'));
 	const links = allLinks();
 	const has = (id: number, k: string) => links.some((l) => l.site_id === id && l.kind === k);
@@ -34,8 +36,10 @@ export const load: PageServerLoad = ({ url }) => {
 			sites: totals.sites,
 			duplicates: totals.duplicates
 		},
-		duplicates: hideableDuplicates().map((d) => ({ id: d.id, name: displayName(d.url) })),
-		accounts: listAccounts().map((a) => ({ id: a.id, label: a.label ?? a.email, status: a.status })),
+		duplicates: scope === null ? hideableDuplicates().map((d) => ({ id: d.id, name: displayName(d.url) })) : [],
+		accounts: listAccounts()
+			.filter((a) => scope === null || cards.some((c) => c.site.account_id === a.id))
+			.map((a) => ({ id: a.id, label: a.label ?? a.email, status: a.status })),
 		cards: cards.map((c) => ({
 			id: c.site.id,
 			name: displayName(c.site.site_url),

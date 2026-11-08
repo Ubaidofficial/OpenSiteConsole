@@ -51,12 +51,12 @@ export const COMPETITORS: Competitor[] = [
 			'Free to self-host, with no per-site price: add every site and account you have.',
 			'An indexing toolkit (submit, request list, re-checks, monitoring) next to the tests.',
 			'Bing, Clarity and Tag Manager data beside Search Console, and an MCP server so an AI agent can read and act on it.',
-			'Your data stays on your own server and history is kept beyond Search Console’s 16 months.'
+			'Your data stays on your own server and history is kept beyond Search Console’s 16 months.',
+			'Unlimited users, free, with roles (admin, editor, viewer) and per-user site limits.'
 		],
 		theyWin: [
 			'An internal-linking tool: we do not have one.',
 			'A monthly plain-English report and a daily watch that includes robots.txt changes.',
-			'Unlimited users: SEOConsole has one admin password and no roles.',
 			'It is hosted, supported and established: nothing to run, and it names customers on its site.'
 		],
 		rows: [
@@ -81,7 +81,7 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Beyond testing', feature: 'MCP server for AI agents', ours: y('Read tools for all the data; anything that changes something needs a key created for it.'), theirs: y('An API and an MCP server are listed on its features page (read on 2026-11-08).') },
 			{ group: 'Beyond testing', feature: 'Many sites and Google accounts in one place', ours: y('No limit; it runs on your own server.'), theirs: p('Priced by the number of sites: 1, 5 or 20, more on request.') },
 			{ group: 'Beyond testing', feature: 'History beyond Search Console’s 16 months', ours: y('Kept in your own database from the first sync.'), theirs: u() },
-			{ group: 'Beyond testing', feature: 'More than one user', ours: n('One admin password; no roles.'), theirs: y('Unlimited users.') },
+			{ group: 'Beyond testing', feature: 'More than one user', ours: y('Unlimited users, free: invite links with roles (admin, editor, viewer) and optional per-user site limits. Invites are links you send yourself; it sends no email.'), theirs: y('Unlimited users.') },
 			{ group: 'Beyond testing', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('A hosted service (it says your Search Console data is not fed into a shared index).') },
 			{ group: 'Price and maturity', feature: 'Free trial', ours: y('Free for good when self-hosted: nothing to trial.'), theirs: y('14 days, up to 30 sites, no card.') },
 			MATURITY(y('Established; its site names customers and shows ratings (its own claims).'))
