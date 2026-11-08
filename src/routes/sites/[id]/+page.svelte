@@ -5,6 +5,7 @@
 	import Chart from '$lib/components/Chart.svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { fmtInt, fmtPct, fmtPos, fmtSigned } from '$lib/format';
+	import PlanList from '$lib/components/PlanList.svelte';
 
 	let { data, form } = $props();
 	const markers = $derived([
@@ -20,6 +21,7 @@
 	let title = $state('');
 	let prefix = $state('');
 	let busy = $state(false);
+	let logOpen = $state(false);
 
 	const addNote = () => {
 		busy = true;
@@ -34,6 +36,36 @@
 	};
 	const dot = (k: string) => (k === 'experiment' ? 'var(--c-impr)' : k === 'migration' ? 'var(--bad)' : k === 'other' ? 'var(--muted-foreground)' : 'var(--warn)');
 </script>
+
+<!-- The plan comes first: what to do in the next two weeks, from the ranked findings. The chart and the log follow. -->
+<section class="mb-8" aria-labelledby="plan-h">
+	<div class="mb-3 flex flex-wrap items-end gap-x-4 gap-y-1">
+		<div>
+			<h2 id="plan-h" class="text-lg font-semibold tracking-tight">Your next two weeks</h2>
+			<p class="text-sm text-muted-foreground">The most valuable things to do on this site now, picked from {data.plan.total} open findings. Tick one off when it is done.</p>
+		</div>
+		<div class="ml-auto flex gap-2 text-sm">
+			<a class="btn !h-8 text-xs" href="/sites/{page.params.id}/quickwins">All quick wins</a>
+			<a class="btn !h-8 text-xs" href="/sites/{page.params.id}/actions">All {data.plan.total} findings →</a>
+		</div>
+	</div>
+	{#if data.plan.blocking.length + data.plan.quick.length + data.plan.bigger.length === 0}
+		<div class="rounded-xl border border-dashed p-6 text-center text-sm"><p class="font-medium text-good">Nothing to do right now.</p><p class="mt-1 text-muted-foreground">Either the site is in good shape or there is not enough data yet. Connecting GA4, Bing and Clarity widens what is looked at.{#if data.plan.done} {data.plan.done} done item(s) come back if the problem returns.{/if}</p></div>
+	{:else}
+		<div class="space-y-5">
+			{#if data.plan.blocking.length}
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold text-bad">Fix first</h3><span class="text-xs text-muted-foreground">These stop the site earning, or stop you measuring it.</span></div><PlanList items={data.plan.blocking} tone="bad" /></div>
+			{/if}
+			{#if data.plan.quick.length}
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold">Quick wins</h3><span class="text-xs text-muted-foreground">Small edits, usually minutes each.</span></div><PlanList items={data.plan.quick} start={data.plan.blocking.length + 1} /></div>
+			{/if}
+			{#if data.plan.bigger.length}
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold">Bigger opportunities</h3><span class="text-xs text-muted-foreground">More work each, for more clicks.</span></div><PlanList items={data.plan.bigger} start={data.plan.blocking.length + data.plan.quick.length + 1} /></div>
+			{/if}
+		</div>
+		<p class="mt-2 text-xs text-muted-foreground">Click estimates come from this site's own click curve. They are model figures, not promises, and are not added up because findings overlap.</p>
+	{/if}
+</section>
 
 <section class="mb-5 rounded-2xl border bg-card p-5 shadow-xs">
 	<div class="mb-3 flex items-baseline justify-between gap-3">
@@ -68,8 +100,10 @@
 	</section>
 
 	<section>
-		<h2 class="mb-2 text-base font-semibold tracking-tight">Change log &amp; experiments</h2>
-		<form method="POST" action="?/addNote" use:enhance={addNote} class="mb-3 grid gap-3 rounded-xl border bg-card p-4 shadow-xs">
+		<div class="mb-2 flex items-center gap-2"><h2 class="text-base font-semibold tracking-tight">Change log</h2>
+				<details class="group ml-auto" bind:open={logOpen}><summary class="btn !h-8 cursor-pointer list-none text-xs [&::-webkit-details-marker]:hidden"><Plus class="size-3.5" />Log a change</summary></details></div>
+				{#if logOpen}
+				<form method="POST" action="?/addNote" use:enhance={addNote} class="mb-3 grid gap-3 rounded-xl border bg-card p-4 shadow-xs">
 			<div class="grid grid-cols-2 gap-3">
 				<label class="grid gap-1.5 text-xs font-medium text-muted-foreground">Date<input class="input w-full text-foreground" type="date" name="date" bind:value={date} required /></label>
 				<label class="grid gap-1.5 text-xs font-medium text-muted-foreground">Type
@@ -85,9 +119,10 @@
 			<label class="grid gap-1.5 text-xs font-medium text-muted-foreground">Measure only this URL prefix <span class="font-normal">(optional)</span><input class="input w-full text-foreground" name="prefix" bind:value={prefix} placeholder="https://example.com/guides/" /></label>
 			<div class="flex items-center gap-3">
 				<button class="btn btn-primary" disabled={busy || !title.trim()}>{#if busy}<LoaderCircle class="size-4 animate-spin" />Saving…{:else}<Plus class="size-4" />Add to log{/if}</button>
-				{#if form?.error}<p class="text-sm text-bad">{form.error}</p>{/if}
-			</div>
-		</form>
+						{#if form?.error}<p class="text-sm text-bad">{form.error}</p>{/if}
+					</div>
+				</form>
+				{/if}
 
 		<div class="space-y-2.5">
 			{#each data.annotations as a (a.id)}

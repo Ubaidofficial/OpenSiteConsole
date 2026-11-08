@@ -38,7 +38,7 @@ describe('site: files and links', () => {
 			expect(existsSync(`site/assets/shots/${f.replace('.webp', '-1080.webp')}`), f).toBe(true);
 			expect(statSync(`site/assets/shots/${f}`).size, f).toBeLessThan(400_000);
 		}
-		const total = walk('site').reduce((n, f) => n + statSync(f).size, 0);
+		const total = walk('site').filter((f) => !f.startsWith(join('site', 'tools'))).reduce((n, f) => n + statSync(f).size, 0); // site/tools (capture scripts and their output) is not served
 		expect(total).toBeLessThan(6_000_000);
 	});
 });
@@ -214,7 +214,7 @@ describe('site: the pixel art and the animation built from it', () => {
 		expect(html).not.toMatch(/<span class="idx">/);
 	});
 	it('the screenshot of the hidden-opportunities block is real, sized, and described', () => {
-		expect(html).toMatch(/<img src="\/assets\/shots\/hidden-1080\.webp"[^>]*width="1080" height="633"[^>]*alt="The Hidden opportunities block/);
+		expect(html).toMatch(/<img src="\/assets\/shots\/hidden-1080\.webp"[^>]*width="1080" height="670"[^>]*alt="The Hidden opportunities block/);
 		for (const f of ['hidden', 'hidden-1080', 'activity', 'activity-1080']) expect(existsSync(`site/assets/shots/${f}.webp`), f).toBe(true);
 	});
 	it('animation plays only while a sprite is on screen, always runs without JavaScript, and shows the first frame for people who ask for less motion', () => {

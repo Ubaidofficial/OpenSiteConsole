@@ -89,7 +89,7 @@ async function seed(b) {
     indexing: ['/sites/4/indexing', { w: 960, start: '.page-in', ratio: 1.6 }],
     hidden: ['/sites/1/opportunities', { w: 1240, start: 'text=Hidden opportunities', end: 'section.mb-6:last-of-type', pad: 20, prep: async (p) => { await p.evaluate(() => {
   const secs = [...document.querySelectorAll('section.mb-6')];
-  secs.forEach((s) => { const t = s.querySelector('h3').innerText; if (/\s0\s*$/.test(t.trim()) || /Questions/.test(t)) s.remove(); });
+  secs.forEach((s) => { const t = s.querySelector('h3').innerText; if (!/^(Lost searches|Pages on the edge)/.test(t.trim())) s.remove(); /* only the two tables the page's cards quote */ });
   const edge = [...document.querySelectorAll('section.mb-6')].find((s) => /Pages on the edge/.test(s.innerText));
   if (edge) { edge.querySelectorAll('tbody tr').forEach((tr, i) => { if (i >= 6) tr.remove(); }); edge.querySelectorAll('.mt-3.flex').forEach((e)=>e.remove()); }
   const h = document.querySelector('h3'); });

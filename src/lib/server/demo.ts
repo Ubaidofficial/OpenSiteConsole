@@ -115,7 +115,7 @@ function profile(siteUrl: string, sites: DemoSite[]): Profile {
 		}
 	}
 	queries.push(
-		{ q: plantedQuery(site.topic, 'lost'), pop: 0.55, pos: 3, pages: [pages[11]], brand: false, planted: 'lost' },
+		{ q: plantedQuery(site.topic, 'lost'), pop: 0.07, pos: 3, pages: [pages[11]], brand: false, planted: 'lost' },
 		{ q: plantedQuery(site.topic, 'rising'), pop: 0.5, pos: 9.5, pages: [pages[5]], brand: false, planted: 'rising' },
 		{ q: plantedQuery(site.topic, 'device'), pop: 0.6, pos: 6, pages: [pages[2]], brand: false, planted: 'device' },
 		{ q: plantedQuery(site.topic, 'bing'), pop: 0.45, pos: 14.6, pages: [pages[6]], brand: false, planted: 'bing' }

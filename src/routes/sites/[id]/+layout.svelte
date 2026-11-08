@@ -4,10 +4,9 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { RefreshCw } from '@lucide/svelte';
+	import { ChevronDown, RefreshCw } from '@lucide/svelte';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
-	import { Tip } from '$lib/components/ui/tooltip';
-	import { SITE_TABS, SITE_TAB_GROUPS } from '$lib/explain';
+	import { SITE_PRIMARY_TABS, SITE_TABS, SITE_TAB_GROUPS } from '$lib/explain';
 	const tabOf = (t: string) => SITE_TABS.find(([p]) => p === t)!;
 	import Delta from '$lib/components/Delta.svelte';
 	import { fmtInt, fmtPct, fmtPos, ago } from '$lib/format';
@@ -29,6 +28,13 @@
 	});
 	const base = $derived(`/sites/${data.site.id}`);
 	const isActive = (t: string) => (t === '' ? page.url.pathname === base : page.url.pathname.startsWith(base + t));
+	/** A tab from under More that is open right now is shown in the row too, so you can always see where you are. */
+	const activeExtra = $derived(SITE_TABS.map(([t]) => t as string).find((t) => t !== '' && isActive(t) && !(SITE_PRIMARY_TABS as readonly string[]).includes(t)) ?? null);
+	let moreOpen = $state(false);
+	$effect(() => {
+		void page.url.pathname;
+		moreOpen = false; // close the menu after choosing a tab
+	});
 	const kpis = $derived([
 		{ l: 'Clicks', v: fmtInt(data.kpis.clicks), d: data.kpis.clicksDelta, inv: false },
 		{ l: 'Impressions', v: fmtInt(data.kpis.impressions), d: data.kpis.impressionsDelta, inv: false },
@@ -67,18 +73,34 @@
 </div>
 {/if}
 
-<nav class="mb-4 flex flex-wrap gap-x-5 gap-y-2" aria-label="Site sections">
-	{#each SITE_TAB_GROUPS as [caption, paths]}
-		<div role="group" aria-label={caption} class="flex flex-col">
-			<span class="px-3 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{caption}</span>
-			<div class="flex flex-wrap gap-1 border-b" style="border-color:var(--border)">
-				{#each paths as t}
-					{@const [, label, about] = tabOf(t)}
-					<Tip interactive text={about}><a href="{base}{t}?days={data.days}" class="-mb-px border-b-2 px-3 py-2 text-[13px] transition-colors duration-150 {isActive(t) ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{#if t === '/actions' && data.actionBadge.open}<span class="ml-1.5 inline-grid min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold {data.actionBadge.blocking ? 'bg-[color:var(--bad)] text-white' : 'bg-muted text-muted-foreground'}" title="{data.actionBadge.open} open{data.actionBadge.blocking ? ', ' + data.actionBadge.blocking + ' blocking' : ''}">{data.actionBadge.open}</span>{/if}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/tags' && data.linked.gtm) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}</a></Tip>
-				{/each}
-			</div>
+<!-- A short row of the tabs people use most; the rest are one click away under More, grouped, each with a line on what it is for. -->
+{#snippet tabBadges(t: string)}{#if t === '/actions' && data.actionBadge.open}<span class="ml-1.5 inline-grid min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold {data.actionBadge.blocking ? 'bg-[color:var(--bad)] text-white' : 'bg-muted text-muted-foreground'}" title="{data.actionBadge.open} open{data.actionBadge.blocking ? ', ' + data.actionBadge.blocking + ' blocking' : ''}">{data.actionBadge.open}</span>{/if}{#if (t === '/bing' && data.linked.bing) || (t === '/analytics' && data.linked.ga4) || (t === '/tags' && data.linked.gtm) || (t === '/clarity' && data.linked.clarity)}<span class="ml-1 text-good" title="connected">●</span>{/if}{/snippet}
+{#snippet tab(t: string)}
+	{@const [, label, about] = tabOf(t)}
+	<a href="{base}{t}?days={data.days}" title={about} aria-current={isActive(t) ? 'page' : undefined} class="-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-[13px] transition-colors duration-150 {isActive(t) ? 'border-[color:var(--link)] font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}">{label}{@render tabBadges(t)}</a>
+{/snippet}
+<nav class="relative mb-5 flex flex-wrap items-end border-b" style="border-color:var(--border)" aria-label="Site sections">
+	{#each SITE_PRIMARY_TABS as t}{@render tab(t)}{/each}
+	{#if activeExtra}{@render tab(activeExtra)}{/if}
+	<details class="group" bind:open={moreOpen}>
+		<summary class="-mb-px flex cursor-pointer list-none items-center gap-1 border-b-2 border-transparent px-3 py-2 text-[13px] text-muted-foreground select-none hover:text-foreground [&::-webkit-details-marker]:hidden">More<ChevronDown class="size-3.5 transition-transform group-open:rotate-180" /></summary>
+		<div class="absolute top-full right-0 left-0 z-30 mt-2 grid gap-x-6 gap-y-4 rounded-xl border bg-card p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-4">
+			{#each SITE_TAB_GROUPS as [caption, paths]}
+				{@const rest = paths.filter((t) => !(SITE_PRIMARY_TABS as readonly string[]).includes(t))}
+				{#if rest.length}
+					<div role="group" aria-label={caption}>
+						<div class="mb-1.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{caption}</div>
+						<ul class="space-y-0.5">
+							{#each rest as t}
+								{@const [, label, about] = tabOf(t)}
+								<li><a href="{base}{t}?days={data.days}" class="block rounded-md px-2 py-1.5 hover:bg-muted {isActive(t) ? 'bg-muted' : ''}"><span class="text-[13px] font-medium">{label}{@render tabBadges(t)}</span><span class="block text-xs leading-snug text-muted-foreground">{about}</span></a></li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+			{/each}
 		</div>
-	{/each}
+	</details>
 </nav>
 
 {#key page.url.pathname + '|' + (page.url.searchParams.get('view') ?? '')}<div class="page-in">{@render children()}</div>{/key}

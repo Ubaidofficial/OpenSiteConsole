@@ -8,6 +8,8 @@ import { db, audit } from '$lib/server/db';
 import { updatesBetween } from '$lib/server/gupdates';
 import { enqueueGa4Pages } from '$lib/server/jobs';
 import { createTest, evaluateTestCached, suggestControlMatched, testsByAnnotation } from '$lib/server/seotests';
+import { queueFor } from '$lib/server/actions';
+import { planFrom } from '$lib/plan';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { days } = await parent();
@@ -46,6 +48,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		})
 	);
 	return {
+		plan: planFrom(queueFor(site, days)),
 		annotationTests,
 		series: dailySeries(site.id, period.start, period.end),
 		anomalies,

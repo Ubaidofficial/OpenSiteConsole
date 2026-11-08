@@ -57,7 +57,8 @@ export function quickWins(site: SiteRow, days = 28): QuickWins {
 		});
 	}
 
-	const nearTop = computeStriking(queries, curve, { minImpressions: minImpr, minPos: 8, maxPos: 15 });
+	// Question-shaped searches get their own group below (answering them is a different job), so they are not listed twice.
+	const nearTop = computeStriking(queries.filter((r) => !isQuestionQuery(r.query)), curve, { minImpressions: minImpr, minPos: 8, maxPos: 15 });
 	if (nearTop.length) {
 		groups.push({
 			key: 'page-one', title: 'One push from the top of page 1', total: nearTop.length, tab: 'opportunities',

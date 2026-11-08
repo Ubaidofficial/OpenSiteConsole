@@ -193,10 +193,10 @@ export async function demoGa4Landing(property: string, start: string, end: strin
 		if (i < 0) continue;
 		const rows = await new DemoClient(a.sub).query(a.sites[i].siteUrl, { startDate: start, endDate: end, dimensions: ['page'], rowLimit: 5000 });
 		// Planted by traffic rank, so they hold whatever the window: the 2nd busiest page never converts, the 3rd loses most of
-		// its visitors, and a few pages further down engage and convert far better than the rest (the "hidden gems").
+		// its visitors, and two pages further down engage and convert far better than the rest (the "hidden gems").
 		return rows.map((r, rank) => {
 			const sessions = Math.round(r.clicks * 1.12) + 1;
-			const gem = rank >= 4 && rank <= 11 && rank % 2 === 0;
+			const gem = rank === 5 || rank === 8;
 			const engaged = rank === 2 ? 0.24 : gem ? 0.86 : 0.62;
 			const keyRate = rank === 1 ? 0 : gem ? 0.09 : 0.035;
 			return { page: new URL(r.keys[0]).pathname, sessions, engagedSessions: Math.round(sessions * engaged), keyEvents: Math.round(sessions * keyRate * 10) / 10 };

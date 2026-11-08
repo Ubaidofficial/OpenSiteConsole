@@ -10,6 +10,15 @@
 	const count = (f: (a: (typeof data.open)[number]) => boolean) => data.open.filter(f).length;
 	const rows = $derived(data.open.filter((a) => (type === 'all' || a.type === type) && (only === 'all' || (only === 'blocking' ? a.blocking : a.effort === 'low' && !a.blocking))));
 	const shown = $derived(showAll ? rows : rows.slice(0, 10));
+	/** Rank of the first card in this list with the same instructions: later ones point to it instead of repeating it. */
+	const sameAs = $derived.by(() => {
+		const first = new Map<string, number>();
+		return shown.map((a, i) => {
+			const at = first.get(a.how);
+			if (at == null) first.set(a.how, i + 1);
+			return at ?? null;
+		});
+	});
 	const blocking = $derived(count((a) => a.blocking));
 	const quick = $derived(count((a) => a.effort === 'low' && !a.blocking));
 </script>
@@ -31,7 +40,7 @@
 	</div>
 	{#if rows.length === 0}<div class="card p-6 text-center text-sm text-muted-foreground">Nothing matches these filters. <button class="underline" onclick={() => ((type = 'all'), (only = 'all'))}>Clear them</button></div>{/if}
 	<div class="stagger space-y-3">
-		{#each shown as a, i (a.key)}<ActionCard {a} rank={i + 1} />{/each}
+		{#each shown as a, i (a.key)}<ActionCard {a} rank={i + 1} sameAs={sameAs[i]} />{/each}
 	</div>
 	{#if rows.length > 10}<button class="btn mt-3" onclick={() => (showAll = !showAll)}>{showAll ? 'Show fewer' : `Show all ${rows.length}`}</button>{/if}
 {/if}

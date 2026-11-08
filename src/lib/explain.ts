@@ -79,7 +79,7 @@ export const PORTFOLIO_TAB_EXPLAIN: Record<string, string> = {
 
 /** The tabs on a site's page: path under /sites/<id>, label, and what the tab is for (shown on hover). One list, so the tab bar, the hover text and the browser titles cannot drift apart. */
 export const SITE_TABS = [
-	['', 'Overview', 'Traffic chart for the period, unusual days, and your change log.'],
+	['', 'Overview', 'Your plan for the next two weeks, then the traffic chart, unusual days and your change log.'],
 	['/quickwins', 'Quick wins', 'The easiest improvements first: titles to rewrite, searches one push from page 1, questions you already rank for, and quick fixes.'],
 	['/actions', 'Actions', 'This site\'s to-do list, in the order to do it.'],
 	['/queries', 'Queries', 'Search queries, with filters for brand, country and device.'],
@@ -113,6 +113,12 @@ export const syncModeLabel = (mode: string) => SYNC_MODE_LABEL[mode] ?? mode;
 export const SYNC_RUNS_EXPLAIN = 'Every run re-pulls the newest few days, because Google revises recent figures. Until your history is complete (up to the 16 months Google keeps), a run also pulls one more chunk of 45 days further back, so a new site shows a string of "Sync + backfill" rows within the first minutes. Days is how many days were pulled in that run.';
 
 /** How the site tabs are grouped in the tab bar: a caption and the tab paths under it. Every tab appears in exactly one group (a test checks it). */
+/**
+ * The tabs always on show, in this order: the plan, the findings people act on, the two tables they look things up in, indexing and
+ * tests. Everything else sits under "More" (grouped as below), so a site opens on a short row instead of 26 tabs.
+ */
+export const SITE_PRIMARY_TABS = ['', '/quickwins', '/actions', '/opportunities', '/queries', '/pages', '/indexing', '/tests'] as const;
+
 export const SITE_TAB_GROUPS = [
 	['Traffic', ['', '/queries', '/pages', '/trends', '/groups', '/segments', '/types']],
 	['Findings', ['/quickwins', '/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/vitals', '/tests']],

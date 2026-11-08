@@ -14,6 +14,15 @@
 		data.items.filter((a) => (site === 'all' || String(a.siteId) === site) && (type === 'all' || a.type === type) && (only === 'all' || (only === 'blocking' ? a.blocking : a.effort === 'low' && !a.blocking)))
 	);
 	const shown = $derived(showAll ? rows : rows.slice(0, 10));
+	/** Rank of the first card in this list with the same instructions: later ones point to it instead of repeating it. */
+	const sameAs = $derived.by(() => {
+		const first = new Map<string, number>();
+		return shown.map((a, i) => {
+			const at = first.get(a.how);
+			if (at == null) first.set(a.how, i + 1);
+			return at ?? null;
+		});
+	});
 	const blocking = $derived(count((a) => a.blocking));
 	const quick = $derived(count((a) => a.effort === 'low' && !a.blocking));
 </script>
@@ -50,7 +59,7 @@
 		<div class="card p-6 text-center text-sm text-muted-foreground">Nothing matches these filters. <button class="underline" onclick={() => ((site = 'all'), (type = 'all'), (only = 'all'))}>Clear them</button></div>
 	{:else}
 		<div class="stagger space-y-3">
-			{#each shown as a, i (a.siteId + ':' + a.key)}<ActionCard {a} rank={i + 1} site={a.site} siteHref="/sites/{a.siteId}/actions" />{/each}
+			{#each shown as a, i (a.siteId + ':' + a.key)}<ActionCard {a} rank={i + 1} sameAs={sameAs[i]} site={a.site} siteHref="/sites/{a.siteId}/actions" />{/each}
 		</div>
 		{#if rows.length > 10}<button class="btn mt-3" onclick={() => (showAll = !showAll)}>{showAll ? 'Show fewer' : `Show all ${rows.length}`}</button>{/if}
 	{/if}
