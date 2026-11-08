@@ -2,7 +2,7 @@ import type { BingClient, BingDay, BingSite, BingTermRow } from './bing';
 import type { Ga4Day, Ga4Property } from './ga4';
 import type { ClarityMetric } from './clarity';
 import type { GtmContainer, GtmLive } from './gtm';
-import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01 } from './demo';
+import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01, plantedQuery } from './demo';
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
 import { db } from './db';
@@ -34,27 +34,33 @@ export class DemoBing implements BingClient {
 			return { date, clicks: Math.round(95 * s.scale * f), impressions: Math.round(2100 * s.scale * f) };
 		});
 	}
-	private terms(siteUrl: string, words: string[]): BingTermRow[] {
+	/** `words` may carry a fixed Bing position (for the planted "Bing ranks you, Google does not" search). */
+	private terms(siteUrl: string, words: (string | [string, number])[]): BingTermRow[] {
 		const s = siteOf(siteUrl);
 		const end = lastDay();
 		const out: BingTermRow[] = [];
 		// Bing's query/page endpoints update weekly, so emit weekly rows.
 		for (let d = addDays(end, -(Math.floor(DEMO_HISTORY_DAYS / 7) * 7)); d <= end; d = addDays(d, 7)) {
-			words.forEach((w, i) => {
+			words.forEach((entry, i) => {
+				const [w, fixed] = typeof entry === 'string' ? [entry, null] : entry;
 				const impressions = Math.round((220 * s.scale) / (1 + i * 0.5) * (0.8 + h01(s.brand, d, w) * 0.4));
-				out.push({ date: d, term: w, clicks: Math.round(impressions * 0.04), impressions, clickPos: 4 + (i % 9) + h01(w, d), imprPos: 5 + (i % 9) });
+				const pos = fixed ?? 5 + (i % 9);
+				out.push({ date: d, term: w, clicks: Math.round(impressions * (fixed ? 0.12 : 0.04)), impressions, clickPos: pos - 1 + h01(w, d), imprPos: pos });
 			});
 		}
 		return out;
 	}
 	async queryStats(siteUrl: string) {
 		const s = siteOf(siteUrl);
-		return this.terms(siteUrl, [`${s.brand}`, `best ${s.topic}`, `${s.topic} price`, `how to choose ${s.topic}`, `${s.topic} reviews`, `buy ${s.topic} online`, `${s.topic} guide`]);
+		return this.terms(siteUrl, [`${s.brand}`, [plantedQuery(s.topic, 'bing'), 2], `best ${s.topic}`, `${s.topic} price`, `how to choose ${s.topic}`, `${s.topic} reviews`, `buy ${s.topic} online`, `${s.topic} guide`]);
 	}
 	async pageStats(siteUrl: string) {
 		const s = siteOf(siteUrl);
 		const o = s.siteUrl.startsWith('sc-domain:') ? `https://${s.siteUrl.slice(10)}/` : s.siteUrl;
-		return this.terms(siteUrl, [o, `${o}guides/${s.topic.replace(/\s+/g, '-')}-1`, `${o}products/${s.topic.replace(/\s+/g, '-')}-5`, `${o}blog/${s.topic.replace(/\s+/g, '-')}-10`]);
+		// Most of the site's pages, with three left out so "Pages Bing shows nothing for" has something to show.
+		const slug = s.topic.replace(/\s+/g, '-');
+		const pages = Array.from({ length: 14 }, (_, i) => `${o}${i < 3 ? 'guides' : i < 8 ? 'products' : 'blog'}/${slug}-${i + 1}`).filter((_, i) => ![3, 8, 12].includes(i));
+		return this.terms(siteUrl, [o, ...pages]);
 	}
 }
 
@@ -142,17 +148,24 @@ export function demoGa4Daily(property: string, startDate: string, endDate: strin
 }
 
 /** A fetch stand-in so the real budget/sync code path runs against synthetic Clarity data. */
-export function demoClarityFetch(): typeof fetch {
+export function demoClarityFetch(siteUrl?: string): typeof fetch {
+const s = siteUrl ? siteOf(siteUrl) : sites[0];
+const slug = s.topic.replace(/\s+/g, '-');
 	return (async (input: RequestInfo | URL) => {
 		const url = new URL(String(input));
 		const dim = url.searchParams.get('dimension1') ?? '';
 		const key = dim || null;
 		const row = (extra: Record<string, string | number>, i = 0) => ({ ...(key ? { [key]: String(extra._k ?? `v${i}`) } : {}), ...Object.fromEntries(Object.entries(extra).filter(([k]) => k !== '_k')) });
-		const values = dim === 'URL' ? ['/guides/garden-tools-1', '/products/garden-tools-5', '/blog/garden-tools-10', '/'] : dim === 'Device' ? ['Mobile', 'PC', 'Tablet'] : [null];
+		// By URL: the site's own pages. The products page is the planted problem: 19 of its 140 sessions had dead clicks.
+		const values = dim === 'URL' ? ['/', `/guides/${slug}-1`, `/products/${slug}-6`, `/blog/${slug}-10`] : dim === 'Device' ? ['Mobile', 'PC', 'Tablet'] : [null];
+		const sess = dim === 'URL' ? [3200, 900, 140, 600] : [3200, 2600, 2000];
+		const dead = dim === 'URL' ? [120, 30, 19, 14] : [120, 100, 80];
+		const rage = dim === 'URL' ? [36, 8, 11, 4] : [36, 30, 24];
+		const pct = (n: number, d: number) => Math.round((n / d) * 1000) / 10;
 		const body: ClarityMetric[] = [
-			{ metricName: 'Traffic', information: values.map((v, i) => row({ _k: v ?? '', totalSessionCount: String(3200 - i * 600), totalBotSessionCount: String(240 - i * 40), distantUserCount: String(2700 - i * 500), PagesPerSessionPercentage: 1.9 + i * 0.1 }, i)) },
-			{ metricName: 'DeadClickCount', information: values.map((v, i) => row({ _k: v ?? '', sessionsCount: String(120 - i * 20), sessionsWithMetricPercentage: 3.7 - i * 0.4 }, i)) },
-			{ metricName: 'RageClickCount', information: values.map((v, i) => row({ _k: v ?? '', sessionsCount: String(36 - i * 6), sessionsWithMetricPercentage: 1.1 - i * 0.1 }, i)) }
+			{ metricName: 'Traffic', information: values.map((v, i) => row({ _k: v ?? '', totalSessionCount: String(sess[i]), totalBotSessionCount: String(Math.round(sess[i] * 0.07)), distantUserCount: String(Math.round(sess[i] * 0.84)), PagesPerSessionPercentage: 1.9 + i * 0.1 }, i)) },
+			{ metricName: 'DeadClickCount', information: values.map((v, i) => row({ _k: v ?? '', sessionsCount: String(dead[i]), sessionsWithMetricPercentage: pct(dead[i], sess[i]) }, i)) },
+			{ metricName: 'RageClickCount', information: values.map((v, i) => row({ _k: v ?? '', sessionsCount: String(rage[i]), sessionsWithMetricPercentage: pct(rage[i], sess[i]) }, i)) }
 		];
 		return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 	}) as typeof fetch;
@@ -179,7 +192,15 @@ export async function demoGa4Landing(property: string, start: string, end: strin
 		const i = DEMO_GA4_PROPERTIES(a.sub).findIndex((p) => p.prop.property === property);
 		if (i < 0) continue;
 		const rows = await new DemoClient(a.sub).query(a.sites[i].siteUrl, { startDate: start, endDate: end, dimensions: ['page'], rowLimit: 5000 });
-		return rows.map((r) => ({ page: new URL(r.keys[0]).pathname, sessions: Math.round(r.clicks * 1.12) + 1, engagedSessions: Math.round(r.clicks * 0.7), keyEvents: Math.round(r.clicks * 0.04 * 10) / 10 }));
+		// Planted by traffic rank, so they hold whatever the window: the 2nd busiest page never converts, the 3rd loses most of
+		// its visitors, and a few pages further down engage and convert far better than the rest (the "hidden gems").
+		return rows.map((r, rank) => {
+			const sessions = Math.round(r.clicks * 1.12) + 1;
+			const gem = rank >= 4 && rank <= 11 && rank % 2 === 0;
+			const engaged = rank === 2 ? 0.24 : gem ? 0.86 : 0.62;
+			const keyRate = rank === 1 ? 0 : gem ? 0.09 : 0.035;
+			return { page: new URL(r.keys[0]).pathname, sessions, engagedSessions: Math.round(sessions * engaged), keyEvents: Math.round(sessions * keyRate * 10) / 10 };
+		});
 	}
 	return [];
 }

@@ -17,7 +17,7 @@ const CFG: CloudConfig = {
 	stripe: { secretKey: 'sk_test_abc', priceId: 'price_123', webhookSecret: SECRET },
 	coolify: { baseUrl: 'https://coolify.example.com', token: '1|supersecrettoken', projectUuid: 'proj', serverUuid: 'srv', environmentName: 'production' },
 	repo: { url: 'https://github.com/x/y', branch: 'main', composeLocation: '/compose.coolify.yaml' },
-	google: { clientId: 'gid', clientSecret: 'gsecret' }, graceDays: 7, retentionDays: 30, allowDestroy: false, priceLabel: '$10 / month', dbPath: ':memory:', port: 0, trustProxy: false
+	google: { clientId: 'gid', clientSecret: 'gsecret' }, graceDays: 7, retentionDays: 30, allowDestroy: false, priceLabel: '$9 / month', dbPath: ':memory:', port: 0, trustProxy: false
 };
 const sign = (body: string, secret = SECRET, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}`;
 
@@ -380,7 +380,7 @@ describe('the control app over HTTP', () => {
 		const html = await r.text();
 		expect(r.status).toBe(200);
 		expect(html).toContain('Free');
-		expect(html).toContain('$10 / month');
+		expect(html).toContain('$9 / month');
 		expect(html).toContain('AGPL');
 		expect(r.headers.get('content-security-policy')).toMatch(/default-src 'none'.*form-action 'self' https:\/\/checkout\.stripe\.com.*frame-ancestors 'none'/);
 		expect(r.headers.get('x-frame-options')).toBe('DENY');

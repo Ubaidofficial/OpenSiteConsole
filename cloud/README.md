@@ -1,6 +1,6 @@
-# SEOConsole Cloud: the control app for the hosted $10 plan
+# SEOConsole Cloud: the control app for the hosted $9 plan
 
-SEOConsole is free to **self-host**. This folder is the small separate program that sells a **hosted** option: a visitor pays $10 a month and gets their **own private instance** (their own copy of the app and their own database), created automatically.
+SEOConsole is free to **self-host**. This folder is the small separate program that sells a **hosted** option: a visitor pays $9 a month and gets their **own private instance** (their own copy of the app and their own database), created automatically.
 
 > **Status: built and tested against fakes, never run against a real Stripe account, Coolify server or Google review.** Webhook verification, the request shapes for Stripe and Coolify, the provisioning state machine and the HTTP server are covered by 45 tests (mutation-checked), and the built program was started and answered requests. Every call to Stripe and Coolify was written from their documentation; **expect to debug first contact**, and do the first run in Stripe's **test mode**. Read "What is not built or not verified" before taking money from anyone.
 
@@ -8,7 +8,7 @@ SEOConsole is free to **self-host**. This folder is the small separate program t
 ```
 visitor ──▶ control app (cloud.example.com)
               │ 1. sign-up form: email + a password for their instance (stored only as a scrypt hash)
-              │ 2. Stripe Checkout (hosted by Stripe) for the $10 subscription
+              │ 2. Stripe Checkout (hosted by Stripe) for the $9 subscription
               ▼
           Stripe ──webhook──▶ control app ──Coolify API──▶ Coolify on your server
                                checkout.session.completed      creates one app per customer from compose.coolify.yaml,
@@ -33,7 +33,7 @@ Stripe may deliver events twice or out of order. Events are recorded by id (a cr
 ## Setup (all of it is yours to do; I have no access to any of these accounts)
 1. **A domain** and DNS: `cloud.example.com` (the control app) and a wildcard `*.cloud.example.com` pointing at the Coolify server. Customers live at `c-xxxxxxxx.cloud.example.com`.
 2. **Stripe**, in *test mode* first:
-   - Create a product with a **recurring monthly price of $10**; note the `price_...` id.
+   - Create a product with a **recurring monthly price of $9**; note the `price_...` id.
    - Add a webhook endpoint `https://cloud.example.com/stripe/webhook` for **these four events**: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.updated`, `customer.subscription.deleted`. Copy its `whsec_...` signing secret.
    - A restricted API key is enough: it needs write access to **Checkout Sessions** (and Customer portal sessions if you add the billing link later).
 3. **Coolify**: turn on the API (Settings), create a token with `write` and `deploy` permissions, and note the **project UUID** and the **server UUID** where customer apps should run. (The token can create and delete apps on that server: keep it only in the control app.)
@@ -53,7 +53,7 @@ Stripe may deliver events twice or out of order. Events are recorded by id (a cr
 | `CLOUD_REPO_URL`, `CLOUD_REPO_BRANCH`, `CLOUD_COMPOSE_LOCATION` | What each instance runs (defaults: this repo, `main`, `/compose.coolify.yaml`) |
 | `CLOUD_GRACE_DAYS` (7), `CLOUD_RETENTION_DAYS` (30) | The two periods above |
 | `CLOUD_ALLOW_DESTROY` | `1` to let it delete instances and their data after retention. **Off by default.** |
-| `CLOUD_PRICE_LABEL` | Text shown on the page (the real price is the Stripe price): `$10 / month` |
+| `CLOUD_PRICE_LABEL` | Text shown on the page (the real price is the Stripe price): `$9 / month` |
 | `CLOUD_DB_PATH`, `PORT`, `CLOUD_TRUST_PROXY` | Database file (`./cloud-data/cloud.db`), port (8080), and `1` to read the visitor's address from the last `X-Forwarded-For` entry when it sits behind exactly one trusted proxy |
 
 ## Security notes
