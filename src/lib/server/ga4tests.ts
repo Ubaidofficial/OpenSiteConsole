@@ -2,6 +2,7 @@ import { db } from './db';
 import { addDays, daysBetween, eachDay, pacificToday, retentionHorizon } from './dates';
 import { linksFor } from './links';
 import { ga4SourceFor, type Ga4Source } from './channels';
+import type { Ga4AiDay, Ga4PageDay } from './ga4';
 import { liftTestCalibrated, placebosFrom, scopeMatcher, type LiftResult, type Scope } from '../experiments';
 
 const PLACEBO_MAX = 4;
@@ -10,12 +11,58 @@ const REFRESH_DAYS = 10; // GA4 reprocesses recent days
 
 interface TestWindow { start_date: string; window_days: number }
 
+type Loaded = { pulled: number; error: string | null; skipped: string | null };
+interface DailyStore<R> {
+	meta: 'ga4_page_meta' | 'ga4_ai_daily_meta';
+	table: 'ga4_page_daily' | 'ga4_ai_daily';
+	fetch: (src: Ga4Source, property: string, start: string, end: string) => Promise<R[]>;
+	insert: string;
+	values: (siteId: number, r: R) => unknown[];
+}
+
 /**
  * Daily Google-organic sessions and key events per landing page are only worth storing for a site that has an SEO test: they can
- * be large. This loads (and keeps fresh) exactly the range the site's tests need: back far enough for the noise calibration,
- * and the last few days again each time because GA4 revises them. It never throws; the outcome (or the error) is stored.
+ * be large. This loads (and keeps fresh) exactly the range the site's tests need (see ensureDaily).
  */
-export async function ensureGa4PageDaily(siteId: number, tests: TestWindow[], src?: Ga4Source, today = pacificToday()): Promise<{ pulled: number; error: string | null; skipped: string | null }> {
+export function ensureGa4PageDaily(siteId: number, tests: TestWindow[], src?: Ga4Source, today = pacificToday()): Promise<Loaded> {
+	return ensureDaily<Ga4PageDay>(siteId, tests, {
+		meta: 'ga4_page_meta',
+		table: 'ga4_page_daily',
+		fetch: (source, p, s, e) => source.organicDaily(p, s, e),
+		insert: 'INSERT OR REPLACE INTO ga4_page_daily (site_id, date, page, sessions, key_events) VALUES (?,?,?,?,?)',
+		values: (id, r) => [id, r.date, r.page, r.sessions, r.keyEvents]
+	}, src, today);
+}
+
+/**
+ * Daily AI-assistant sessions per landing page and assistant, for LLM tests only (pass just those tests). Every landing page is
+ * stored, not only the test pages, because the control is made of the other pages; AI traffic is small, so this stays small.
+ */
+export function ensureGa4AiDaily(siteId: number, tests: TestWindow[], src?: Ga4Source, today = pacificToday()): Promise<Loaded> {
+	return ensureDaily<Ga4AiDay>(siteId, tests, {
+		meta: 'ga4_ai_daily_meta',
+		table: 'ga4_ai_daily',
+		fetch: (source, p, s, e) => {
+			if (!source.aiDaily) throw new Error('This GA4 connection cannot read AI-assistant sessions by day.');
+			return source.aiDaily(p, s, e);
+		},
+		insert: 'INSERT OR REPLACE INTO ga4_ai_daily (site_id, date, assistant, page, sessions, key_events) VALUES (?,?,?,?,?,?)',
+		values: (id, r) => [id, r.date, r.assistant, r.page, r.sessions, r.keyEvents]
+	}, src, today);
+}
+
+/** Load the daily GA4 data a site's tests need: organic landing pages for search-click tests, AI-assistant sessions for LLM tests. */
+export async function ensureGa4TestData(siteId: number, tests: (TestWindow & { metric?: string })[], src?: Ga4Source, today = pacificToday()): Promise<{ pages: Loaded; ai: Loaded }> {
+	const pages = await ensureGa4PageDaily(siteId, tests.filter((t) => t.metric !== 'ai_sessions'), src, today);
+	const ai = await ensureGa4AiDaily(siteId, tests.filter((t) => t.metric === 'ai_sessions'), src, today);
+	return { pages, ai };
+}
+
+/**
+ * Load (and keep fresh) the range of daily GA4 data the tests need: back far enough for the noise calibration, and the last few
+ * days again each time because GA4 revises them. It never throws; the outcome (or the error) is stored in the meta table.
+ */
+async function ensureDaily<R>(siteId: number, tests: TestWindow[], store: DailyStore<R>, src: Ga4Source | undefined, today: string): Promise<Loaded> {
 	const link = linksFor(siteId).ga4;
 	if (!link?.account_id) return { pulled: 0, error: null, skipped: 'GA4 is not linked' };
 	if (!tests.length) return { pulled: 0, error: null, skipped: 'no tests' };
@@ -23,7 +70,7 @@ export async function ensureGa4PageDaily(siteId: number, tests: TestWindow[], sr
 	const horizon = retentionHorizon(today);
 	const needFrom = tests.map((t) => addDays(t.start_date, -(PLACEBO_MAX + 1) * t.window_days)).sort()[0];
 	const from = needFrom < horizon ? horizon : needFrom;
-	const meta = d.prepare('SELECT from_date, through_date FROM ga4_page_meta WHERE site_id = ?').get(siteId) as { from_date: string | null; through_date: string | null } | undefined;
+	const meta = d.prepare(`SELECT from_date, through_date FROM ${store.meta} WHERE site_id = ?`).get(siteId) as { from_date: string | null; through_date: string | null } | undefined;
 	const ranges: [string, string][] = [];
 	if (!meta?.from_date || !meta.through_date) ranges.push([from, today]);
 	else {
@@ -34,25 +81,25 @@ export async function ensureGa4PageDaily(siteId: number, tests: TestWindow[], sr
 	let pulled = 0;
 	try {
 		const source = src ?? ga4SourceFor(link.account_id);
-		const del = d.prepare('DELETE FROM ga4_page_daily WHERE site_id = ? AND date BETWEEN ? AND ?');
-		const ins = d.prepare('INSERT OR REPLACE INTO ga4_page_daily (site_id, date, page, sessions, key_events) VALUES (?,?,?,?,?)');
+		const del = d.prepare(`DELETE FROM ${store.table} WHERE site_id = ? AND date BETWEEN ? AND ?`);
+		const ins = d.prepare(store.insert);
 		for (const [s, e] of ranges) {
 			for (let cs = s; cs <= e; cs = addDays(cs, CHUNK_DAYS)) {
 				const ce = addDays(cs, CHUNK_DAYS - 1) > e ? e : addDays(cs, CHUNK_DAYS - 1);
-				const rows = await source.organicDaily(link.external_id, cs, ce);
+				const rows = await store.fetch(source, link.external_id, cs, ce);
 				d.transaction(() => {
 					del.run(siteId, cs, ce);
-					for (const r of rows) ins.run(siteId, r.date, r.page, r.sessions, r.keyEvents);
+					for (const r of rows) ins.run(...store.values(siteId, r));
 				})();
 				pulled += rows.length;
 			}
 		}
 		const lo = meta?.from_date && meta.from_date < from ? meta.from_date : from;
-		d.prepare('INSERT OR REPLACE INTO ga4_page_meta (site_id, from_date, through_date, pulled_at, error) VALUES (?,?,?,?,NULL)').run(siteId, lo, today, Date.now());
+		d.prepare(`INSERT OR REPLACE INTO ${store.meta} (site_id, from_date, through_date, pulled_at, error) VALUES (?,?,?,?,NULL)`).run(siteId, lo, today, Date.now());
 		return { pulled, error: null, skipped: null };
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : 'GA4 could not be read';
-		d.prepare('INSERT INTO ga4_page_meta (site_id, from_date, through_date, pulled_at, error) VALUES (?,?,?,?,?) ON CONFLICT(site_id) DO UPDATE SET error = excluded.error, pulled_at = excluded.pulled_at').run(siteId, meta?.from_date ?? null, meta?.through_date ?? null, Date.now(), msg);
+		d.prepare(`INSERT INTO ${store.meta} (site_id, from_date, through_date, pulled_at, error) VALUES (?,?,?,?,?) ON CONFLICT(site_id) DO UPDATE SET error = excluded.error, pulled_at = excluded.pulled_at`).run(siteId, meta?.from_date ?? null, meta?.through_date ?? null, Date.now(), msg);
 		return { pulled, error: msg, skipped: null };
 	}
 }

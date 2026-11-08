@@ -221,19 +221,63 @@ export async function demoGa4Landing(property: string, start: string, end: strin
 	return [];
 }
 
+type DemoAssistant = 'ChatGPT' | 'Perplexity' | 'Gemini' | 'Claude' | 'Copilot';
+const AI_SHARES: [DemoAssistant, number][] = [['ChatGPT', 0.55], ['Perplexity', 0.2], ['Gemini', 0.13], ['Claude', 0.08], ['Copilot', 0.04]];
+const siteOfProperty = (property: string) => DEMO_ACCOUNTS.flatMap((a) => DEMO_GA4_PROPERTIES(a.sub).map((p, i) => ({ p, s: a.sites[i] }))).find((x) => x.p.prop.property === property)?.s ?? sites[0];
+
 /**
- * Demo AI-assistant sessions, a small share of the demo Google-organic landing pages (ChatGPT largest), so the AI view
- * lines up with the pages the other reports show. Not every page gets any.
+ * The planted LLM-test pages of a demo site: AI-assistant sessions to `liftPage` rise about 2.4x from `changeDate` (as if it had been
+ * rewritten for AI answers), `flatPage` was "changed" on the same day and nothing happened. A demo LLM test on the first comes out
+ * positive; on the second it shows no clear effect.
  */
-export async function demoGa4AiTraffic(property: string, start: string, end: string): Promise<{ assistant: 'ChatGPT' | 'Perplexity' | 'Gemini' | 'Claude' | 'Copilot'; page: string; sessions: number; engagedSessions: number; keyEvents: number }[]> {
-	const pages = (await demoGa4Landing(property, start, end)).sort((a, b) => b.sessions - a.sessions).slice(0, 12);
-	const shares = [['ChatGPT', 0.05], ['Perplexity', 0.02], ['Gemini', 0.015], ['Claude', 0.01], ['Copilot', 0.005]] as const;
-	return pages.flatMap((p) =>
-		shares.flatMap(([assistant, share]) => {
-			const sessions = Math.round(p.sessions * share * (0.6 + h01(property, p.page, assistant)));
-			return sessions >= 1 ? [{ assistant, page: p.page, sessions, engagedSessions: Math.round(sessions * 0.7), keyEvents: Math.round(sessions * 0.05 * 10) / 10 }] : [];
-		})
-	);
+export function demoAiPlant(siteUrl: string, today = pacificToday()) {
+	const slug = siteOf(siteUrl).topic.replace(/\s+/g, '-');
+	return { liftPage: `/blog/${slug}-9`, flatPage: `/products/${slug}-4`, changeDate: addDays(today, -2 - 42) };
+}
+
+/**
+ * Demo AI-assistant sessions by day, assistant and landing page. Each page has its own steady level (ChatGPT the largest share),
+ * with a weekly pattern, gentle growth common to the whole site and day-to-day noise, plus the planted change of demoAiPlant.
+ * Counts are small, as real AI traffic is, and whole numbers (randomised rounding keeps the averages right).
+ */
+export function demoGa4AiDaily(property: string, startDate: string, endDate: string): { date: string; assistant: DemoAssistant; page: string; sessions: number; keyEvents: number }[] {
+	const s = siteOfProperty(property);
+	const slug = s.topic.replace(/\s+/g, '-');
+	const plant = demoAiPlant(s.siteUrl);
+	const end = lastDay();
+	// Expected AI sessions a day for each page at the start of the history (all assistants together).
+	const base: [string, number][] = [['/', 4], ...[3.5, 3, 2.5, 5, 1.5, 1.2, 1, 0.8, 3, 2, 1.5, 1.2, 1, 0.6].map((v, i): [string, number] => [`/${i < 3 ? 'guides' : i < 8 ? 'products' : 'blog'}/${slug}-${i + 1}`, v])];
+	const out: ReturnType<typeof demoGa4AiDaily> = [];
+	const from = startDate < addDays(end, -DEMO_HISTORY_DAYS) ? addDays(end, -DEMO_HISTORY_DAYS) : startDate;
+	for (const date of eachDay(from, endDate > end ? end : endDate)) {
+		const age = (Date.parse(end) - Date.parse(date)) / 86_400_000;
+		const dow = new Date(date + 'T00:00:00Z').getUTCDay();
+		const common = (dow === 0 || dow === 6 ? 0.75 : 1.08) * (1 + ((DEMO_HISTORY_DAYS - age) / DEMO_HISTORY_DAYS) * 0.4);
+		const since = Math.round((Date.parse(date) - Date.parse(plant.changeDate)) / 86_400_000);
+		for (const [page, level] of base) {
+			// the planted rise builds over the first week after the change, as pages are re-read by the assistants
+			const lift = page === plant.liftPage && since >= 0 ? 1 + 1.4 * Math.min(1, (since + 1) / 7) : 1;
+			const mean = level * s.scale * common * lift * (0.8 + h01(property, date, page) * 0.4);
+			for (const [assistant, share] of AI_SHARES) {
+				const sessions = Math.floor(mean * share + h01(property, date, page, assistant));
+				if (sessions > 0) out.push({ date, assistant, page, sessions, keyEvents: Math.round(sessions * 0.05 * 10) / 10 });
+			}
+		}
+	}
+	return out;
+}
+
+/** Demo AI-assistant sessions over a whole window, by assistant and landing page: the daily figures summed, so the two views agree. */
+export async function demoGa4AiTraffic(property: string, start: string, end: string): Promise<{ assistant: DemoAssistant; page: string; sessions: number; engagedSessions: number; keyEvents: number }[]> {
+	const sum = new Map<string, { assistant: DemoAssistant; page: string; sessions: number; engagedSessions: number; keyEvents: number }>();
+	for (const r of demoGa4AiDaily(property, start, end)) {
+		const k = `${r.assistant}\n${r.page}`;
+		const cur = sum.get(k) ?? { assistant: r.assistant, page: r.page, sessions: 0, engagedSessions: 0, keyEvents: 0 };
+		cur.sessions += r.sessions;
+		cur.keyEvents += r.keyEvents;
+		sum.set(k, cur);
+	}
+	return [...sum.values()].map((r) => ({ ...r, engagedSessions: Math.round(r.sessions * 0.7), keyEvents: Math.round(r.keyEvents * 10) / 10 }));
 }
 
 /**

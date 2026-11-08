@@ -16,6 +16,8 @@ import { annotationsFor, experiment, pageHistory, portfolioTotals, queryHistory,
 import { portfolioAnomalies, portfolioCannibalization, portfolioDecay, portfolioStriking } from './portfolio';
 import { actionsFor, actionStates, setActionState } from './actions';
 import { createTest, suggestControlMatched, testsByAnnotation } from './seotests';
+import { isAssistant } from './llmtests';
+import { AI_ASSISTANTS } from '../ai';
 import { enqueueGa4Pages, enqueueSiteSync } from './jobs';
 import { syncSitemapUrls } from './sitemapcov';
 import { autoSubmit, submitUrls } from './indexnow';
@@ -180,8 +182,8 @@ const writeTools: Tool[] = [
 	}),
 	w({
 		name: 'start_seo_test',
-		description: 'Start a before/after SEO test with a matched control, to judge a change that already went live. Either pass `changeId` (an entry from get_change_log that has pages), or pass `name`, `startDate` (the day it went live) and `pages` (URLs or prefixes such as https://example.com/blog/, separated by spaces or as a list). The result firms up over weeks; read it with get_seo_tests. Observational, not randomised.',
-		schema: { ...siteArg, changeId: { type: 'integer' }, name: { type: 'string' }, startDate: { type: 'string' }, pages: { type: 'array', items: { type: 'string' } }, windowDays: { type: 'integer', description: '7 to 90, default 28' }, note: { type: 'string' } },
+		description: 'Start a before/after SEO test with a matched control, to judge a change that already went live. Either pass `changeId` (an entry from get_change_log that has pages), or pass `name`, `startDate` (the day it went live) and `pages` (URLs or prefixes such as https://example.com/blog/, separated by spaces or as a list). `metric` ai_sessions makes it an LLM test, judged on GA4 sessions from AI assistants (optionally one `assistant`) instead of search clicks. The result firms up over weeks; read it with get_seo_tests. Observational, not randomised.',
+		schema: { ...siteArg, changeId: { type: 'integer' }, name: { type: 'string' }, startDate: { type: 'string' }, pages: { type: 'array', items: { type: 'string' } }, windowDays: { type: 'integer', description: '7 to 90, default 28' }, note: { type: 'string' }, metric: { type: 'string', enum: ['clicks', 'ai_sessions'], description: 'Default clicks' }, assistant: { type: 'string', enum: [...AI_ASSISTANTS], description: 'ai_sessions only; default all' } },
 		run: (a, sites) => {
 			const site = getSite(resolveSite(sites, a.site).id)!;
 			let name: string, startDate: string, treatment: ReturnType<typeof parseScope>, note: string | undefined, annotationId: number | undefined;
@@ -199,10 +201,14 @@ const writeTools: Tool[] = [
 				if (!treatment.prefixes.length && !treatment.urls.length) throw new Error('Name the pages that changed in `pages`, or pass `changeId`.');
 			}
 			const windowDays = Math.min(90, Math.max(7, Math.round(num(a.windowDays, 28))));
+			const metric = a.metric == null || a.metric === 'clicks' ? 'clicks' : a.metric === 'ai_sessions' ? 'ai_sessions' : null;
+			if (!metric) throw new Error('`metric` must be clicks or ai_sessions.');
+			if (a.assistant != null && a.assistant !== '' && (metric !== 'ai_sessions' || !isAssistant(a.assistant))) throw new Error(metric !== 'ai_sessions' ? '`assistant` needs metric ai_sessions.' : `\`assistant\` must be one of ${AI_ASSISTANTS.join(', ')}.`);
+			const assistant = isAssistant(a.assistant) ? a.assistant : null;
 			const s = suggestControlMatched(site, treatment, startDate, windowDays);
-			const id = createTest(site.id, { name, kind: 'before_after', startDate, windowDays, treatment, control: s.urls.length ? { prefixes: [], urls: s.urls } : undefined, controlNote: s.urls.length ? s.note : `${s.note} Compared against the rest of the site instead.`, controlMethod: s.urls.length ? (s.method === 'sections' ? 'sections' : 'traffic') : 'rest', annotationId, note });
+			const id = createTest(site.id, { name, kind: 'before_after', startDate, windowDays, treatment, control: s.urls.length ? { prefixes: [], urls: s.urls } : undefined, controlNote: s.urls.length ? s.note : `${s.note} Compared against the rest of the site instead.`, controlMethod: s.urls.length ? (s.method === 'sections' ? 'sections' : 'traffic') : 'rest', annotationId, note, metric, assistant });
 			enqueueGa4Pages(site.id);
-			return { ok: true, testId: id, control: s.urls.length ? s.note : 'the rest of the site', next: 'Results firm up as days pass. Read them with get_seo_tests.' };
+			return { ok: true, testId: id, metric, ...(assistant ? { assistant } : {}), control: s.urls.length ? s.note : 'the rest of the site', next: metric === 'ai_sessions' ? 'GA4 AI-assistant sessions for it load in the background. Read the result with get_seo_tests. Assistants that send no referrer are counted by GA4 as Direct and are missed.' : 'Results firm up as days pass. Read them with get_seo_tests.' };
 		}
 	}),
 	w({

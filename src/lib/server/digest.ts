@@ -11,7 +11,7 @@ import { comparability } from './insights';
 import { queueFor } from './actions';
 import { recentEvents } from './indexmon';
 import { updatesBetween } from './gupdates';
-import { evaluateTestCached, listTests } from './seotests';
+import { evaluateTestCached, listTests, mainResult } from './seotests';
 
 const visibleSites = () => allSites().filter((s) => !['siteUnverifiedUser', 'none'].includes(s.permission));
 const keyed = (rows: { query?: string; page?: string; clicks: number; impressions: number; position: number }[]): Keyed[] => rows.map((r) => ({ key: (r.query ?? r.page)!, clicks: r.clicks, impressions: r.impressions, position: r.position }));
@@ -34,7 +34,8 @@ export function buildSiteDigest(site: SiteRow): SiteDigest {
 	for (const t of listTests(site.id)) {
 		try {
 			const o = evaluateTestCached(site, t);
-			if ((o.clicks.verdict === 'positive' || o.clicks.verdict === 'negative') && o.postDays >= 21) decidedTests.push({ name: t.name, verdict: o.clicks.verdict, lift: o.clicks.lift });
+			const r = mainResult(o);
+			if ((r.verdict === 'positive' || r.verdict === 'negative') && o.postDays >= 21) decidedTests.push({ name: t.name, verdict: r.verdict, lift: r.lift });
 		} catch {
 			/* shown on the Tests tab */
 		}

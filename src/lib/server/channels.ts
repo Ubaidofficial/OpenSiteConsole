@@ -1,7 +1,7 @@
 import { db } from './db';
 import { config } from './config';
 import { RealBingClient, type BingClient } from './bing';
-import { DemoBing, DEMO_GA4_PROPERTIES, demoClarityFetch, demoGa4Daily, demoGa4Landing, demoGa4UsersByChannel, demoGa4MeasurementId, demoGa4AiTraffic, demoGa4OrganicDaily, demoGtmContainers, demoGtmLive } from './demo-channels';
+import { DemoBing, DEMO_GA4_PROPERTIES, demoClarityFetch, demoGa4Daily, demoGa4Landing, demoGa4UsersByChannel, demoGa4MeasurementId, demoGa4AiTraffic, demoGa4AiDaily, demoGa4OrganicDaily, demoGtmContainers, demoGtmLive } from './demo-channels';
 import { callsLeft, CLARITY_SYNC_DIMENSIONS, fetchInsights, utcDay } from './clarity';
 import * as ga4 from './ga4';
 import * as gtm from './gtm';
@@ -31,6 +31,8 @@ export interface Ga4Source {
 	aiTraffic(property: string, start: string, end: string): Promise<ga4.Ga4Ai[]>;
 	/** Google-organic sessions and key events by day and landing page (for SEO tests judged on conversions). */
 	organicDaily(property: string, start: string, end: string): Promise<ga4.Ga4PageDay[]>;
+	/** AI-assistant sessions by day, assistant and landing page (for LLM tests). Optional so a test double can leave it out. */
+	aiDaily?(property: string, start: string, end: string): Promise<ga4.Ga4AiDay[]>;
 }
 
 export function ga4SourceFor(accountId: number): Ga4Source {
@@ -46,7 +48,8 @@ export function ga4SourceFor(accountId: number): Ga4Source {
 			usersByChannel: async (property, s, e) => demoGa4UsersByChannel(property, s, e),
 			landing: (property, s, e) => demoGa4Landing(property, s, e),
 			aiTraffic: (property, s, e) => demoGa4AiTraffic(property, s, e),
-			organicDaily: (property, s, e) => demoGa4OrganicDaily(property, s, e)
+			organicDaily: (property, s, e) => demoGa4OrganicDaily(property, s, e),
+			aiDaily: async (property, s, e) => demoGa4AiDaily(property, s, e)
 		};
 	}
 	return {
@@ -57,7 +60,8 @@ export function ga4SourceFor(accountId: number): Ga4Source {
 		usersByChannel: (p, s, e) => ga4.usersByChannel(accountId, p, s, e),
 		landing: (p, s, e) => ga4.organicGoogleLanding(accountId, p, s, e),
 		aiTraffic: (p, s, e) => ga4.aiAssistantTraffic(accountId, p, s, e),
-		organicDaily: (p, s, e) => ga4.organicLandingDaily(accountId, p, s, e)
+		organicDaily: (p, s, e) => ga4.organicLandingDaily(accountId, p, s, e),
+		aiDaily: (p, s, e) => ga4.aiAssistantDaily(accountId, p, s, e)
 	};
 }
 

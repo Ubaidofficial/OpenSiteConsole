@@ -54,7 +54,7 @@ export const COMPETITORS: Competitor[] = [
 			'Your data stays on your own server and history is kept beyond Search Console’s 16 months.'
 		],
 		theyWin: [
-			'LLM tests (before/after on AI-assistant sessions) and an internal-linking tool: we have neither.',
+			'An internal-linking tool: we do not have one.',
 			'A monthly plain-English report and a daily watch that includes robots.txt changes.',
 			'Unlimited users: SEOConsole has one admin password and no roles.',
 			'It is hosted, supported and established: nothing to run, and it names customers on its site.'
@@ -66,7 +66,7 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'SEO tests', feature: 'A significance figure for each test', ours: y('A 95% range, a p-value and the smallest change the test could have detected; it says so when “no effect” is weak evidence.'), theirs: y('A significance figure for each result.') },
 			{ group: 'SEO tests', feature: 'Conversions inside a test (Google Analytics)', ours: y('Key events, and key events per session, from Google organic.'), theirs: y('When Google Analytics is connected.') },
 			{ group: 'SEO tests', feature: 'Google updates flagged on a test', ours: y('An overlapping core or spam update is shown and the result is flagged for extra caution.'), theirs: y('Updates are marked on the chart and shown by page group.') },
-			{ group: 'SEO tests', feature: 'LLM tests (AI-assistant sessions before and after)', ours: n('Not built.'), theirs: y() },
+			{ group: 'SEO tests', feature: 'LLM tests (AI-assistant sessions before and after)', ours: y('Before/after or split tests on GA4 sessions from AI assistants (all, or one), with the same control pages and calibrated statistics as click tests; it says “too little AI traffic to tell” when the counts are too small. Only assistants that send a referrer are seen.'), theirs: y() },
 			{ group: 'Reports', feature: 'Content decay', ours: y('Against the previous period, and against the same time last year once 12+ months of history are stored.'), theirs: y('Pages losing clicks year on year.') },
 			{ group: 'Reports', feature: 'Cannibalization', ours: y(), theirs: y() },
 			{ group: 'Reports', feature: 'CTR opportunities', ours: y('Pages under-performing the click rate your own site gets at that position.'), theirs: y('Pages with impressions but too few clicks.') },
