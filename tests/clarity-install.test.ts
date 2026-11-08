@@ -33,6 +33,10 @@ describe('scanHtml', () => {
 		const rsc = `self.__next_f.push([1,"(window, document, \\"clarity\\", \\"script\\", \\"abc123xyz9\\");"])`;
 		expect(scanHtml(rsc).clarityIds).toEqual(['abc123xyz9']);
 	});
+	it('reads it when the payload escapes the quotes more than once (seen live on a Next.js site)', () => {
+		const live = String.raw`})(window, document, \\\"clarity\\\", \\\"script\\\", \\\"zagoogkx9a\\\");\"}]`;
+		expect(scanHtml(live).clarityIds).toEqual(['zagoogkx9a']);
+	});
 	it('reads a direct tag URL, and notices the loader even when the ID is not literal', () => {
 		expect(scanHtml('<script async src="https://www.clarity.ms/tag/k2j3h4g5f6"></script>').clarityIds).toEqual(['k2j3h4g5f6']);
 		expect(scanHtml('t.src="https://www.clarity.ms/tag/"+window.CID').clarityLoader).toBe(true);
