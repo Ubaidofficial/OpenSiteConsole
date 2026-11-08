@@ -10,6 +10,9 @@ import { ctrOf, pctChangeMin, positionShift } from '$lib/analytics';
 import { allLinks } from '$lib/server/links';
 import { hideCoveredDuplicates, hideableDuplicates, purgeRemovedSite } from '$lib/server/duplicates';
 import { onboardingFor, setOnboardingHidden } from '$lib/server/onboarding';
+import { enqueueIndexMonitor } from '$lib/server/jobs';
+import { getSite } from '$lib/server/clients';
+import { audit } from '$lib/server/db';
 import { hasRole } from '$lib/server/roles';
 
 export const load: PageServerLoad = ({ url, locals }) => {
@@ -102,6 +105,25 @@ export const actions: Actions = {
 	hideDuplicates: async () => ({ hidden: hideCoveredDuplicates() }),
 	hideOnboarding: async () => (setOnboardingHidden(true), { ok: 'Guide hidden. “Get-started guide” at the bottom of the dashboard brings it back.' }),
 	showOnboarding: async () => (setOnboardingHidden(false), { ok: 'Guide shown.' }),
+	/** From the guide: switch the indexing monitor on for a site (the same as the switch on its Indexing tab). */
+	onboardIndexing: async ({ request }) => {
+		const site = getSite(Number((await request.formData()).get('siteId')));
+		if (!site || site.hidden) return fail(404, { error: 'Unknown site.' });
+		db().prepare('UPDATE sites SET index_monitor = 1 WHERE id = ?').run(site.id);
+		enqueueIndexMonitor(site.id);
+		audit('indexmon.toggled', { siteId: site.id, detail: 'on, from the set-up guide' });
+		return { ok: 'Indexing monitor on. The first check is running; changes show from the second day.' };
+	},
+	/** From the guide: confirm the brand term guessed from the domain. Never overwrites terms someone has set. */
+	onboardBrand: async ({ request }) => {
+		const f = await request.formData();
+		const site = getSite(Number(f.get('siteId')));
+		const terms = String(f.get('terms') ?? '').trim().slice(0, 200);
+		if (!site || !terms) return fail(400, { error: 'Nothing to save.' });
+		if (site.brand_terms.trim()) return fail(409, { error: 'This site already has brand terms; change them in its settings.' });
+		db().prepare('UPDATE sites SET brand_terms = ? WHERE id = ?').run(terms, site.id);
+		return { ok: `Brand term saved: ${terms}. Add more (product names, misspellings) in the site's settings.` };
+	},
 	purgeRemoved: async ({ request }) => {
 		try {
 			const id = intParam((await request.formData()).get('id'));

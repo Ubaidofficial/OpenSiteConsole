@@ -97,7 +97,7 @@
 	</div>
 </div>
 
-{#if data.onboarding && !data.onboarding.hidden}<GetStarted steps={data.onboarding.steps} progress={data.onboarding.progress} />{/if}
+{#if data.onboarding && !data.onboarding.hidden}<GetStarted steps={data.onboarding.steps} progress={data.onboarding.progress} running={data.onboarding.running} />{/if}
 
 {#if data.cards.length === 0}
 	{#if !data.onboarding || data.onboarding.hidden}
@@ -210,5 +210,5 @@
 	</p>
 {/if}
 {#if data.onboarding?.hidden}
-	<form method="POST" action="?/showOnboarding" use:enhance class="mt-2 text-xs text-muted-foreground"><button class="underline underline-offset-2">Get-started guide{data.onboarding.progress.complete ? '' : ` (${data.onboarding.progress.done} of ${data.onboarding.progress.total} done)`}</button></form>
+	<form method="POST" action="?/showOnboarding" use:enhance class="mt-2 text-xs text-muted-foreground"><button class="underline underline-offset-2">Set-up guide{data.onboarding.progress.complete ? '' : ` (${data.onboarding.progress.done} of ${data.onboarding.progress.total} done)`}</button></form>
 {/if}
