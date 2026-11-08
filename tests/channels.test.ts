@@ -250,6 +250,48 @@ describe('OpenSEO MCP client', () => {
 	});
 });
 
+describe('OpenSEO MCP client: hardening', () => {
+	const reply = (body: unknown, type = 'application/json') => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status: 200, headers: { 'content-type': type, 'mcp-session-id': 's' } });
+	const init = (id: number, version = '2025-06-18') => reply({ jsonrpc: '2.0', id, result: { protocolVersion: version, capabilities: {} } });
+
+	it('sends the negotiated protocol version on every request after initialize', async () => {
+		const headers: (string | null)[] = [];
+		const f = async (_u: unknown, o: RequestInit) => {
+			const h = new Headers(o.headers);
+			headers.push(h.get('mcp-protocol-version'));
+			const msg = JSON.parse(String(o.body));
+			if (msg.method === 'initialize') return init(msg.id);
+			if (msg.method === 'notifications/initialized') return new Response(null, { status: 202 });
+			return reply({ jsonrpc: '2.0', id: msg.id, result: { structuredContent: { projects: [] } } });
+		};
+		await listOpenSeoProjects('https://o.example', 'k', f as never);
+		expect(headers).toEqual([null, '2025-06-18', '2025-06-18']);
+	});
+
+	it('reads an event whose JSON is split over several data lines', async () => {
+		const f = async (_u: unknown, o: RequestInit) => {
+			const msg = JSON.parse(String(o.body));
+			if (msg.method === 'initialize') return init(msg.id);
+			if (msg.method === 'notifications/initialized') return new Response(null, { status: 202 });
+			const json = JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: { structuredContent: { projects: [{ id: 'p', name: 'P', domain: 'p.example' }] } } }, null, 1);
+			return reply('event: message\n' + json.split('\n').map((l) => 'data: ' + l).join('\n') + '\n\n', 'text/event-stream');
+		};
+		expect((await listOpenSeoProjects('https://o.example', 'k', f as never)).map((p) => p.id)).toEqual(['p']);
+	});
+
+	it('turns a non-JSON answer (a login page, a proxy error) into an OpenSeoError', async () => {
+		const f = async () => reply('<html>Sign in</html>', 'text/html');
+		await expect(listOpenSeoProjects('https://o.example', 'k', f as never)).rejects.toThrow(OpenSeoError);
+	});
+
+	it('turns a timeout into an OpenSeoError that says so', async () => {
+		const f = async () => {
+			throw Object.assign(new Error('timed out'), { name: 'TimeoutError' });
+		};
+		await expect(listOpenSeoProjects('https://o.example', 'k', f as never)).rejects.toThrow('did not answer in time');
+	});
+});
+
 describe('connect flows (demo)', () => {
 	it('Bing: validates, imports sites and auto-links the ones that match; reports the unmatched', async () => {
 		await ensureDemoAccounts();

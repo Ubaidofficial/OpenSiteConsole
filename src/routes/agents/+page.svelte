@@ -11,6 +11,7 @@
 <h1 class="mb-1 text-lg font-semibold">MCP</h1>
 <Explainer lead="Connect Claude, ChatGPT or any MCP app to your search data. It reads by default, and changes things only where you allow it.">
 	<p>SEOConsole is an MCP server: an AI app can query your Search Console, GA4, Tag Manager, Bing, Clarity and Core Web Vitals data in one place. Connect it next to OpenSEO's MCP: <code>get_openseo_project</code> hands a site's project id to OpenSEO's keyword, rank-tracking and audit tools.</p>
+	<p>Ready-made skills that use both servers (keyword gap, customer keywords, competitor strategy, free tool, AI rank) are in the repository's <code>.claude/skills</code> folder. They spend OpenSEO credits.</p>
 	<p>A key can also be given the <b>submit</b> permission (push URLs and sitemaps to IndexNow, Bing, Search Console and, for job and livestream pages, Google's Indexing API; start an indexing check), or <b>submit and delete</b>, which adds the few actions that cannot be undone and need a confirming second call. Nothing can delete your data or change a site's content.</p>
 	<p>The table at the bottom lists every change an app made, and every time a key was given or lost a permission.</p>
 </Explainer>

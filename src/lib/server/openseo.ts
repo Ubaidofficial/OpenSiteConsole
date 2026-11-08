@@ -14,12 +14,16 @@ export interface OpenSeoProject { id: string; name: string; domain: string | nul
 
 let rpcId = 0;
 
+/** How long one request to OpenSEO may take. A hung server must not hang a page load or a sync. */
+const REQUEST_TIMEOUT_MS = 30_000;
+
 async function readRpc(res: Response, id: number): Promise<{ result?: unknown; error?: { message?: string } }> {
 	const type = res.headers.get('content-type') ?? '';
 	const text = await res.text();
 	if (type.includes('text/event-stream')) {
 		for (const block of text.split(/\n\n/)) {
-			const data = block.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()).join('');
+			// Per the SSE format, several `data:` lines in one event are one payload joined by newlines.
+			const data = block.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).replace(/^ /, '')).join('\n').trim();
 			if (!data) continue;
 			try {
 				const msg = JSON.parse(data);
@@ -28,12 +32,18 @@ async function readRpc(res: Response, id: number): Promise<{ result?: unknown; e
 		}
 		throw new OpenSeoError('No matching response in event stream');
 	}
-	return JSON.parse(text || '{}');
+	try {
+		return JSON.parse(text || '{}');
+	} catch {
+		// A proxy or login page answering instead of OpenSEO: say so, rather than leaking a SyntaxError.
+		throw new OpenSeoError('OpenSEO answered with something that is not JSON. Check the address ends at your OpenSEO root, with no extra path.');
+	}
 }
 
 export async function mcpSession(baseUrl: string, apiKey: string, fetchImpl: typeof fetch = fetch) {
 	const url = baseUrl.replace(/\/$/, '') + '/mcp';
 	let sessionId: string | null = null;
+	let protocolVersion: string | null = null;
 	const post = async (body: object, expectReply: boolean, id?: number) => {
 		let res: Response;
 		try {
@@ -43,11 +53,15 @@ export async function mcpSession(baseUrl: string, apiKey: string, fetchImpl: typ
 					'content-type': 'application/json',
 					accept: 'application/json, text/event-stream',
 					'x-api-key': apiKey,
-					...(sessionId ? { 'mcp-session-id': sessionId } : {})
+					...(sessionId ? { 'mcp-session-id': sessionId } : {}),
+					// The MCP spec asks for this header on every request after initialize.
+					...(protocolVersion ? { 'mcp-protocol-version': protocolVersion } : {})
 				},
-				body: JSON.stringify(body)
+				body: JSON.stringify(body),
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
 			});
-		} catch {
+		} catch (e) {
+			if (e instanceof Error && (e.name === 'TimeoutError' || e.name === 'AbortError')) throw new OpenSeoError('OpenSEO did not answer in time');
 			throw new OpenSeoError('Could not reach OpenSEO');
 		}
 		if (res.status === 401 || res.status === 403) throw new OpenSeoError('OpenSEO rejected the API key', res.status);
@@ -58,6 +72,8 @@ export async function mcpSession(baseUrl: string, apiKey: string, fetchImpl: typ
 	const init = ++rpcId;
 	const ir = await post({ jsonrpc: '2.0', id: init, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'seoconsole', version: '0.2.0' } } }, true, init);
 	if (ir?.error) throw new OpenSeoError(ir.error.message ?? 'initialize failed');
+	const negotiated = (ir?.result as { protocolVersion?: unknown } | undefined)?.protocolVersion;
+	protocolVersion = typeof negotiated === 'string' && negotiated ? negotiated : '2025-03-26';
 	await post({ jsonrpc: '2.0', method: 'notifications/initialized' }, false);
 	return {
 		async callTool(name: string, args: Record<string, unknown> = {}): Promise<unknown> {
