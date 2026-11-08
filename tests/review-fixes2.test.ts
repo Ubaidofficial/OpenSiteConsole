@@ -97,7 +97,7 @@ describe('GA4 daily load never truncates silently', () => {
 		const id = upsertGoogleAccount({ sub: 's', email: 'a@b.c', accessToken: 'AT', refreshToken: 'RT', expiresIn: 3600, scope: 'analytics.readonly' });
 		const f = (async () => new Response(JSON.stringify(page(100_000)), { status: 200, headers: { 'content-type': 'application/json' } })) as never;
 		await expect(organicLandingDaily(id, 'properties/1', '2026-01-01', '2026-02-01', { fetchImpl: f })).rejects.toThrow(/600,000/);
-	});
+	}, 30_000); // builds 600,000 rows: about 4 s alone, more when the suite runs in parallel
 });
 
 describe('digest and alerts: nothing silently lost', () => {
