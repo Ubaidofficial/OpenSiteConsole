@@ -6,16 +6,19 @@ import { audit, db } from '$lib/server/db';
 import { diagnoseSitemap } from '$lib/server/sitemapcov';
 import { demoSitemapFetch } from '$lib/server/demo-channels';
 import { compareWithPages, lastLiveCompare, lastmodReport, LIVE_SAMPLE } from '$lib/server/lastmod';
+import { robotsReport, runRobotsCheck } from '$lib/server/robotswatch';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { client, site } = clientForSite(Number(params.id));
 	// The lastmod check works from the stored sitemap read, so it needs neither Google nor the network.
 	const lastmod = { report: lastmodReport(site), live: lastLiveCompare(site.id), sample: LIVE_SAMPLE };
-	if (['siteUnverifiedUser', 'none'].includes(site.permission)) return { sitemaps: [], error: 'This property is not verified for this account.', lastmod };
+	// robots.txt is read from the site itself (daily, or with the button), so it needs no Google access either.
+	const robots = robotsReport(site);
+	if (['siteUnverifiedUser', 'none'].includes(site.permission)) return { sitemaps: [], error: 'This property is not verified for this account.', lastmod, robots };
 	try {
-		return { sitemaps: await client.listSitemaps(site.site_url), error: null, lastmod };
+		return { sitemaps: await client.listSitemaps(site.site_url), error: null, lastmod, robots };
 	} catch (e) {
-		return { sitemaps: [], error: e instanceof Error ? e.message : 'Could not load sitemaps', lastmod };
+		return { sitemaps: [], error: e instanceof Error ? e.message : 'Could not load sitemaps', lastmod, robots };
 	}
 };
 
@@ -30,6 +33,14 @@ export const actions: Actions = {
 		if (!site) return fail(404, { error: 'Unknown site.' });
 		const r = await compareWithPages(site);
 		return { ok: r.findings[0]?.text ?? 'Compared.' };
+	},
+	/** Read robots.txt on the site's hosts now. Reads only (from the site, not Google), so allowed in READ_ONLY mode. */
+	robotsCheck: async ({ params }) => {
+		const site = getSite(Number(params.id));
+		if (!site) return fail(404, { error: 'Unknown site.' });
+		const hosts = await runRobotsCheck(site.id);
+		audit('robots.checked', { siteId: site.id, detail: hosts.map((h) => `${h.origin} ${h.state}`).join(', ') });
+		return { ok: `Read robots.txt on ${hosts.length} host${hosts.length === 1 ? '' : 's'}.` };
 	},
 	/** Fetch the sitemap like a crawler and compare it with what Google last reported. Read-only, so allowed in READ_ONLY mode. */
 	check: async ({ params, request }) => {

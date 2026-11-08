@@ -12,13 +12,14 @@ import { monitorSite } from './indexmon';
 import { runSubmissionWork, submissionWorkDue } from './submission';
 import { listTests, warmTests } from './seotests';
 import { ensureGa4TestData } from './ga4tests';
-import { runUrgentAlerts, runWeeklyDigest } from './digest';
+import { runMonthlyReport, runUrgentAlerts, runWeeklyDigest } from './digest';
 import { actionsFor } from './actions';
 import { getSite } from './clients';
 import { importGoogleUpdates, lastUpdatesCheck } from './gupdates';
 import { syncSitemapUrls } from './sitemapcov';
 import { autoSubmit } from './indexnow';
 import { crawlLinks, RECRAWL_MS } from './internallinks';
+import { robotsCheckDue, runRobotsCheck } from './robotswatch';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -154,6 +155,7 @@ export function schedulerTick() {
 	if (!process.env.VITEST) {
 		enqueue('digest', async () => {
 			await runWeeklyDigest();
+			await runMonthlyReport();
 			const last = Number((d.prepare("SELECT value FROM kv WHERE key = 'urgent_checked'").get() as { value: string } | undefined)?.value ?? 0);
 			if (Date.now() - last > 3 * 3600_000) {
 				await runUrgentAlerts();
@@ -189,6 +191,8 @@ export function schedulerTick() {
 		if (!process.env.VITEST) {
 			const cs = d.prepare('SELECT checked_at FROM clarity_scans WHERE site_id = ?').get(s.id) as { checked_at: number } | undefined;
 			if (!cs || Date.now() - cs.checked_at > 24 * 3600_000) enqueueClarityScan(s.id);
+			// robots.txt once a day per host: a rule that blocks pages with clicks is then caught the next day.
+			if (robotsCheckDue(s.id)) enqueue(`robots:${s.id}`, () => runRobotsCheck(s.id));
 			// The internal-link crawl fetches up to LINK_CRAWL_PAGES of the site's pages: once a week (a site with no data yet is retried).
 			const lc = d.prepare('SELECT finished_at f, pages n FROM link_crawls WHERE site_id = ?').get(s.id) as { f: number | null; n: number } | undefined;
 			if (!lc || !lc.n || Date.now() - (lc.f ?? 0) > RECRAWL_MS) enqueueLinkCrawl(s.id);

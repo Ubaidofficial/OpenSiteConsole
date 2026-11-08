@@ -20,6 +20,7 @@ import { rate, VITALS, fmtVital } from '../vitals';
 import { allSites } from './queries';
 import { hiddenReport } from './hidden';
 import { groupByTarget, linkReport } from './internallinks';
+import { CHANGE_REVIEW_DAYS, ERROR_STREAK, robotsBlockedPages, robotsChanges, robotsHosts } from './robotswatch';
 
 type Site = SiteRow;
 const r0 = (n: number) => Math.round(n);
@@ -34,7 +35,7 @@ const pathOf = (u: string) => {
 	}
 };
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`;
-const VERSION = 'a5';
+const VERSION = 'a6';
 
 /** Every finding for one site, unranked state-free. Cheap enough to run on demand; see actionsFor for the cached, ranked form. */
 export function buildActions(site: Site, days = 28): ActionItem[] {
@@ -81,7 +82,32 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 		if (s?.robotsTxtState === 'DISALLOWED' || /^BLOCKED/.test(s?.indexingState ?? '')) blocked.add(r.url);
 	}
 	for (const c of storedChecks(id)) if ((c.issues ?? []).some((i) => i.id === 'noindex')) blocked.add(c.url);
+
+	// ── 2b. robots.txt, read daily: today's rules, not the last inspection ───
+	// Pages the live file blocks get their own item (it names the rule), and are left out of the item above so nothing counts twice.
+	const robotsBlocked = new Set<string>();
+	try {
+		const candidates = [...new Set([...nowPages.keys(), ...prevPages.keys()])].map((page) => ({ page, clicks: clicksOf(page) }));
+		const rb = robotsBlockedPages(id, candidates);
+		if (rb.length) {
+			const impact = rb.reduce((a, x) => a + x.clicks, 0);
+			const rules = [...new Set(rb.map((x) => x.rule))];
+			add({ key: `robots:${keyHash(rb.map((x) => x.url))}`, type: 'robots', title: `robots.txt blocks Googlebot from ${rb.length} page${rb.length === 1 ? '' : 's'} that earn${rb.length === 1 ? 's' : ''} clicks`, why: `The robots.txt read today disallows ${rb.length === 1 ? 'it' : 'them'} (${rules.slice(0, 3).join('; ')}${rules.length > 3 ? '; …' : ''}), yet ${rb.length === 1 ? 'it' : 'they'} earned up to ${n0(impact)} clicks in a recent ${days}-day period. Google stops crawling blocked pages, and they fade from search.`, how: 'If these pages should rank, remove or narrow the rule (an Allow line for the section works too) and check the result in Search Console\'s robots.txt report. If the block is intended, take them out of your sitemap and internal links.', impact, confidence: 'high', effort: 'low', blocking: true, href: `${base}/sitemaps#robots`, evidence: rb.slice(0, 5).map((x) => `${pathOf(x.url)} (${n0(x.clicks)} clicks) · ${x.rule}`) });
+			for (const x of rb) robotsBlocked.add(x.url);
+		}
+		for (const h of robotsHosts(id).filter((x) => x.state === 'error' && x.failStreak >= ERROR_STREAK)) {
+			add({ key: `robots-error:${h.origin}`, type: 'robots', title: `robots.txt on ${h.origin.replace(/^https?:\/\//, '')} has failed ${h.failStreak} daily reads in a row`, why: `It answered ${h.status ? `HTTP ${h.status}` : 'nothing'} (${h.error ?? 'error'}). Google's documentation says a server error on robots.txt can make it stop crawling the whole host until the file answers again (verify the details there).`, how: 'Make /robots.txt answer 200 with the file, or 404 if you want no rules at all; never a 5xx or 429. Check the server, CDN and firewall rules for that path.', impact: null, confidence: 'medium', effort: 'low', blocking: true, href: `${base}/sitemaps#robots`, evidence: [] });
+		}
+		const since = Date.now() - CHANGE_REVIEW_DAYS * 86_400_000;
+		for (const c of robotsChanges(id, 5).filter((x) => x.at >= since)) {
+			add({ key: `robots-changed:${c.id}`, type: 'robots', title: `robots.txt changed on ${new Date(c.at).toISOString().slice(0, 10)} (${c.origin.replace(/^https?:\/\//, '')})`, why: c.afterState === 'missing' ? 'The file now answers “not found”, so every rule it had is gone and Googlebot may crawl everything.' : c.beforeState === 'missing' ? 'A robots.txt appeared where there was none.' : `${c.added.length} rule line${c.added.length === 1 ? '' : 's'} added and ${c.removed.length} removed. Nothing that earns clicks is blocked by it now (that would be a separate, blocking item), but check it was intended.`, how: 'Read the change on the Sitemaps tab. If it was not intended, restore the previous file (kept there) and find out what rewrote it (a deploy, a CMS plugin, a staging config).', impact: null, confidence: 'high', effort: 'low', blocking: false, href: `${base}/sitemaps#robots`, evidence: [...c.removed.map((l) => `− ${l}`), ...c.added.map((l) => `+ ${l}`)].slice(0, 6) });
+		}
+	} catch {
+		/* a missing source must not stop the queue */
+	}
+	for (const u of robotsBlocked) blocked.delete(u);
 	const blockedWithClicks = [...blocked].filter((u) => clicksOf(u) > 0).sort((a, b) => clicksOf(b) - clicksOf(a));
+	for (const u of robotsBlocked) blocked.add(u); // still excluded from "dropped" and "not indexed" below
 	if (blockedWithClicks.length) {
 		const impact = blockedWithClicks.reduce((a, u) => a + clicksOf(u), 0);
 		add({ key: `blocked:${keyHash(blockedWithClicks)}`, type: 'blocked', title: `${blockedWithClicks.length} page${blockedWithClicks.length === 1 ? '' : 's'} that earn clicks are blocked from indexing`, why: `robots.txt, a noindex tag or an HTTP header tells Google not to index them, yet they earned up to ${n0(impact)} clicks in a recent ${days}-day period (the higher of the last two). Those clicks will go.`, how: 'If these pages should rank, remove the robots.txt rule or the noindex tag and request indexing. If the block is intentional, take them out of your sitemap and internal links.', impact, confidence: 'high', effort: 'low', blocking: true, href: `${base}/indexing`, evidence: blockedWithClicks.slice(0, 5).map((u) => `${pathOf(u)} (${n0(clicksOf(u))} clicks)`) });
@@ -314,6 +340,8 @@ function cacheKey(site: Site, days: number): string {
 		one('SELECT MAX(fetched_at) m, COUNT(*) n FROM link_pages WHERE site_id = ?', site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM link_done WHERE site_id = ?', site.id),
 		one('SELECT fetched_at f FROM sitemap_sync WHERE site_id = ?', site.id),
+		one("SELECT GROUP_CONCAT(origin || ' ' || fingerprint || ' ' || state || ' ' || fail_streak, '|') f FROM robots_checks WHERE site_id = ?", site.id),
+		one('SELECT MAX(id) m FROM robots_changes WHERE site_id = ?', site.id),
 		one("SELECT MAX(built_at) b, COUNT(*) n, SUM(status = 'pending') p, SUM(status = 'requested') r FROM index_requests WHERE site_id = ?", site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_submissions WHERE site_id = ?', site.id),
 		one('SELECT COUNT(*) n, MAX(due_at) m FROM index_rechecks WHERE site_id = ?', site.id),

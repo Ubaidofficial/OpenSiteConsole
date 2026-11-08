@@ -70,7 +70,7 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/accounts': { refresh: E, verifyToken: A, verifyNow: A, relabel: A, remove: A, addSite: A },
 	'/agents': { create: A, permission: A, changes: A, remove: A },
 	'/connect': { resync: E, bingKey: A, bingRemove: A, ga4Auto: A, gtmAuto: A, clarity: A, manual: A, unlink: A, openseo: A, crux: A, cruxRemove: A, openseoRemove: A },
-	'/digest': { generate: E, send: E, check: E },
+	'/digest': { generate: E, send: E, monthly: E, sendMonthly: E, check: E },
 	'/updates': { import: E, add: E, remove: E },
 	'/sitemaps': { resubmitAll: E },
 	'/oauth/authorize': { allow: A, deny: A },
@@ -85,7 +85,7 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/sites/[id]/onpage': { top: E, urls: E },
 	'/sites/[id]/request': { build: E, requested: E, dismiss: E },
 	'/sites/[id]/settings': { save: A, resync: A, removeProperty: A },
-	'/sites/[id]/sitemaps': { lastmodCompare: E, check: E, submit: E, delete: E },
+	'/sites/[id]/sitemaps': { lastmodCompare: E, check: E, robotsCheck: E, submit: E, delete: E },
 	'/sites/[id]/submit': { preset: E, submit: E, sitemapSubmit: E, sitemapResubmit: E, sitemapCheck: E, refreshQuota: E, clearQueue: E, check: E },
 	'/sites/[id]/tests': { create: E, remove: E }
 };

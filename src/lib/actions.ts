@@ -13,7 +13,7 @@
  */
 
 export const ACTION_TYPES = [
-	'tracking', 'blocked', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update',
+	'tracking', 'blocked', 'robots', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update',
 	'cannibalization', 'ctr-gap', 'decay', 'striking', 'onpage', 'sitemap', 'lastmod', 'submitted', 'request', 'vitals', 'test',
 	'lost-query', 'rising', 'page-edge', 'gem', 'questions', 'bing', 'device', 'engagement', 'friction', 'internal-link'
 ] as const;
@@ -41,12 +41,12 @@ export interface ActionItem {
 }
 
 /** Item types whose title, text or evidence names a page or a query (so privacy mode must blur them). */
-export const NAMES_TARGETS: ReadonlySet<ActionType> = new Set<ActionType>(['cannibalization', 'ctr-gap', 'decay', 'striking', 'dead', 'not-indexed', 'deindexed', 'blocked', 'onpage', 'sitemap', 'anomaly', 'submitted', 'request', 'lost-query', 'rising', 'page-edge', 'gem', 'questions', 'bing', 'device', 'engagement', 'friction', 'internal-link']);
+export const NAMES_TARGETS: ReadonlySet<ActionType> = new Set<ActionType>(['cannibalization', 'ctr-gap', 'decay', 'striking', 'dead', 'not-indexed', 'deindexed', 'blocked', 'robots', 'onpage', 'sitemap', 'anomaly', 'submitted', 'request', 'lost-query', 'rising', 'page-edge', 'gem', 'questions', 'bing', 'device', 'engagement', 'friction', 'internal-link']);
 
 export const CONFIDENCE_WEIGHT: Record<Confidence, number> = { high: 1, medium: 0.6, low: 0.3 };
 
 /** Ties among unquantified items, and within the blocking group, resolve in this order. */
-const TYPE_ORDER: ActionType[] = ['tracking', 'blocked', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update', 'test', 'cannibalization', 'ctr-gap', 'decay', 'lost-query', 'page-edge', 'striking', 'rising', 'gem', 'questions', 'bing', 'device', 'engagement', 'friction', 'internal-link', 'onpage', 'sitemap', 'lastmod', 'submitted', 'request', 'vitals'];
+const TYPE_ORDER: ActionType[] = ['tracking', 'blocked', 'robots', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update', 'test', 'cannibalization', 'ctr-gap', 'decay', 'lost-query', 'page-edge', 'striking', 'rising', 'gem', 'questions', 'bing', 'device', 'engagement', 'friction', 'internal-link', 'onpage', 'sitemap', 'lastmod', 'submitted', 'request', 'vitals'];
 
 export const scoreOf = (a: Pick<ActionItem, 'impact' | 'confidence'>) => (a.impact == null ? 0 : a.impact * CONFIDENCE_WEIGHT[a.confidence]);
 

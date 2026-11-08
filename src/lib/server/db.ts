@@ -414,8 +414,8 @@ CREATE TABLE IF NOT EXISTS ga4_ai_daily_meta (
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS digests (
 	id INTEGER PRIMARY KEY,
-	kind TEXT NOT NULL,                 -- weekly | urgent
-	week_key TEXT,                      -- the digest day this weekly digest is for; NULL for one made by hand or an urgent alert
+	kind TEXT NOT NULL,                 -- weekly | monthly | urgent
+	week_key TEXT,                      -- the digest day this weekly digest is for, or YYYY-MM for a monthly report; NULL for one made by hand or an urgent alert
 	created_at INTEGER NOT NULL,
 	payload TEXT NOT NULL,              -- JSON Digest (weekly) or {items} (urgent)
 	delivery TEXT NOT NULL DEFAULT 'none',   -- none (no webhook configured) | sent | failed
@@ -529,6 +529,31 @@ CREATE TABLE IF NOT EXISTS clarity_scans (          -- is Clarity's script on th
 	checked_at INTEGER NOT NULL,
 	payload TEXT NOT NULL               -- JSON ScannedPage[]
 );
+CREATE TABLE IF NOT EXISTS robots_checks (          -- the newest robots.txt read per host of a site
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	origin TEXT NOT NULL,                -- https://www.example.com
+	checked_at INTEGER NOT NULL,
+	status INTEGER NOT NULL,             -- HTTP status; 0 = no answer
+	state TEXT NOT NULL,                 -- ok | missing | error (see src/lib/robots.ts)
+	body TEXT,                           -- the file as read (500 KiB cap), when state = ok
+	fingerprint TEXT NOT NULL,           -- what the rules mean, not how they are written
+	changed_at INTEGER,                  -- when the fingerprint last changed (NULL until a second read differs)
+	fail_streak INTEGER NOT NULL DEFAULT 0, -- consecutive reads in the error state
+	error TEXT,
+	PRIMARY KEY (site_id, origin)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS robots_changes (         -- every change in what a site's robots.txt means
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	origin TEXT NOT NULL,
+	at INTEGER NOT NULL,
+	before_state TEXT NOT NULL,
+	after_state TEXT NOT NULL,
+	added TEXT NOT NULL,                 -- JSON string[] of rule lines
+	removed TEXT NOT NULL,               -- JSON string[]
+	before_body TEXT                     -- the previous file, so a bad change can be rolled back by hand
+);
+CREATE INDEX IF NOT EXISTS robots_changes_site ON robots_changes (site_id, at);
 CREATE TABLE IF NOT EXISTS api_keys (
 	id INTEGER PRIMARY KEY,
 	name TEXT NOT NULL, prefix TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,

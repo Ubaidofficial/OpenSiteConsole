@@ -335,6 +335,32 @@ export function demoPageFetch(siteUrl: string): typeof fetch {
 }
 
 /**
+ * Demo robots.txt: ordinary rules that block nothing earning clicks (cart, internal search, sorted lists), a stricter group for
+ * one other crawler, and the sitemap. Anything else on the host is a 404.
+ */
+export function demoRobotsFetch(siteUrl: string): typeof fetch {
+	const def = siteOf(siteUrl);
+	return (async (input: RequestInfo | URL) => {
+		const url = new URL(String(input));
+		if (url.pathname !== '/robots.txt') return new Response('not found', { status: 404 });
+		const body = [
+			`# robots.txt for ${def.brand}`,
+			'User-agent: *',
+			'Disallow: /cart/',
+			'Disallow: /search',
+			'Disallow: /*?sort=',
+			'Allow: /search/help',
+			'',
+			'User-agent: ExampleScraperBot',
+			'Disallow: /',
+			'',
+			`Sitemap: ${url.origin}/sitemap.xml`
+		].join('\n');
+		return new Response(body, { status: 200, headers: { 'content-type': 'text/plain' } });
+	}) as typeof fetch;
+}
+
+/**
  * Demo sitemap: every page Search Console has shown for the site, minus two of them (so "earns clicks but missing from the
  * sitemap" has something to show), plus pages that were never shown (some old, some new), so the coverage view has all its cases.
  */
