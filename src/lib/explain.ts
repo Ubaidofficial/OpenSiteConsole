@@ -105,7 +105,7 @@ export const SITE_TABS = [
 	['/bing', 'Bing', 'Bing Webmaster data for this site, once Bing is linked.'],
 	['/analytics', 'GA4', 'Google Analytics 4 organic sessions beside Search Console clicks, once GA4 is linked.'],
 	['/tags', 'Tag Manager', 'What is in your Google Tag Manager container, checked against GA4 and Search Console, once it is linked.'],
-	['/clarity', 'Clarity', 'Microsoft Clarity snapshot, once linked. Clarity only exposes the last 1 to 3 days, so one snapshot is stored daily.'],
+	['/clarity', 'Clarity', 'Microsoft Clarity snapshot, once linked. Clarity only exposes the last 1 to 3 days and 10 API calls a day, so the daily snapshot is refreshed three times a day (every 8½ hours) (9 calls) and kept.'],
 	['/settings', 'Settings', 'Site preferences such as label, tags and brand terms, and what data is stored.']
 ] as const;
 
@@ -161,7 +161,7 @@ export const HIDDEN_SOURCE_HINT: Record<'previousPeriod' | 'bing' | 'ga4' | 'cla
 	previousPeriod: 'The period before this one is not downloaded yet, so lost and rising searches cannot be worked out. Run a full history sync from the site settings.',
 	bing: 'Bing is not connected for this site. Connect it on the Connect page to see where Bing and Google disagree.',
 	ga4: 'GA4 has no landing-page data for this window. Connect GA4 on the Connect page (it is pulled with the next sync).',
-	clarity: 'Clarity has no snapshot for this site yet. Add a Clarity token on the Connect page; it keeps one snapshot per day.'
+	clarity: 'Clarity has no snapshot for this site yet. Add a Clarity token on the Connect page; it refreshes the daily snapshot three times a day (every 8½ hours) and keeps one per day.'
 };
 export const HIDDEN_GROUPS: { id: string; title: string; blurb: string }[] = [
 	{ id: 'lost', title: 'Lost searches', blurb: 'Searches that earned clicks in the previous period and have nearly stopped. Some may be seasonal, or may have dropped out of the data Google shares.' },

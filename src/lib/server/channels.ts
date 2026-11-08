@@ -2,7 +2,7 @@ import { db } from './db';
 import { config } from './config';
 import { RealBingClient, type BingClient } from './bing';
 import { DemoBing, DEMO_GA4_PROPERTIES, demoClarityFetch, demoGa4Daily, demoGa4Landing, demoGa4UsersByChannel, demoGa4MeasurementId, demoGa4AiTraffic, demoGa4AiDaily, demoGa4OrganicDaily, demoGtmContainers, demoGtmLive } from './demo-channels';
-import { callsLeft, CLARITY_SYNC_DIMENSIONS, fetchInsights, utcDay } from './clarity';
+import { callsLeft, CLARITY_FRESH_MS, CLARITY_SYNC_DIMENSIONS, fetchInsights, utcDay } from './clarity';
 import * as ga4 from './ga4';
 import * as gtm from './gtm';
 import { addDays, pacificToday, retentionHorizon } from './dates';
@@ -216,7 +216,7 @@ export async function syncGtm(siteId: number, source?: gtm.GtmSource, ga4Source?
 	}
 }
 
-// ── sync: Clarity (10 calls/day/project: store a snapshot per day) ───────────
+// ── sync: Clarity (10 calls/day/project: today's snapshot is refreshed every 8.5 hours, 9 calls a day) ───────────
 export async function syncClarity(siteId: number, o: { force?: boolean; fetchImpl?: typeof fetch } = {}) {
 	const link = linksFor(siteId).clarity;
 	if (!link?.integration_id) throw new Error('Site is not linked to Clarity');
@@ -228,8 +228,9 @@ export async function syncClarity(siteId: number, o: { force?: boolean; fetchImp
 		const day = utcDay();
 		let calls = 0;
 		for (const dim of CLARITY_SYNC_DIMENSIONS) {
-			const have = db().prepare('SELECT 1 FROM clarity_snapshots WHERE site_id = ? AND day = ? AND dimension = ?').get(siteId, day, dim);
-			if (have && !o.force) continue;
+			const have = db().prepare('SELECT fetched_at FROM clarity_snapshots WHERE site_id = ? AND day = ? AND dimension = ?').get(siteId, day, dim) as { fetched_at: number } | undefined;
+			// fresh enough: skip (the scheduler comes back every 8.5 hours); "refresh now" forces it
+			if (have && !o.force && Date.now() - have.fetched_at < CLARITY_FRESH_MS) continue;
 			if (callsLeft(integ.id) <= 1) break; // always leave one call for the user
 			const payload = await fetchInsights(integ.id, token, { numOfDays: 1, dimension: dim }, fetchImpl);
 			db().prepare('INSERT OR REPLACE INTO clarity_snapshots VALUES (?,?,?,?,?)').run(siteId, day, dim, JSON.stringify(payload), Date.now());

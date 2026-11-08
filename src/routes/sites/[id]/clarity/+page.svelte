@@ -30,7 +30,7 @@
 		<div class="card px-3 py-2"><div class="text-xs text-muted-foreground">API calls left today</div><div class="tnum text-xl font-semibold">{data.callsLeft}<span class="text-sm text-muted-foreground"> / 10</span></div>
 			<form method="POST" action="/connect?/resync" use:enhance><input type="hidden" name="siteId" value={page.params.id} /><input type="hidden" name="kind" value="clarity" /><button class="text-xs underline">refresh now (uses calls)</button></form></div>
 	</div>
-	<p class="mb-3 text-xs text-muted-foreground">Snapshot {data.totals?.day ?? '–'} · {data.status.state === 'error' ? data.status.message : 'synced ' + ago(data.status.lastSync)}. Clarity only exposes the last 1–3 days and 10 API calls per project per day, so SEOConsole keeps one snapshot per day — the history below exists because we store it. Metric names and columns are shown exactly as Clarity returns them.</p>
+	<p class="mb-3 text-xs text-muted-foreground">Snapshot {data.totals?.day ?? '–'} · {data.status.state === 'error' ? data.status.message : 'synced ' + ago(data.status.lastSync)}. Clarity allows 10 API calls a day and shows only 1–3 days, so this refreshes every 8½ hours (9 calls, one kept for you) and keeps a daily history. Columns are as Clarity returns them.</p>
 
 	{#if data.history.length > 1}
 		<section class="card mb-4 p-4"><h2 class="mb-2 font-medium">Stored daily snapshots</h2>
