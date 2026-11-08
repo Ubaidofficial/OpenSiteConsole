@@ -1,5 +1,6 @@
 import { GoogleApiError, googleJson, accessToken, type HttpOptions } from './google';
 import { hostKey } from './hosts';
+import { scanHtml } from '../clarityinstall';
 
 /**
  * Tag Manager API v2, read-only. Endpoint shapes and field names below come from my knowledge of the API and have NOT
@@ -32,6 +33,10 @@ export interface GtmTag {
 	/** G-XXXXXXX the tag sends to, when it is a Google tag / GA4 tag and the ID is a literal or a constant variable. */
 	measurementId: string | null;
 	eventName: string | null;
+	/** A Microsoft Clarity tag: Custom HTML carrying Clarity's snippet, or a template named after Clarity. Absent in older snapshots. */
+	clarity?: boolean;
+	/** The Clarity project ID the tag loads, when it can be read. */
+	clarityId?: string | null;
 }
 export interface GtmTrigger { id: string; name: string; type: string }
 export interface GtmVariable { id: string; name: string; type: string }
@@ -121,6 +126,10 @@ export function summarizeVersion(v: RawVersion): GtmLive {
 	const tags: GtmTag[] = (v.tag ?? []).slice(0, MAX_ITEMS).map((t) => {
 		const type = t.type ?? 'unknown';
 		const ga = GA4_TAG_TYPES.has(type);
+		const html = type === 'html' ? scanHtml(param(t, 'html') ?? '') : null;
+		// Community templates are identified by name only: their parameter names are the template author's choice.
+		const clarity = html ? html.clarityLoader : type.startsWith('cvt_') && /clarity/i.test(t.name ?? '');
+		const templateId = clarity && !html ? (t.parameter ?? []).map((p) => p.value ?? '').find((v) => /^[a-z0-9]{8,12}$/.test(v)) ?? null : null;
 		return {
 			id: t.tagId ?? '',
 			name: t.name ?? t.tagId ?? '(unnamed)',
@@ -130,7 +139,9 @@ export function summarizeVersion(v: RawVersion): GtmLive {
 			blocking: (t.blockingTriggerId ?? []).map((id) => triggerName.get(id) ?? `trigger ${id}`),
 			// googtag keeps its ID in `tagId`; GA4 configuration / event tags in `measurementId` / `measurementIdOverride`.
 			measurementId: ga ? resolve(param(t, 'tagId', 'measurementId', 'measurementIdOverride')) : null,
-			eventName: type === 'gaawe' ? param(t, 'eventName') : null
+			eventName: type === 'gaawe' ? param(t, 'eventName') : null,
+			clarity,
+			clarityId: html?.clarityIds[0] ?? templateId
 		};
 	});
 	return {

@@ -82,3 +82,6 @@ export function crossSiteRefused(o: { method: string; origin: string | null; sec
 	const type = (o.contentType ?? '').split(';')[0].trim().toLowerCase();
 	return FORM_TYPES.has(type) && o.origin !== o.urlOrigin;
 }
+
+/** Where to return after an outside sign-in: a path inside this app only (never //host, a backslash trick or a full URL). */
+export const safeReturn = (p: string | null | undefined) => (p && /^\/(?![\/\\])[\w\-./?=&%]*$/.test(p) ? p : null);

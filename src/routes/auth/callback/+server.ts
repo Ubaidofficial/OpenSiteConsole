@@ -5,6 +5,7 @@ import { syncAccountSites, upsertGoogleAccount } from '$lib/server/accounts';
 import { enqueueSiteSync } from '$lib/server/jobs';
 import { db } from '$lib/server/db';
 import { safeEqual } from '$lib/server/crypto';
+import { safeReturn } from '$lib/server/guard';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
 	const expected = cookies.get('osc_oauth_state');
@@ -21,5 +22,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	await syncAccountSites(id);
 	const sites = db().prepare("SELECT id FROM sites WHERE account_id = ? AND permission NOT IN ('siteUnverifiedUser','none')").all(id) as { id: number }[];
 	for (const s of sites) enqueueSiteSync(s.id, 'auto');
-	redirect(303, '/accounts?connected=' + encodeURIComponent(email));
+	const back = safeReturn(cookies.get('osc_oauth_back') ?? null);
+	cookies.delete('osc_oauth_back', { path: '/' });
+	redirect(303, back ? `${back}${back.includes('?') ? '&' : '?'}granted=1` : '/accounts?connected=' + encodeURIComponent(email));
 };

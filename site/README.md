@@ -31,6 +31,10 @@ docker run --rm -p 8080:8080 seoconsole-site
 - The agent conversation uses real output from the app's MCP tools on the demo data (`get_action_queue`, `get_opportunities`). The assistant's wording is an example, and the page says so.
 - Nothing is loaded from another site: the font is self-hosted and there are no analytics, so the strict policy in `security-headers.conf` (default-src 'self') holds.
 
+## Caching
+
+`index.html` is never cached (`no-cache`); everything under `assets/` is cached for a day. The stylesheet and script are linked as `styles.css?v=…` and `main.js?v=…`, where the value is the first 10 hex characters of the file's SHA-256, so visitors get a changed file as soon as the new page is deployed. After editing either file, update its `?v=` (`tests/site.test.ts` fails and prints the new value).
+
 ## Refreshing the screenshots
 
 They are static WebP files in `assets/shots/` (two sizes each), made by a script so they can be redone the same way when the app's look changes:
