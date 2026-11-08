@@ -224,7 +224,7 @@ describe('site: the product visuals and their motion', () => {
 		// every hidden starting state is scoped to html.js and to an element not yet revealed, so the page is complete without JavaScript
 		for (const m of css.matchAll(/^([^{}\n]*):not\(\.in\)[^{}]*\{/gm)) expect(m[1].trim().startsWith('html.js'), m[0]).toBe(true);
 		const block = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
-		for (const sel of ['.hx-float, .hx.in .hx-card::after', '.draw, .b2 i, .trk .mk', '.win:hover, .card:hover { transform: none; }', 'html.js .wipe.rv { clip-path: none; transition: none; }', '.kicker .dot, .livedot, .hero::before { animation: none; }']) expect(block, sel).toContain(sel);
+		for (const sel of ['.hx-float, .hx.in .hx-card::after', '.draw, .b2 i, .trk .mk', '.win:hover, .card:hover { transform: none; }', 'html.js .wipe.rv { clip-path: none; transition: none; }', '.kicker .dot::after, .livedot::after { animation: none; }']) expect(block, sel).toContain(sel);
 		expect(js).toMatch(/if \(!still\) \$\$\('\.card, \.win'\)/); // the pointer glow only when motion is welcome
 	});
 	it('screenshots are shown whole: the story frames are not zoomed, the hero shot is not faded out or covered by decoration', () => {
@@ -240,11 +240,12 @@ describe('site: the product visuals and their motion', () => {
 		expect(readme).toMatch(/Copyright \(c\) 2026 Shadcn Space/);
 		expect(readme).toMatch(/Permission is hereby granted, free of charge/);
 	});
-	it('the data-flow beam has one pulse per line, measured in percent so the script can redraw it at real size', () => {
+	it('the data-flow beam has one pulse per line, measured in percent so the script can redraw it at real size, and one output per line', () => {
+		expect(html.match(/<ul class="beam-out"[\s\S]*?<\/ul>/)![0].match(/<li>/g)).toHaveLength(7);
 		const svg = /<svg class="beam-svg"[\s\S]*?<\/svg>/.exec(html)![0];
 		const lines = [...svg.matchAll(/<path d="([^"]+)"\/>/g)].map((m) => m[1]);
 		const pulses = [...svg.matchAll(/<path class="pulse" pathLength="100" d="([^"]+)"\/>/g)].map((m) => m[1]);
-		expect(lines.length).toBe(8);
+		expect(lines.length).toBe(12); // five sources in, seven things out
 		expect(pulses).toEqual(lines);
 		for (const d of lines) expect(d, d).toMatch(/^M[\d. ]+(?:[CL][\d. ]+)+$/); // x/y pairs only, which is what the redraw expects
 		expect(css).toMatch(/html:not\(\.js\) \.beam \.pulse \{ display: none; \}/);
