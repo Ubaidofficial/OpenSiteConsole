@@ -14,8 +14,9 @@ export interface ScriptScan {
 	gtmIds: string[];
 }
 
-// Quotes may be escaped (\") when the snippet sits inside a framework's JSON payload, e.g. a Next.js <Script> in the RSC stream.
-const Q = String.raw`\\?["']`;
+// Quotes may be escaped once (\") or more (\\\", a string inside a string) when the snippet sits inside a framework's payload,
+// e.g. a Next.js <Script> in the RSC stream, as on a live Next.js site.
+const Q = String.raw`\\*["']`;
 const SNIPPET_ID = new RegExp(`${Q}clarity${Q}\\s*,\\s*${Q}script${Q}\\s*,\\s*${Q}([a-z0-9]{6,16})${Q}`, 'gi');
 const TAG_URL_ID = /clarity\.ms\/tag\/([a-z0-9]{6,16})(?![a-z0-9])/gi;
 const LOADER = /clarity\.ms\/tag\//i;
