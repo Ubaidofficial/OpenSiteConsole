@@ -148,12 +148,12 @@ export const COMPETITORS: Competitor[] = [
 			'A full SEO toolkit alongside: tests, indexing, decay, quick wins.'
 		],
 		theyWin: [
-			'Prompt tracking at scale with citation and content-type analysis, and AI crawler logs. SEOConsole’s prompt tracking is basic (three assistants through their APIs, your own keys) and it has no crawler logs.',
+			'Prompt tracking at scale with citation and content-type analysis, and AI crawler logs. SEOConsole’s prompt tracking is basic (four assistants through your own keys or DataForSEO) and it has no crawler logs.',
 			'Content writing and refresh, and country-level tracking.',
 			'A hosted, supported product that does one thing deeply.'
 		],
 		rows: [
-			{ group: 'AI visibility', feature: 'Track prompts across AI models', ours: p('Basic: up to 50 prompts per site, asked of Claude, ChatGPT and Perplexity through their APIs with web search, with your own API keys and a daily cap; API answers, not the consumer apps.'), theirs: y('50, 150 or 350 prompts depending on the plan.') },
+			{ group: 'AI visibility', feature: 'Track prompts across AI models', ours: p('Basic: up to 50 prompts per site, asked of ChatGPT, Gemini, Claude and Perplexity with web search, through your own API keys or DataForSEO (which reads ChatGPT and Gemini as seen in their apps), with a daily cap.'), theirs: y('50, 150 or 350 prompts depending on the plan.') },
 			{ group: 'AI visibility', feature: 'Citation and source analysis', ours: p('Which domains each answer cites, whether yours is among them and at what rank, and the most-cited domains; no content-type analysis.'), theirs: y('Which sources and content types get cited.') },
 			{ group: 'AI visibility', feature: 'Competitor share of voice', ours: p('Mention and citation share against up to 10 competitor domains you list, on the same answers.'), theirs: y() },
 			{ group: 'AI visibility', feature: 'AI crawler logs', ours: n('Not built.'), theirs: y('It describes a Cloudflare integration for them.') },
@@ -256,7 +256,7 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Access', feature: 'MCP server for AI agents', ours: y('Reads by default; acting needs a level you grant.'), theirs: y('On all plans; a REST API is not out yet (its own words).') },
 			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('Hosted, with exports to Sheets, CSV and PDF.') },
 			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted.') },
-			{ group: 'More', feature: 'AI visibility tracking', ours: p('Basic prompt tracking: mentions, citations and share of voice in Claude, ChatGPT and Perplexity answers, with your own API keys.'), theirs: y() },
+			{ group: 'More', feature: 'AI visibility tracking', ours: p('Basic prompt tracking: mentions, citations and share of voice in ChatGPT, Gemini, Claude and Perplexity answers, through your own API keys or DataForSEO.'), theirs: y() },
 				{ group: 'More', feature: 'In-app AI assistant and AI content writing', ours: n('Not built.'), theirs: y('Token and content allowances by plan.') },
 			{ group: 'Price and maturity', feature: 'Price', ours: y('Free to self-host.'), theirs: p('From $129.99 a month for 10 websites.') },
 			MATURITY(y('Established; it says it is trusted by over 5,000 users (its own claim).'))

@@ -10,7 +10,7 @@ import { env, config } from './config';
 import { getSite, type SiteRow } from './clients';
 import { brandTerms } from './queries';
 import { hostKey } from './hosts';
-import { askEngine, demoAnswer, enabledEngines, EngineError, type EngineResult } from './aiengines';
+import { askEngine, demoAnswer, enabledEngines, EngineError, routeFor, type EngineResult } from './aiengines';
 import { analyzeAnswer, normalizeDomain, summarizeRuns, AI_ENGINES, type AiEngine, type AnswerVerdict } from '../aivis';
 
 export const MAX_PROMPTS = 50;
@@ -73,17 +73,17 @@ export async function runPrompt(promptId: number, engine: AiEngine, o: { fetchIm
 	if (!site) return { ok: false, error: 'Unknown site.' };
 	const competitors = listCompetitors(site.id);
 	const now = o.now ?? Date.now();
-	const ins = db().prepare('INSERT INTO ai_runs (prompt_id, site_id, engine, model, ran_at, status, error, answer, citations, sources, verdict, searches) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+	const ins = db().prepare('INSERT INTO ai_runs (prompt_id, site_id, engine, model, ran_at, status, error, answer, citations, sources, verdict, searches, via, cost) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
 	try {
 		const done = (db().prepare('SELECT COUNT(*) n FROM ai_runs WHERE prompt_id = ? AND engine = ?').get(p.id, engine) as { n: number }).n;
 		const ask = o.ask ?? (config.demo ? async (e: AiEngine, q: string) => demoAnswer(q, e, site.site_url, competitors, done) : (e: AiEngine, q: string) => askEngine(e, q, { fetchImpl: o.fetchImpl }));
 		const r = await ask(engine, p.prompt);
 		const verdict = analyzeAnswer(r, { domain: hostKey(site.site_url), brandTerms: brandTerms(site), competitors });
-		ins.run(p.id, site.id, engine, r.model, now, 'ok', null, r.text.slice(0, 20_000), JSON.stringify(r.citations.slice(0, 100)), JSON.stringify(r.sources.slice(0, 200)), JSON.stringify(verdict), r.searches);
+		ins.run(p.id, site.id, engine, r.model, now, 'ok', null, r.text.slice(0, 20_000), JSON.stringify(r.citations.slice(0, 100)), JSON.stringify(r.sources.slice(0, 200)), JSON.stringify(verdict), r.searches, r.via ?? routeFor(engine), r.cost ?? null);
 		return { ok: true };
 	} catch (e) {
 		const msg = e instanceof EngineError ? e.message : e instanceof Error ? `Unexpected error: ${e.message}` : 'Unexpected error.';
-		ins.run(p.id, site.id, engine, null, now, 'error', msg.slice(0, 500), null, null, null, null, 0);
+		ins.run(p.id, site.id, engine, null, now, 'error', msg.slice(0, 500), null, null, null, null, 0, routeFor(engine), null);
 		return { ok: false, error: msg };
 	}
 }
@@ -119,17 +119,17 @@ export async function runDue(o: { siteId?: number; force?: boolean; fetchImpl?: 
 
 export const aiVisDue = () => !!dueRuns().length && budgetLeft() > 0;
 
-type RunRow = { id: number; prompt_id: number; engine: AiEngine; model: string | null; ran_at: number; status: string; error: string | null; answer: string | null; citations: string | null; verdict: string | null; searches: number };
+type RunRow = { id: number; prompt_id: number; engine: AiEngine; model: string | null; ran_at: number; status: string; error: string | null; answer: string | null; citations: string | null; verdict: string | null; searches: number; via: string | null; cost: number | null };
 
 /** Everything the AI visibility tab shows: the latest answer per prompt and assistant, the rates over the window, and the cited domains. */
 export function aiVisReport(site: SiteRow, days = 30, now = Date.now()) {
 	const prompts = listPrompts(site.id);
 	const competitors = listCompetitors(site.id);
-	const rows = db().prepare('SELECT id, prompt_id, engine, model, ran_at, status, error, answer, citations, verdict, searches FROM ai_runs WHERE site_id = ? AND ran_at >= ? ORDER BY ran_at DESC, id DESC').all(site.id, now - days * DAY) as RunRow[];
+	const rows = db().prepare('SELECT id, prompt_id, engine, model, ran_at, status, error, answer, citations, verdict, searches, via, cost FROM ai_runs WHERE site_id = ? AND ran_at >= ? ORDER BY ran_at DESC, id DESC').all(site.id, now - days * DAY) as RunRow[];
 	const ok = rows.filter((r) => r.status === 'ok' && r.verdict);
 	const lite = ok.map((r) => ({ engine: r.engine, promptId: r.prompt_id, verdict: JSON.parse(r.verdict!) as AnswerVerdict }));
 	const latest = new Map<string, RunRow>();
-	for (const r of db().prepare('SELECT id, prompt_id, engine, model, ran_at, status, error, answer, citations, verdict, searches FROM ai_runs WHERE site_id = ? ORDER BY ran_at DESC, id DESC').all(site.id) as RunRow[]) {
+	for (const r of db().prepare('SELECT id, prompt_id, engine, model, ran_at, status, error, answer, citations, verdict, searches, via, cost FROM ai_runs WHERE site_id = ? ORDER BY ran_at DESC, id DESC').all(site.id) as RunRow[]) {
 		const k = `${r.prompt_id}|${r.engine}`;
 		if (!latest.has(k)) latest.set(k, r);
 	}
@@ -143,12 +143,15 @@ export function aiVisReport(site: SiteRow, days = 30, now = Date.now()) {
 		limits: { runsPerDay: runsPerDay(), runsToday: runsToday(now), everyDays: everyDays(), maxPrompts: MAX_PROMPTS },
 		summary: summarizeRuns(lite, { domain: hostKey(site.site_url), competitors }),
 		errors: rows.filter((r) => r.status === 'error').length,
+		/** USD reported by providers that report it (DataForSEO) over the window; direct API keys report no cost */
+		reportedCost: rows.reduce((a, r) => a + (r.cost ?? 0), 0),
+		routes: Object.fromEntries(AI_ENGINES.map((e) => [e, routeFor(e)])) as Record<AiEngine, ReturnType<typeof routeFor>>,
 		prompts: prompts.map((p) => ({
 			...p,
 			answers: AI_ENGINES.filter((e) => engines.includes(e) || latest.has(`${p.id}|${e}`)).map((e) => {
 				const r = latest.get(`${p.id}|${e}`);
 				if (!r) return { engine: e, ran: false as const };
-				return { engine: e, ran: true as const, at: r.ran_at, ok: r.status === 'ok', error: r.error, model: r.model, answer: r.answer, verdict: r.verdict ? (JSON.parse(r.verdict) as AnswerVerdict) : null, citations: r.citations ? (JSON.parse(r.citations) as { url: string; title?: string | null }[]) : [] };
+				return { engine: e, ran: true as const, at: r.ran_at, ok: r.status === 'ok', error: r.error, model: r.model, via: r.via, cost: r.cost, answer: r.answer, verdict: r.verdict ? (JSON.parse(r.verdict) as AnswerVerdict) : null, citations: r.citations ? (JSON.parse(r.citations) as { url: string; title?: string | null }[]) : [] };
 			})
 		}))
 	};

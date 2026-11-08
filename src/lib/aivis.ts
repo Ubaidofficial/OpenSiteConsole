@@ -9,9 +9,9 @@
  * over several runs is the signal, never a single answer.
  */
 
-export const AI_ENGINES = ['claude', 'chatgpt', 'perplexity'] as const;
+export const AI_ENGINES = ['claude', 'chatgpt', 'gemini', 'perplexity'] as const;
 export type AiEngine = (typeof AI_ENGINES)[number];
-export const ENGINE_LABEL: Record<AiEngine, string> = { claude: 'Claude', chatgpt: 'ChatGPT', perplexity: 'Perplexity' };
+export const ENGINE_LABEL: Record<AiEngine, string> = { claude: 'Claude', chatgpt: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity' };
 
 export interface AiAnswer {
 	text: string;

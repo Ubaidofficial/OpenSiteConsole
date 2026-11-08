@@ -554,7 +554,9 @@ CREATE TABLE IF NOT EXISTS ai_runs (                -- one answer from one assis
 	citations TEXT,                      -- JSON {url,title}[]
 	sources TEXT,                        -- JSON {url,title}[]
 	verdict TEXT,                        -- JSON AnswerVerdict (from src/lib/aivis.ts), as judged when it ran
-	searches INTEGER NOT NULL DEFAULT 0
+	searches INTEGER NOT NULL DEFAULT 0,
+	via TEXT,                            -- direct | dataforseo-scraper | dataforseo-responses | demo
+	cost REAL                            -- USD, when the provider reports it (DataForSEO does)
 );
 CREATE INDEX IF NOT EXISTS ai_runs_site ON ai_runs (site_id, ran_at);
 CREATE INDEX IF NOT EXISTS ai_runs_prompt ON ai_runs (prompt_id, engine, ran_at);
@@ -641,6 +643,8 @@ function migrate(db: Database.Database) {
 	if (!cols('api_keys').includes('can_write')) db.exec('ALTER TABLE api_keys ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('oauth_codes').includes('can_write')) db.exec('ALTER TABLE oauth_codes ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
+	if (!cols('ai_runs').includes('via')) db.exec('ALTER TABLE ai_runs ADD COLUMN via TEXT');
+	if (!cols('ai_runs').includes('cost')) db.exec('ALTER TABLE ai_runs ADD COLUMN cost REAL');
 	// Which team member a session belongs to (NULL = the owner). Earlier sessions were all the owner's, so they stay valid.
 	if (!cols('sessions').includes('user_id')) db.exec('ALTER TABLE sessions ADD COLUMN user_id INTEGER');
 	db.exec('CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id)');

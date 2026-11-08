@@ -297,7 +297,7 @@ const writeTools: Tool[] = [
 
 readTools.push({
 	name: 'get_ai_visibility',
-	description: 'AI answers per assistant (Claude, ChatGPT, Perplexity), from stored runs: mention and citation rates, share of voice vs competitors, most-cited domains, latest verdict per prompt.',
+	description: 'AI answers per assistant (Claude, ChatGPT, Gemini, Perplexity), from stored runs: mention and citation rates, share of voice vs competitors, most-cited domains, latest verdict per prompt.',
 	schema: { ...siteArg, include_answers: { type: 'boolean', description: 'Include answer texts' } },
 	run: (a, sites) => {
 		const site = resolveSite(sites, a.site);

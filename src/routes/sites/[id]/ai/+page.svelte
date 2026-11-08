@@ -8,6 +8,7 @@
 	let { data, form } = $props();
 	const r = $derived(data.report);
 	const pct = (x: number) => `${Math.round(x * 100)}%`;
+	const usd = (x: number, digits: number) => '$' + x.toFixed(digits);
 	$effect(() => {
 		if (!data.running) return;
 		const t = setInterval(() => invalidateAll(), 4000);
@@ -23,21 +24,24 @@
 	{/if}
 </div>
 <Explainer lead="Ask AI assistants the questions your customers ask, and see whether they mention or cite you.">
-	<p>Each prompt is put to every assistant with an API key, with web search on, every {r.limits.everyDays} days. The answer is checked for your brand or domain (a <b>mention</b>), for links to your pages among its sources (a <b>citation</b>, and its rank among the cited sites), and for the competitors you list. Answers vary from run to run and person to person, so read the rates over several runs, not a single answer. These are API answers: the consumer apps add personal context, so they are a consistent sample, not a copy of what each person sees.</p>
-	<p>Every run is billed to your own API accounts (tokens, plus each provider's search fee where it has one), so runs are capped at {r.limits.runsPerDay} a day across all sites (<code>AI_VIS_RUNS_PER_DAY</code>); today {r.limits.runsToday} have run.</p>
+	<p>Each prompt is put to every assistant you have set up (your own API keys, or DataForSEO), with web search on, every {r.limits.everyDays} days. The answer is checked for your brand or domain (a <b>mention</b>), for links to your pages among its sources (a <b>citation</b>, and its rank among the cited sites), and for the competitors you list. Answers vary from run to run and person to person, so read the rates over several runs, not a single answer. These are API answers: the consumer apps add personal context, so they are a consistent sample, not a copy of what each person sees.</p>
+	<p>With <b>DataForSEO</b> (<code>DATAFORSEO_LOGIN</code>, <code>DATAFORSEO_PASSWORD</code>), ChatGPT and Gemini are asked in their real apps for the location you set, which is closer to what people see; Claude and Perplexity go through DataForSEO only when you have no key of your own for them (<code>AI_VIS_SOURCE</code> changes that).</p>
+	<p>Every run is billed to your own accounts (tokens, plus each provider's search fee where it has one; DataForSEO per task), so runs are capped at {r.limits.runsPerDay} a day across all sites (<code>AI_VIS_RUNS_PER_DAY</code>); today {r.limits.runsToday} have run.</p>
 </Explainer>
 {#if form?.ok}<p class="mb-3 text-sm text-good">{form.ok}</p>{/if}{#if form?.error}<p class="mb-3 text-sm text-bad">{form.error}</p>{/if}
 
-{#if !r.engines.length}
+{#if !r.engines.length || !data.dataForSeo.set}
 	<section class="card mb-4 p-4 text-sm">
-		<h2 class="mb-1 font-medium">Connect at least one assistant</h2>
-		<p class="mb-2 text-xs text-muted-foreground">Add an API key to <code>.env</code> and restart. Nothing is asked until one is set.</p>
-		<ul class="space-y-1 text-xs">{#each data.setup as s (s.engine)}<li><b>{ENGINE_LABEL[s.engine]}</b>: <code>{s.keyEnv}</code> · model <code>{s.model}</code></li>{/each}</ul>
+		<h2 class="mb-1 font-medium">{r.engines.length ? 'How each assistant is asked' : 'Connect at least one assistant'}</h2>
+		<p class="mb-2 text-xs text-muted-foreground">Set a key in <code>.env</code> and restart: an assistant's own API key, or one DataForSEO login for all four (ChatGPT and Gemini as seen in their apps). Nothing is asked until one is set.</p>
+		<ul class="space-y-1 text-xs">{#each data.setup as s (s.engine)}<li><b>{ENGINE_LABEL[s.engine]}</b>: {#if s.route}<span class="text-good">{s.routeLabel}</span>{s.model ? ` · model ${s.model}` : ''}{:else}<span class="text-muted-foreground">not set up</span> ({s.keyEnv ? `${s.keyEnv} or ` : ''}DataForSEO){/if}</li>{/each}</ul>
 	</section>
+{:else}
+	<p class="mb-3 text-xs text-muted-foreground">{#each data.setup.filter((x) => x.route) as s, i (s.engine)}{i ? ' · ' : ''}<b>{ENGINE_LABEL[s.engine]}</b>: {s.routeLabel}{/each} · DataForSEO location {data.dataForSeo.location.location_code}, language {data.dataForSeo.location.language_code}{#if r.reportedCost > 0} · DataForSEO cost, last {r.days} days: {usd(r.reportedCost, 2)}{/if}</p>
 {/if}
 
 {#if r.summary.runs}
-	<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+	<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
 		{#each r.summary.byEngine as e (e.engine)}
 			<div class="card p-3 text-sm">
 				<div class="text-xs text-muted-foreground">{ENGINE_LABEL[e.engine]} · {e.runs} answer{e.runs === 1 ? '' : 's'}, last {r.days} days</div>
@@ -69,7 +73,7 @@
 				<span class="pii min-w-0 flex-1 font-medium">{p.prompt}</span>
 				<form method="POST" action="?/deletePrompt" use:enhance><input type="hidden" name="id" value={p.id} /><button class="btn !h-7 !px-2" title="Remove this prompt and its answers" aria-label="Remove prompt"><Trash2 class="size-3.5" /></button></form>
 			</div>
-			<div class="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+			<div class="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
 				{#each p.answers as a (a.engine)}
 					<div class="rounded border p-2 text-xs" style="border-color:var(--border)">
 						<div class="mb-1 flex flex-wrap items-center gap-1.5"><b>{ENGINE_LABEL[a.engine]}</b>
@@ -81,7 +85,7 @@
 							{/if}
 						</div>
 						{#if a.ran}
-							<div class="text-muted-foreground">{ago(a.at)}{a.model ? ` · ${a.model}` : ''}</div>
+							<div class="text-muted-foreground">{ago(a.at)}{a.model ? ` · ${a.model}` : ''}{a.via === 'dataforseo-scraper' ? ' · in the app, via DataForSEO' : a.via === 'dataforseo-responses' ? ' · via DataForSEO' : ''}{a.cost != null ? ` · ${usd(a.cost, 4)}` : ''}</div>
 							{#if !a.ok}<div class="mt-1 text-bad">{a.error}</div>{/if}
 							{#if a.ok && a.verdict && (a.verdict.competitorsMentioned.length || a.verdict.competitorsCited.length)}<div class="pii mt-1">Competitors: {[...new Set([...a.verdict.competitorsMentioned, ...a.verdict.competitorsCited])].join(', ')}</div>{/if}
 							{#if a.ok && a.answer}

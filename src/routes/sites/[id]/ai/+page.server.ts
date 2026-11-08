@@ -4,7 +4,7 @@ import { getSite } from '$lib/server/clients';
 import { config } from '$lib/server/config';
 import { audit } from '$lib/server/db';
 import { addPrompts, aiVisReport, budgetLeft, deletePrompt, setCompetitors } from '$lib/server/aivis';
-import { KEY_ENV_NAMES, engineModel } from '$lib/server/aiengines';
+import { KEY_ENV_NAMES, ROUTE_LABEL, dataForSeo, dfsLocation, dfsModel, engineModel, routeFor } from '$lib/server/aiengines';
 import { aiVisRunning, enqueueAiVis } from '$lib/server/jobs';
 import { AI_ENGINES } from '$lib/aivis';
 
@@ -13,7 +13,12 @@ export const load: PageServerLoad = async ({ params }) => {
 	return {
 		report: aiVisReport(site),
 		running: aiVisRunning(site.id),
-		setup: AI_ENGINES.map((e) => ({ engine: e, keyEnv: KEY_ENV_NAMES[e], model: engineModel(e) }))
+		setup: AI_ENGINES.map((e) => {
+			const route = routeFor(e);
+			const model = route === 'dataforseo-responses' ? dfsModel(e as 'claude' | 'perplexity') : route === 'direct' ? engineModel(e) : null;
+			return { engine: e, keyEnv: KEY_ENV_NAMES[e], route, routeLabel: route ? ROUTE_LABEL[route] : null, model };
+		}),
+		dataForSeo: { set: !!dataForSeo(), location: dfsLocation() }
 	};
 };
 

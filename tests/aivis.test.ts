@@ -3,7 +3,7 @@ import { db, openDb } from '../src/lib/server/db';
 import { ensureDemoAccounts } from '../src/lib/server/accounts';
 import { getSite } from '../src/lib/server/clients';
 import { analyzeAnswer, brandWords, mentions, normalizeDomain, summarizeRuns, type AiEngine } from '../src/lib/aivis';
-import { askChatGpt, askClaude, askPerplexity, demoAnswer, EngineError, type EngineResult } from '../src/lib/server/aiengines';
+import { askChatGpt, askClaude, askDataForSeoResponses, askDataForSeoScraper, askEngine, askPerplexity, cleanUrl, demoAnswer, enabledEngines, EngineError, routeFor, type EngineResult } from '../src/lib/server/aiengines';
 import { addPrompts, aiVisReport, budgetLeft, deletePrompt, dueRuns, listPrompts, runDue, runPrompt, setCompetitors } from '../src/lib/server/aivis';
 
 describe('judging one answer', () => {
@@ -151,10 +151,10 @@ describe('prompts, the daily cap and the schedule', () => {
 	it('runs each prompt on each assistant, judges and stores the answer, and is not due again until the interval passes', async () => {
 		const calls: string[] = [];
 		const r = await runDue({ ask: fakeAsk(calls) });
-		expect(r.ran).toBe(6); // 2 prompts x 3 assistants (all three in demo mode)
-		expect(new Set(calls).size).toBe(6);
+		expect(r.ran).toBe(8); // 2 prompts x 4 assistants (all four in demo mode)
+		expect(new Set(calls).size).toBe(8);
 		expect(dueRuns()).toEqual([]);
-		expect(dueRuns({ now: Date.now() + 8 * 86_400_000 })).toHaveLength(6);
+		expect(dueRuns({ now: Date.now() + 8 * 86_400_000 })).toHaveLength(8);
 		const rep = aiVisReport(getSite(1)!);
 		expect(rep.summary.byEngine.every((e) => e.mentionRate === 1 && e.citationRate === 1 && e.avgPosition === 2)).toBe(true);
 		expect(rep.summary.voice.find((v) => v.domain === 'acme.com')).toMatchObject({ mentionShare: 1, citationShare: 1 });
@@ -166,9 +166,18 @@ describe('prompts, the daily cap and the schedule', () => {
 		const a = aiVisReport(getSite(1)!).prompts[0].answers.find((x) => x.engine === 'chatgpt')!;
 		expect(a.ran && !a.ok && a.error).toBe('OpenAI rejected the API key.');
 	});
+	it('each answer records how it was obtained and what DataForSEO charged', async () => {
+		const id = listPrompts(1)[0].id;
+		await runPrompt(id, 'gemini', { ask: async () => ({ text: 'Greenleaf.', citations: [], sources: [], model: 'Fast', searches: 0, via: 'dataforseo-scraper', cost: 0.0042 }) });
+		const a = aiVisReport(getSite(1)!).prompts[0].answers.find((x) => x.engine === 'gemini')!;
+		expect(a.ran && a.via).toBe('dataforseo-scraper');
+		expect(a.ran && a.cost).toBe(0.0042);
+		expect(aiVisReport(getSite(1)!).reportedCost).toBeCloseTo(0.0042, 6);
+	});
+
 	it('never runs past the daily cap', async () => {
-		process.env.AI_VIS_RUNS_PER_DAY = '9';
-		expect(budgetLeft()).toBe(2); // 7 runs so far today
+		process.env.AI_VIS_RUNS_PER_DAY = '12';
+		expect(budgetLeft()).toBe(2); // 10 runs so far today
 		const calls: string[] = [];
 		const r = await runDue({ force: true, now: Date.now() + 2 * 3600_000, ask: fakeAsk(calls) } as never);
 		expect(r.ran).toBe(2);
@@ -186,5 +195,109 @@ describe('prompts, the daily cap and the schedule', () => {
 		expect(deletePrompt(1, id)).toBe(true);
 		expect((db().prepare('SELECT COUNT(*) n FROM ai_runs WHERE prompt_id = ?').get(id) as { n: number }).n).toBe(0);
 		expect(deletePrompt(2, listPrompts(1)[0].id)).toBe(false); // another site's prompt id
+	});
+});
+
+// ── DataForSEO, against fakes shaped like its documented responses ──
+describe('DataForSEO as the alternative route', () => {
+	const env1 = () => {
+		process.env = { ...env0 };
+		delete process.env.DEMO_MODE;
+		for (const k of ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'PERPLEXITY_API_KEY', 'DATAFORSEO_LOGIN', 'DATAFORSEO_PASSWORD', 'AI_VIS_SOURCE']) delete process.env[k];
+	};
+	const ok = (result: unknown, cost = 0.004) => json({ version: '0.1', status_code: 20000, status_message: 'Ok.', tasks_count: 1, tasks_error: 0, tasks: [{ id: 't1', status_code: 20000, status_message: 'Ok.', cost, result_count: 1, result: [result] }] });
+
+	it('routes: DataForSEO scrapes ChatGPT and Gemini; Claude and Perplexity keep their own key; AI_VIS_SOURCE overrides', () => {
+		env1();
+		expect(enabledEngines()).toEqual([]);
+		process.env.ANTHROPIC_API_KEY = 'k';
+		process.env.OPENAI_API_KEY = 'k';
+		expect([routeFor('claude'), routeFor('chatgpt'), routeFor('gemini'), routeFor('perplexity')]).toEqual(['direct', 'direct', null, null]);
+		process.env.DATAFORSEO_LOGIN = 'me@example.com';
+		process.env.DATAFORSEO_PASSWORD = 'pw';
+		expect([routeFor('claude'), routeFor('chatgpt'), routeFor('gemini'), routeFor('perplexity')]).toEqual(['direct', 'dataforseo-scraper', 'dataforseo-scraper', 'dataforseo-responses']);
+		expect(enabledEngines()).toEqual(['claude', 'chatgpt', 'gemini', 'perplexity']);
+		process.env.AI_VIS_SOURCE = 'dataforseo';
+		expect(routeFor('claude')).toBe('dataforseo-responses');
+		process.env.AI_VIS_SOURCE = 'direct';
+		expect([routeFor('claude'), routeFor('chatgpt'), routeFor('gemini'), routeFor('perplexity')]).toEqual(['direct', 'direct', null, null]);
+		process.env.DATAFORSEO_PASSWORD = '';
+		process.env.AI_VIS_SOURCE = 'auto';
+		expect(routeFor('gemini')).toBeNull(); // a login without a password is not set up
+	});
+
+	it('the ChatGPT scraper: Basic auth, one task in an array, location; cited sources and every search result; tracking parameters dropped', async () => {
+		env1();
+		process.env.DATAFORSEO_LOGIN = 'me@example.com';
+		process.env.DATAFORSEO_PASSWORD = 'pw';
+		const seen: Seen[] = [];
+		const r = await askEngine('chatgpt', 'best garden tools?', { fetchImpl: fakeFetch([ok({ keyword: 'best garden tools?', model: 'gpt-4o', markdown: 'Greenleaf is popular.', sources: [{ type: 'chat_gpt_source', title: 'GL', domain: 'greenleaf.example', url: 'https://greenleaf.example/tools?utm_source=chatgpt.com' }], search_results: [{ type: 'chatgpt_search_result', url: 'https://reviews.example/a', domain: 'reviews.example', title: 'R' }], brand_entities: [] })], seen) });
+		expect(seen[0].url).toBe('https://api.dataforseo.com/v3/ai_optimization/chat_gpt/llm_scraper/live/advanced');
+		expect(seen[0].headers.get('authorization')).toBe('Basic ' + Buffer.from('me@example.com:pw').toString('base64'));
+		expect(seen[0].body).toEqual([{ keyword: 'best garden tools?', location_code: 2840, language_code: 'en' }]);
+		expect(r).toMatchObject({ text: 'Greenleaf is popular.', model: 'gpt-4o', via: 'dataforseo-scraper', cost: 0.004 });
+		expect(r.citations).toEqual([{ url: 'https://greenleaf.example/tools', title: 'GL' }]);
+		expect(r.sources.map((x) => x.url)).toEqual(['https://reviews.example/a', 'https://greenleaf.example/tools']);
+	});
+
+	it('the Gemini scraper, with the location from the settings', async () => {
+		env1();
+		process.env.DATAFORSEO_LOGIN = 'a';
+		process.env.DATAFORSEO_PASSWORD = 'b';
+		process.env.AI_VIS_LOCATION_CODE = '2826';
+		process.env.AI_VIS_LANGUAGE_CODE = 'en';
+		const seen: Seen[] = [];
+		const r = await askDataForSeoScraper('gemini', 'q', { fetchImpl: fakeFetch([ok({ model: 'Fast', markdown: 'Try Acme.', sources: [{ type: 'gemini_source', title: 'Acme', domain: 'acme.com', url: 'https://acme.com/x' }] })], seen) });
+		expect(seen[0].url).toBe('https://api.dataforseo.com/v3/ai_optimization/gemini/llm_scraper/live/advanced');
+		expect(seen[0].body).toEqual([{ keyword: 'q', location_code: 2826, language_code: 'en' }]);
+		expect(r.citations).toEqual([{ url: 'https://acme.com/x', title: 'Acme' }]);
+		expect(r.searches).toBe(0); // Gemini reports no search results list
+	});
+
+	it('LLM Responses for Claude (web search on) and Perplexity: text and annotations from message sections', async () => {
+		env1();
+		process.env.DATAFORSEO_LOGIN = 'a';
+		process.env.DATAFORSEO_PASSWORD = 'b';
+		const result = (model: string) => ({ model_name: model, web_search: true, money_spent: 0.5, items: [{ type: 'reasoning' }, { type: 'message', sections: [{ type: 'text', text: 'Greenleaf ', annotations: [{ title: 'GL', url: 'https://greenleaf.example/a', start_index: null, end_index: null, text: null }] }, { type: 'text', text: 'and Acme.', annotations: null }] }], search_results: [{ title: 'R', url: 'https://reviews.example/r', date: null, snippet: '' }] });
+		const seen: Seen[] = [];
+		const c = await askDataForSeoResponses('claude', 'q', { fetchImpl: fakeFetch([ok(result('claude-opus-5'), 0.55)], seen) });
+		expect(seen[0].url).toBe('https://api.dataforseo.com/v3/ai_optimization/claude/llm_responses/live');
+		expect(seen[0].body).toEqual([{ user_prompt: 'q', model_name: 'claude-opus-5', web_search_country_iso_code: 'US', web_search: true }]);
+		expect(c).toMatchObject({ text: 'Greenleaf and Acme.', model: 'claude-opus-5', via: 'dataforseo-responses', cost: 0.55, searches: 1 });
+		expect(c.citations).toEqual([{ url: 'https://greenleaf.example/a', title: 'GL' }]);
+		expect(c.sources.map((x) => x.url)).toEqual(['https://reviews.example/r', 'https://greenleaf.example/a']);
+		const p = await askDataForSeoResponses('perplexity', 'q', { fetchImpl: fakeFetch([ok(result('sonar'))], seen) });
+		expect(seen[1].url).toBe('https://api.dataforseo.com/v3/ai_optimization/perplexity/llm_responses/live');
+		expect(seen[1].body).toEqual([{ user_prompt: 'q', model_name: 'sonar', web_search_country_iso_code: 'US' }]); // no web_search field: Sonar searches by itself
+		expect(p.text).toBe('Greenleaf and Acme.');
+		await expect(askDataForSeoResponses('claude', 'x'.repeat(501), { fetchImpl: fakeFetch([], []) })).rejects.toThrow(/500 characters/);
+	});
+
+	it('errors: bad login, a task-level error inside HTTP 200, no credentials', async () => {
+		env1();
+		await expect(askDataForSeoScraper('chatgpt', 'q', { fetchImpl: fakeFetch([], []) })).rejects.toThrow(/not set/);
+		process.env.DATAFORSEO_LOGIN = 'a';
+		process.env.DATAFORSEO_PASSWORD = 'b';
+		await expect(askDataForSeoScraper('chatgpt', 'q', { fetchImpl: fakeFetch([json({ status_code: 40100, status_message: 'You are not authorized.' }, 401)], []) })).rejects.toThrow(/rejected the login/);
+		await expect(askDataForSeoScraper('chatgpt', 'q', { fetchImpl: fakeFetch([json({ status_code: 20000, status_message: 'Ok.', tasks: [{ status_code: 40501, status_message: 'Invalid Field: keyword.', result: null }] })], []) })).rejects.toThrow(/Invalid Field: keyword\. \(40501\)/);
+		await expect(askDataForSeoScraper('chatgpt', 'q', { fetchImpl: fakeFetch([json({ status_code: 40200, status_message: 'Payment Required.' }, 402)], []) })).rejects.toThrow(/HTTP 402: Payment Required/);
+		expect(cleanUrl('https://x.com/a?utm_source=chatgpt.com&id=3')).toBe('https://x.com/a?id=3');
+	});
+});
+
+describe('an AI answers table from before DataForSEO', () => {
+	it('gains the route and cost columns when the database is opened', () => {
+		const Database = require('better-sqlite3');
+		const { mkdtempSync } = require('node:fs');
+		const { join } = require('node:path');
+		const { tmpdir } = require('node:os');
+		const file = join(mkdtempSync(join(tmpdir(), 'aivis-')), 'old.db');
+		const old = new Database(file);
+		old.exec('CREATE TABLE ai_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, prompt_id INTEGER NOT NULL, site_id INTEGER NOT NULL, engine TEXT NOT NULL, model TEXT, ran_at INTEGER NOT NULL, status TEXT NOT NULL, error TEXT, answer TEXT, citations TEXT, sources TEXT, verdict TEXT, searches INTEGER NOT NULL DEFAULT 0)');
+		old.close();
+		const d = openDb(file);
+		const cols = (d.prepare('PRAGMA table_info(ai_runs)').all() as { name: string }[]).map((c) => c.name);
+		expect(cols).toEqual(expect.arrayContaining(['via', 'cost']));
+		d.close();
 	});
 });
