@@ -1,4 +1,5 @@
 import { runClarityScan } from './clarityscan';
+import { CLARITY_REFRESH_MS } from './clarity';
 import { db } from './db';
 import { config } from './config';
 import { pacificToday } from './dates';
@@ -142,7 +143,7 @@ export function enqueueLinkCrawl(siteId: number): boolean {
 }
 
 const SIX_HOURS = 6 * 3600_000;
-const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, gtm: 12 * 3600_000, clarity: 22 * 3600_000 };
+const REFRESH_MS: Record<string, number> = { bing: 12 * 3600_000, ga4: SIX_HOURS, gtm: 12 * 3600_000, clarity: CLARITY_REFRESH_MS };
 
 /** Whether the indexing monitor should run for a site now: switched on, not yet done today, and not in a back-off after a failure. */
 export const monitorDue = (row: { m: number; c: string | null; n: number | null }, today: string, now = Date.now()) => !!row.m && row.c !== today && (!row.n || row.n <= now);

@@ -123,6 +123,38 @@ describe('Clarity', () => {
 		expect(callsLeft(id)).toBe(9);
 	});
 
+	it('refreshes every 8.5 hours within the daily limit: 9 calls a day, one always kept for the user, never more than 10', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-11-09T00:30:00Z'));
+			await ensureDemoAccounts();
+			await connectClarity(1, 'demo'); // 1 call: the connect test, stored as the first totals snapshot
+			const integ = linksFor(1).clarity!.integration_id!;
+			await syncClarity(1); // fills URL and Device: 2 calls (totals is fresh)
+			expect(10 - callsLeft(integ)).toBe(3);
+			await syncClarity(1); // an hour later nothing is stale: no call
+			expect(10 - callsLeft(integ)).toBe(3);
+			vi.setSystemTime(new Date('2026-11-09T08:00:00Z')); // 7.5 hours on: still fresh, no call
+			await syncClarity(1);
+			expect(10 - callsLeft(integ)).toBe(3);
+			for (const hour of ['09:00', '17:30', '23:59']) {
+				vi.setSystemTime(new Date(`2026-11-09T${hour}:00Z`));
+				await syncClarity(1);
+			}
+			// 09:00 and 17:30 each refresh all three (to 9 used); the 23:59 run must stop to keep the last call free
+			expect(10 - callsLeft(integ)).toBe(9);
+			expect(callsLeft(integ)).toBe(1);
+			// a new UTC day starts a new allowance and a new snapshot row per dimension
+			vi.setSystemTime(new Date('2026-11-10T00:30:00Z'));
+			await syncClarity(1);
+			expect(10 - callsLeft(integ)).toBe(3);
+			const days = db().prepare('SELECT day, COUNT(*) n FROM clarity_snapshots WHERE site_id = 1 GROUP BY day ORDER BY day').all();
+			expect(days).toEqual([{ day: '2026-11-09', n: 3 }, { day: '2026-11-10', n: 3 }]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('scheduled sync spends at most 3 calls and is idempotent within a day', async () => {
 		await ensureDemoAccounts();
 		await connectClarity(1, 'demo');

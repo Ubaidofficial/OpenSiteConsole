@@ -121,7 +121,7 @@ All are optional except where noted; copy `.env.example` to `.env`. On Cloudflar
 - *API key (simplest, no registration):* sign in at bing.com/webmasters, verify your sites, **Settings → API Access → API Key → Generate API Key**. One key per Bing user, covering all their verified sites. Paste it on the **Connect** page.
 - *OAuth (one-click for your users):* in the same **API Access** section choose **OAuth Client**, register a name and the redirect URI `<ORIGIN>/auth/bing/callback`, then set `BING_CLIENT_ID` / `BING_CLIENT_SECRET`. Scope used: `webmaster.read`.
 
-**Microsoft Clarity** — per project: open the project → **Settings → Data Export → Generate new API token** (project admins only). Paste it on the **Connect** page for that site. Limits (Microsoft docs): 10 API calls per project per day, data for the last 1–3 days only, 1,000 rows, no paging — so SEOConsole stores one snapshot a day.
+**Microsoft Clarity** — per project: open the project → **Settings → Data Export → Generate new API token** (project admins only). Paste it on the **Connect** page for that site. Limits (Microsoft docs): 10 API calls per project per day, data for the last 1–3 days only, 1,000 rows, no paging — so SEOConsole refreshes the day's snapshot three times a day (every 8½ hours) (3 refreshes of 3 calls = 9 a day), always keeps one call free for a manual refresh, never goes over 10, and keeps one snapshot per day as history.
 
 ## Connecting sources (the "Connect" page)
 

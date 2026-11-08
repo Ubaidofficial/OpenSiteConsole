@@ -153,7 +153,7 @@
 <details class="card mt-4 p-4 [&[open]>summary]:mb-2" open={!complete.clarity}>
 		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/clarity.png" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />5 · Microsoft Clarity</h2><span class="ml-auto text-xs {complete.clarity ? 'text-good' : 'text-muted-foreground'}">{statusOf.clarity}</span></summary>
 	<p class="mb-3 text-xs text-muted-foreground">
-		One token per project: Clarity → <b>Settings</b> → <b>Data Export</b> → <b>Generate new API token</b>. Clarity allows <b>10 API calls per project per day</b> and shows only the last 1–3 days, so one snapshot is stored daily.
+		One token per project: Clarity → <b>Settings</b> → <b>Data Export</b> → <b>Generate new API token</b>. Clarity allows <b>10 API calls per project per day</b> and shows only the last 1–3 days, so SEOConsole refreshes the day's snapshot three times a day (every 8½ hours) (9 calls a day) and keeps one call for you.
 		The token only reads data: Clarity's <b>script</b> must also be on the site to record anything. Each site's <b>Clarity</b> tab checks the pages for it and can add it through Tag Manager.
 	</p>
 	{#if msgFor('clarity')?.ok}<p class="mb-2 text-sm text-good">{msgFor('clarity')?.ok}</p>{/if}

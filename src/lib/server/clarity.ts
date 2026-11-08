@@ -3,6 +3,15 @@ import { db } from './db';
 /** Verified against Microsoft Learn: Clarity Data Export API. */
 export const CLARITY_URL = 'https://www.clarity.ms/export-data/api/v1/project-live-insights';
 export const CLARITY_DAILY_LIMIT = 10; // per project per day
+/**
+ * How often the scheduler refreshes a project: every 8.5 hours, so ANY 24 hours (whatever clock Clarity's own day uses, which
+ * its docs do not state) holds at most 3 refreshes of 3 calls = 9, inside the limit of 10, with the 10th kept for the person
+ * (connecting, or "refresh now"). Exactly 8 hours could fit a 4th run into one 24-hour window. Each refresh replaces today's
+ * snapshot with the latest 24 hours.
+ */
+export const CLARITY_REFRESH_MS = 8.5 * 3600_000;
+/** A snapshot younger than this is not fetched again by the scheduler (a little under the refresh interval, so timing jitter never skips a run). */
+export const CLARITY_FRESH_MS = 8 * 3600_000;
 /** Calls per scheduled sync: totals, by URL, by device. Leaves headroom for manual refreshes. */
 export const CLARITY_SYNC_DIMENSIONS = ['', 'URL', 'Device'] as const;
 

@@ -618,7 +618,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_clarity_snapshot',
-		description: 'Latest stored Microsoft Clarity snapshot (last ~24h when it was taken; Clarity only exposes 1-3 days and 10 API calls/day/project, so SEOConsole stores one snapshot per day). dimension: "" (totals), URL or Device.',
+		description: 'Latest stored Microsoft Clarity snapshot (last ~24h when it was taken; Clarity only exposes 1-3 days and 10 API calls/day/project, so SEOConsole refreshes the daily snapshot three times a day (every 8½ hours) and keeps one per day). dimension: "" (totals), URL or Device.',
 		schema: { ...siteArg, dimension: { type: 'string', enum: ['', 'URL', 'Device'] } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
