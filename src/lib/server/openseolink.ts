@@ -4,9 +4,10 @@
  *
  * Everything goes through OpenSEO's MCP server with the API key saved on the Connect page. The tool names and shapes used here
  * (get_keyword_metrics, get_rank_tracker, create_rank_tracker, estimate_rank_tracker_cost, add_rank_tracking_keywords,
- * get_audit_issues) were read from OpenSEO's source code on 2026-11-08 and tested against a fake built from it, not against a live
- * instance. Keyword metrics and adding tracker keywords spend OpenSEO credits (paid to DataForSEO on a self-hosted OpenSEO); reading
- * an audit and estimating a tracker's cost are free, per OpenSEO's own tool descriptions.
+ * get_audit_issues) were read from OpenSEO's source code on 2026-11-08, tested against a fake built from it, and checked against a live
+ * self-hosted instance the same day (tool schemas, and the answers of list_projects, get_rank_tracker, estimate_rank_tracker_cost,
+ * get_audit_issues and get_keyword_metrics). Keyword metrics spend OpenSEO credits (paid to DataForSEO on a self-hosted OpenSEO);
+ * adding keywords to a tracker spends none by itself (its checks do); reading an audit and estimating a tracker's cost are free.
  */
 import { db, audit } from './db';
 import { getSite, type SiteRow } from './clients';

@@ -133,7 +133,7 @@
 		{#if form?.plan}
 			{@const p = form.plan}
 			<div class="mt-3 rounded border p-3 text-xs" style="border-color:var(--border)">
-				<p class="mb-1">{p.action === 'create' ? 'No tracker for this domain yet: a new manual tracker (mobile, top 40 results) will be created. A manual tracker has no recurring cost; positions appear when you run a check in OpenSEO.' : `Adds to the existing ${p.schedule} tracker.`} Adding keywords also makes OpenSEO fetch their volume, which uses credits.</p>
+				<p class="mb-1">{p.action === 'create' ? 'No tracker for this domain yet: a new manual tracker (mobile, top 40 results) will be created. A manual tracker has no recurring cost; positions appear when you run a check in OpenSEO.' : `Adds to the existing ${p.schedule} tracker.`} Adding keywords uses no credits; checks do{p.schedule === 'manual' || p.action === 'create' ? ', and you start those in OpenSEO' : ''}.</p>
 				{#if p.estimate}<p class="mb-1">OpenSEO's estimate: one check after adding costs at most <b>${p.estimate.costUsd.toFixed(4)}</b> ({p.estimate.costCredits} credits){#if p.estimate.scheduled}; its {p.estimate.scheduled.interval} checks cost at most <b>{p.estimate.scheduled.costCredits} credits</b> each, up to about ${p.estimate.scheduled.monthlyCostUsd.toFixed(2)} a month{/if}.</p>{/if}
 				<details class="mb-2"><summary class="cursor-pointer text-muted-foreground">{p.keywords.length} searches</summary><p class="pii mt-1">{p.keywords.join(' · ')}</p></details>
 				<form method="POST" action="?/oseoTrack" use:enhance>
