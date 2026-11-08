@@ -6,7 +6,7 @@ import { clarityPages, pathKey, type ClarityPage, type Ga4Page, type Vol } from 
 import type { ClarityMetric } from './clarity';
 import { isQuestionQuery } from '../trends';
 import {
-	bingGaps, clarityFriction, conversionLeaks, deviceGaps, engagementLeaks, hiddenGems, lostQueries, pagesNotInBing, pagesOnTheEdge, questionGaps, risingQueries,
+	bingGaps, clarityFriction, conversionLeaks, deviceGaps, engagementLeaks, hiddenGems, lostQueries, pagesNotInBing, pagesOnTheEdge, questionGaps, risingQueries, beyondPageTwo, type BeyondPageTwo,
 	type BingGap, type ConversionLeak, type DeviceGap, type EngagementLeak, type Friction, type HiddenGem, type LostQuery, type NotInBing, type PageEdge, type QuestionGap, type RisingQuery
 } from '../hidden';
 import type { QRow } from '../analytics';
@@ -31,6 +31,7 @@ export interface HiddenReport {
 	device: DeviceGap[];
 	pageEdge: PageEdge[];
 	questions: QuestionGap[];
+	beyond: BeyondPageTwo[];
 }
 
 /** Every cross-source and cross-period finding for one site in one window. Cheap enough to run on demand; actions.ts caches its use of it. */
@@ -100,6 +101,7 @@ export function hiddenReport(site: Site, days: number): HiddenReport {
 		friction: clarity.length ? clarityFriction(clarity, clicksByPath) : [],
 		device: deviceGaps(mobile, desktop, curve, terms, { minMobileImpressions: n(40, 15), minDesktopImpressions: n(20, 8) }),
 		pageEdge: pagesOnTheEdge(qp, curve, terms, { minQueryImpressions: n(10, 5), minTotalImpressions: n(100, 40) }),
-		questions: questionGaps(now, curve, terms, isQuestionQuery, { minImpressions: n(15, 6) })
+		questions: questionGaps(now, curve, terms, isQuestionQuery, { minImpressions: n(15, 6) }),
+		beyond: beyondPageTwo(now, qp, terms, { minImpressions: n(20, 8) })
 	};
 }

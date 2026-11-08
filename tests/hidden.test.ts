@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ctrAtPosition, fitCtrCurve, type QPRow, type QRow } from '../src/lib/analytics';
-import { bingGaps, clarityFriction, conversionLeaks, deviceGaps, engagementLeaks, hiddenGems, lostQueries, normQuery, pagesNotInBing, pagesOnTheEdge, questionGaps, risingQueries, siteRates } from '../src/lib/hidden';
+import { bingGaps, clarityFriction, conversionLeaks, deviceGaps, engagementLeaks, hiddenGems, lostQueries, normQuery, pagesNotInBing, pagesOnTheEdge, questionGaps, risingQueries, siteRates, beyondPageTwo } from '../src/lib/hidden';
 import { isQuestionQuery } from '../src/lib/trends';
 
 const curve = fitCtrCurve([]); // the built-in curve, so every expected number below is exact
@@ -304,5 +304,42 @@ describe('questionGaps', () => {
 	});
 	it('the lower position line (8) and the floor (15 impressions) are inclusive', () => {
 		expect(out.map((r) => r.query)).toContain('what is mulch');
+	});
+});
+
+describe('beyondPageTwo', () => {
+	const rows = [
+		q('deep topic', 0, 300, 31.4),
+		q('deeper topic', 2, 120, 64),
+		q('Deep  Topic Two', 0, 90, 22.5),
+		q('page two topic', 1, 500, 20), // exactly 20 is still page two: not listed
+		q('acme deep', 0, 400, 40), // brand
+		q('thin deep', 0, 19, 45), // under the 20-impression floor
+		q('far away', 0, 200, 101), // beyond the 100 line
+		q('floor deep', 0, 20, 21) // the floor (20) is inclusive
+	];
+	const qp: QPRow[] = [
+		{ query: 'deep topic', page: '/a', clicks: 0, impressions: 100, position: 30 },
+		{ query: 'deep topic', page: '/b', clicks: 0, impressions: 200, position: 32 },
+		{ query: 'deep topic two', page: '/c', clicks: 0, impressions: 90, position: 22.5 }
+	];
+	const out = beyondPageTwo(rows, qp, BRAND);
+
+	it('lists searches whose average position is beyond 20, most-seen first', () => {
+		expect(out.map((r) => r.query)).toEqual(['deep topic', 'deeper topic', 'Deep  Topic Two', 'floor deep']);
+	});
+	it('leaves out page two, brand, thin data and positions past 100', () => {
+		for (const bad of ['page two topic', 'acme deep', 'thin deep', 'far away']) expect(out.map((r) => r.query)).not.toContain(bad);
+	});
+	it('names the page that shows most and how many pages show, matching queries across case and spacing', () => {
+		expect(out[0]).toMatchObject({ topPage: '/b', pages: 2 });
+		expect(out.find((r) => r.query === 'Deep  Topic Two')).toMatchObject({ topPage: '/c', pages: 1 });
+		expect(out.find((r) => r.query === 'deeper topic')).toMatchObject({ topPage: null, pages: 0 });
+	});
+	it('gives no click estimate, because the click curve ends at position 20', () => {
+		for (const r of out) expect('gain' in r).toBe(false);
+	});
+	it('honours the limit', () => {
+		expect(beyondPageTwo(rows, qp, BRAND, { limit: 2 })).toHaveLength(2);
 	});
 });

@@ -63,6 +63,7 @@ function plant() {
 	steady('bing only topic', '/bingfan', 1, 150, 18);
 	steady('phone topic', '/phone', 1, 200, 14, 'MOBILE'); steady('phone topic', '/phone', 4, 80, 5, 'DESKTOP');
 	steady('gem topic', '/gem', 6, 400, 9);
+	steady('deep topic', '/deep', 0, 150, 38);
 	steady('friction topic', '/friction', 20, 300, 4);
 	steady('not in bing topic', '/gone-from-bing', 30, 300, 4);
 
@@ -303,7 +304,7 @@ describe('Claude can ask for each of them in plain language through the existing
 		const r = await tool('get_opportunities', { site: '1', type: 'hidden_overview' });
 		expect(r.isError).toBe(false);
 		expect(r.data.sources).toEqual({ previousPeriod: 'ok', bing: 'ok', ga4: 'ok', clarity: 'ok' });
-		expect(r.data.found).toEqual({ lost_queries: 1, rising_queries: 2, pages_on_the_edge: 3, question_gaps: 1, bing_gaps: 1, not_in_bing: 15 /* the planted page, the 12 filler pages and the two extra edge pages, none of which Bing lists */, hidden_gems: 1, engagement_leaks: 1, conversion_leaks: 1, friction: 1, mobile_gaps: 1 });
+		expect(r.data.found).toEqual({ lost_queries: 1, rising_queries: 2, pages_on_the_edge: 3, question_gaps: 1, beyond_page_two: 1, bing_gaps: 1, not_in_bing: 15 /* the planted page, the 12 filler pages and the two extra edge pages, none of which Bing lists */, hidden_gems: 1, engagement_leaks: 1, conversion_leaks: 1, friction: 1, mobile_gaps: 1 });
 	});
 	it('each type returns its rows with the names an assistant needs and no model jargon', async () => {
 		const t = async (type: string) => (await tool('get_opportunities', { site: '1', type })).data;
@@ -313,6 +314,7 @@ describe('Claude can ask for each of them in plain language through the existing
 		expect((await t('pages_on_the_edge')).rows).toHaveLength(3);
 		expect((await t('pages_on_the_edge')).rows[0]).toMatchObject({ searchesNearTheTop: 5, impressions: 480 });
 		expect((await t('question_gaps')).rows[0]).toMatchObject({ query: 'how to fix plant topic', impressions: 200 });
+		expect((await t('beyond_page_two')).rows).toEqual([{ query: 'deep topic', position: 38, impressions: 150, clicks: 0, topPage: origin + '/deep', pagesShowing: 1 }]);
 		expect((await t('bing_gaps')).rows[0]).toMatchObject({ query: 'bing only topic', bingPosition: 2, googlePosition: 18 });
 		expect((await t('not_in_bing')).rows.map((r: { page: string }) => new URL(r.page).pathname)).toContain('/gone-from-bing');
 		expect((await t('hidden_gems')).rows[0]).toMatchObject({ page: '/gem', organicSessions: 100, engagementRate: '80%', position: 9 });

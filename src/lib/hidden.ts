@@ -206,6 +206,35 @@ export function pagesOnTheEdge(rows: QPRow[], curve: CtrCurve, terms: string[], 
 	return out.sort((a, b) => b.gain - a.gain || a.page.localeCompare(b.page)).slice(0, limit);
 }
 
+// ── searches that show the site only beyond page two ─────────────────────────
+export interface BeyondPageTwo { query: string; position: number; impressions: number; clicks: number; topPage: string | null; pages: number }
+
+/**
+ * Searches the site shows for, but only at an average position beyond 20 (page three and further), most-seen first. These are topics
+ * the site is already connected to by Google and ranks weakly on: rework or strengthen the page that shows up, rather than start a new one.
+ * No click estimate is given: the site's click curve ends at position 20, so any figure beyond it would be invented.
+ * Position is Search Console's average, so a search can sit at 5 on some days and 60 on others and still land here.
+ */
+export function beyondPageTwo(rows: QRow[], qp: QPRow[], terms: string[], o: { minImpressions?: number; maxPos?: number; limit?: number } = {}): BeyondPageTwo[] {
+	const { minImpressions = 20, maxPos = 100, limit = 25 } = o;
+	const pagesBy = new Map<string, QPRow[]>();
+	for (const r of qp) {
+		const k = normQuery(r.query);
+		const l = pagesBy.get(k);
+		if (l) l.push(r);
+		else pagesBy.set(k, [r]);
+	}
+	return rows
+		.filter((r) => r.position > 20 && r.position <= maxPos && r.impressions >= minImpressions && !isBranded(r.query, terms))
+		.map((r) => {
+			const ps = pagesBy.get(normQuery(r.query)) ?? [];
+			const top = ps.reduce<QPRow | null>((b, p) => (!b || p.impressions > b.impressions ? p : b), null);
+			return { query: r.query, position: r.position, impressions: r.impressions, clicks: r.clicks, topPage: top?.page ?? null, pages: ps.length };
+		})
+		.sort((a, b) => b.impressions - a.impressions || a.query.localeCompare(b.query))
+		.slice(0, limit);
+}
+
 // ── questions people ask that the site answers poorly ────────────────────────
 export interface QuestionGap { query: string; position: number; impressions: number; clicks: number; gain: number }
 

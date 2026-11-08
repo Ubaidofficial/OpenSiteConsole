@@ -91,7 +91,7 @@ describe('hidden opportunities text', () => {
 		const { HIDDEN_GROUPS, HIDDEN_SOURCE_HINT } = await import('../src/lib/explain');
 		const page = readFileSync('src/routes/sites/[id]/opportunities/+page.svelte', 'utf8');
 		const ids = [...page.matchAll(/\{ id: '([a-z]+)', rows:/g)].map((m) => m[1]);
-		expect(ids.length).toBe(11);
+		expect(ids.length).toBe(12);
 		expect(HIDDEN_GROUPS.map((g) => g.id).sort()).toEqual([...ids].sort());
 		for (const g of HIDDEN_GROUPS) {
 			expect(g.title.length).toBeGreaterThan(5);

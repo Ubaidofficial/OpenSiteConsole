@@ -168,6 +168,7 @@ export const HIDDEN_GROUPS: { id: string; title: string; blurb: string }[] = [
 	{ id: 'rising', title: 'Rising searches', blurb: 'Impressions at least doubled and you rank below the top five: demand is arriving and you have not captured it.' },
 	{ id: 'edge', title: 'Pages on the edge', blurb: 'One page sitting at positions 4 to 20 for several searches at once. One good update can lift all of them. The estimate assumes they all reach position 5, so it is a ceiling.' },
 	{ id: 'questions', title: 'Questions you rank low for', blurb: 'Question-style searches where you show up below position 7. A short, direct answer on the page is the usual way in.' },
+	{ id: 'beyond', title: 'Beyond page two', blurb: 'Searches Google already links to your site, but only at an average position beyond 20. Strengthen or rework the page that shows up rather than writing a new one. No click estimate: your click curve ends at position 20.' },
 	{ id: 'bing', title: 'Bing ranks you, Google does not', blurb: 'Bing has you in the top five, Google at 11 or lower or not at all. The content is probably right for the topic; Google may want more links or a clearer match.' },
 	{ id: 'notbing', title: 'Pages Bing shows nothing for', blurb: 'They earn Google clicks and have no Bing impressions, so Bing probably has not indexed them. IndexNow or Bing Webmaster Tools submits them.' },
 	{ id: 'gems', title: 'Hidden gems', blurb: 'Pages whose visitors engage and convert better than your average, ranked 4 to 20 by Google. The audience is right; there is not enough of it.' },
