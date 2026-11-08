@@ -40,7 +40,7 @@ describe('the comparison pages are fair', () => {
 
 			[/Check any URL, such as backlinks/, 'indexchex'], [/Get third-party or backlink URLs crawled/, 'indexchex'], [/Instant/i, 'indexchex'],
 			[/Track prompts across AI models/, 'promptwatch'], [/Citation and source analysis/, 'promptwatch'], [/Competitor share of voice/, 'promptwatch'], [/AI crawler logs/, 'promptwatch'],
-			[/Removals, Manual actions/, 'google-search-console']
+			[/Removals, Manual actions/, 'google-search-console'], [/Yandex Webmaster and Google Merchant Center/, 'gsc-wizard']
 		];
 		for (const [re, slug] of mustBeNo) {
 			const row = bySlug(slug)!.rows.find((r) => re.test(r.feature));
@@ -62,8 +62,17 @@ describe('the comparison pages are fair', () => {
 		expect(links.ours.note).toMatch(/no credits/);
 		expect(links.ours.note).toMatch(/JavaScript is not run/);
 		expect(existsSync('src/routes/sites/[id]/links/+page.svelte')).toBe(true);
-		// and the things it only half does say "partly", with the reason
-		for (const [slug, re] of [['seotesting', /Monthly plain-English report/], ['seotesting', /Daily watch/], ['indexchex', /Google’s Indexing API/], ['google-search-console', /^Request Indexing$/]] as const) {
+		// built since: the monthly report and the robots.txt watch, each a yes that names its limit, backed by the code
+		const monthly = bySlug('seotesting')!.rows.find((r) => /Monthly plain-English report/.test(r.feature))!;
+		expect(monthly.ours.v).toBe('yes');
+		expect(monthly.ours.note).toMatch(/no email/);
+		expect(readFileSync('src/lib/server/digest.ts', 'utf8')).toMatch(/export async function runMonthlyReport/);
+		const watch = bySlug('seotesting')!.rows.find((r) => /Daily watch/.test(r.feature))!;
+		expect(watch.ours.v).toBe('yes');
+		expect(watch.ours.note).toMatch(/robots\.txt/);
+		expect(existsSync('src/lib/server/robotswatch.ts')).toBe(true);
+		// what it only half does says "partly", with the reason: never a flat No that undersells nor a Yes that oversells
+		for (const [slug, re] of [['gsc-wizard', /^Traffic forecasting$/], ['gsc-wizard', /^Topic clusters$/], ['gsc-wizard', /^hreflang report$/], ['indexchex', /Google’s Indexing API/], ['google-search-console', /^Request Indexing$/]] as const) {
 			const row = bySlug(slug)!.rows.find((r) => re.test(r.feature))!;
 			expect(row.ours.v, `${slug}: ${row.feature}`).toBe('partial');
 			expect(row.ours.note!.length).toBeGreaterThan(20);

@@ -53,10 +53,11 @@ export const COMPETITORS: Competitor[] = [
 			'An indexing toolkit (submit, request list, re-checks, monitoring) next to the tests.',
 			'Bing, Clarity and Tag Manager data beside Search Console, and an MCP server so an AI agent can read and act on it.',
 			'Your data stays on your own server and history is kept beyond Search Console’s 16 months.',
-			'Unlimited users, free, with roles (admin, editor, viewer) and per-user site limits.'
+			'Unlimited users, free, with roles (admin, editor, viewer) and per-user site limits.',
+			'A daily robots.txt watch that tests the pages earning clicks against the rules Googlebot obeys, not only whether the file changed.'
 		],
 		theyWin: [
-			'A monthly plain-English report and a daily watch that includes robots.txt changes.',
+			'Its monthly report can be emailed; SEOConsole sends reports and alerts to Slack, Discord or a webhook only.',
 			'It is hosted, supported and established: nothing to run, and it names customers on its site.'
 		],
 		rows: [
@@ -73,8 +74,8 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Reports', feature: 'Quick wins (low-hanging fruit)', ours: y('A Quick wins tab: titles to rewrite, searches one push from page 1, question queries you already rank for, sitemap gaps.'), theirs: u() },
 			{ group: 'Reports', feature: 'AI-assistant traffic by page', ours: y('From Google Analytics referrers; an assistant that sends no referrer is missed.'), theirs: y('From Google Analytics data.') },
 			{ group: 'Reports', feature: 'Question-shaped queries', ours: y(), theirs: y() },
-			{ group: 'Reports', feature: 'Monthly plain-English report', ours: p('A weekly digest and urgent alerts to Slack, Discord or a webhook; no monthly report yet.'), theirs: y('A forwardable monthly summary.') },
-			{ group: 'Reports', feature: 'Daily watch for changes', ours: p('Traffic-drop detection, indexing-change events and sitemap reads; no robots.txt watch.'), theirs: y('Pages that gained or lost clicks, new queries, sitemap and robots.txt changes.') },
+			{ group: 'Reports', feature: 'Monthly plain-English report', ours: y('The last calendar month in sentences, per day against the month before and the same month last year, made on the 4th; to Slack, Discord or a webhook (no email).'), theirs: y('A forwardable monthly summary.') },
+			{ group: 'Reports', feature: 'Daily watch for changes', ours: y('Traffic-drop detection, indexing-change events, daily sitemap reads and a daily robots.txt watch (changes kept, and pages with clicks tested against the rules Googlebot obeys).'), theirs: y('Pages that gained or lost clicks, new queries, sitemap and robots.txt changes.') },
 			{ group: 'Reports', feature: 'Internal-linking tool', ours: y('Free, with no credits: crawls up to 60 of your pages weekly (more if you set it) and suggests which pages should link to the ones ranking 4 to 20, with the anchor text already on the page. HTML only: JavaScript is not run.'), theirs: y('A monthly credit allowance per plan.') },
 			{ group: 'Beyond testing', feature: 'Indexing toolkit (submit, request list, re-checks, monitor)', ours: y('IndexNow, Bing and (for job and livestream pages) Google’s Indexing API, plus a Request Indexing list and day 1/3/5 re-checks.'), theirs: u() },
 			{ group: 'Beyond testing', feature: 'Bing, Clarity and Tag Manager next to Search Console', ours: y(), theirs: u('Its pages list Search Console and Google Analytics only.') },
@@ -187,7 +188,7 @@ export const COMPETITORS: Competitor[] = [
 		],
 		theyWin: [
 			'Hosted: nothing to install or run, and it reports serving tens of thousands of properties (its own claim).',
-			'Yandex Webmaster, Google Merchant Center, traffic forecasting, topic clusters and hreflang reports: SEOConsole has none of these.',
+			'Yandex Webmaster and Google Merchant Center, which SEOConsole does not read; its forecasting, topic clusters and hreflang reports go further than SEOConsole’s simpler versions.',
 			'A ChatGPT app, a REST API and a Looker Studio connector.'
 		],
 		rows: [
@@ -201,11 +202,14 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Analysis', feature: 'AI-assistant traffic by page', ours: y('From GA4 referrers.'), theirs: y('An AI / LLM traffic view from GA4.') },
 			{ group: 'Analysis', feature: 'Core Web Vitals', ours: y('Field data from the Chrome UX Report, stored daily.'), theirs: y('CrUX field data with trends and alerts.') },
 			{ group: 'Indexing', feature: 'Indexing toolkit (IndexNow, Bing, inspection, monitoring)', ours: y('IndexNow, Bing, a Request Indexing list and day 1/3/5 re-checks.'), theirs: y('URL Inspection in bulk, IndexNow and an Index Tracker for up to 1,800 URLs a day.') },
-			{ group: 'Reports', feature: 'Scheduled reports and alerts', ours: y('A weekly digest and urgent alerts to Slack, Discord or a webhook.'), theirs: y('Daily, weekly and monthly reports to Slack; alerts to Slack, Teams and webhooks.') },
+			{ group: 'Reports', feature: 'Scheduled reports and alerts', ours: y('A weekly digest, a monthly report and urgent alerts to Slack, Discord or a webhook.'), theirs: y('Daily, weekly and monthly reports to Slack; alerts to Slack, Teams and webhooks.') },
 			{ group: 'Access', feature: 'MCP server for AI agents', ours: y('Reads by default; acting needs a level you grant.'), theirs: y('A remote MCP server on every plan.') },
 			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('Hosted; a dedicated server is offered on custom plans only.') },
 			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted.') },
-			{ group: 'More', feature: 'Yandex, Merchant Center, forecasting, topic clusters, hreflang', ours: n('Not built.'), theirs: y() },
+			{ group: 'More', feature: 'Yandex Webmaster and Google Merchant Center', ours: n('Not built.'), theirs: y() },
+			{ group: 'More', feature: 'Traffic forecasting', ours: p('An 8-week click projection with a range on the Trends tab; it does not model seasonality or Google updates.'), theirs: y() },
+			{ group: 'More', feature: 'Topic clusters', ours: p('Queries grouped by shared words on the Groups tab: transparent word matching, not semantic.'), theirs: y() },
+			{ group: 'More', feature: 'hreflang report', ours: p('Flags locale folders (such as /en-gb/) that earn most clicks from another country; it does not read hreflang tags.'), theirs: y() },
 			{ group: 'Price and maturity', feature: 'Price', ours: y('Free to self-host.'), theirs: p('From €17 a month for 15 properties, excluding VAT.') },
 			MATURITY(y('Established; it says it tracks 88,650+ properties for 5,750+ SEOs (its own claim).'))
 		],
@@ -248,7 +252,7 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Analysis', feature: 'Decay, cannibalization, striking distance and CTR gaps', ours: y(), theirs: y() },
 			{ group: 'Analysis', feature: 'AI-assistant traffic by page', ours: y('From GA4 referrers.'), theirs: y('AI assistants as a GA4 channel.') },
 			{ group: 'Indexing', feature: 'Indexing toolkit (IndexNow, Bing, inspection, monitoring)', ours: y('IndexNow, Bing, a Request Indexing list and day 1/3/5 re-checks.'), theirs: p('Page indexing checks at scale; IndexNow is not stated.') },
-			{ group: 'Reports', feature: 'Scheduled reports and alerts', ours: y('A weekly digest and urgent alerts to Slack, Discord or a webhook.'), theirs: p('Weekly or monthly PDF reports by email; Slack is listed as coming soon.') },
+			{ group: 'Reports', feature: 'Scheduled reports and alerts', ours: y('A weekly digest, a monthly report and urgent alerts to Slack, Discord or a webhook (no email or PDF).'), theirs: p('Weekly or monthly PDF reports by email; Slack is listed as coming soon.') },
 			{ group: 'Access', feature: 'MCP server for AI agents', ours: y('Reads by default; acting needs a level you grant.'), theirs: y('On all plans; a REST API is not out yet (its own words).') },
 			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('Hosted, with exports to Sheets, CSV and PDF.') },
 			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted.') },

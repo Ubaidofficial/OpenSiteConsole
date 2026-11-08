@@ -6,7 +6,7 @@ import { allSites, periodFor, summary, topPages, topQueries } from './queries';
 import { computeMovers, type Keyed } from '../trends';
 import { pctChange } from '../analytics';
 import { rankActions } from '../actions';
-import { URGENT_SHOWN, clicksSignificant, headlineOf, renderText, renderUrgent, type Digest, type SiteDigest } from '../digest';
+import { URGENT_SHOWN, clicksSignificant, headlineOf, monthLabel, monthlyHeadline, renderMonthly, renderText, renderUrgent, type Digest, type MonthSite, type MonthlyReport, type SiteDigest } from '../digest';
 import { comparability } from './insights';
 import { queueFor } from './actions';
 import { recentEvents } from './indexmon';
@@ -111,15 +111,15 @@ export async function postWebhook(text: string, digest: unknown, fetchImpl: type
 	}
 }
 
-export interface StoredDigest { id: number; kind: string; weekKey: string | null; createdAt: number; delivery: string; deliveredAt: number | null; message: string | null; digest: Digest | null; urgent: { items: { site: string; title: string; why: string; href: string }[] } | null }
+export interface StoredDigest { id: number; kind: string; weekKey: string | null; createdAt: number; delivery: string; deliveredAt: number | null; message: string | null; digest: Digest | null; monthly: MonthlyReport | null; urgent: { items: { site: string; title: string; why: string; href: string }[] } | null }
 const hydrate = (r: { id: number; kind: string; week_key: string | null; created_at: number; payload: string; delivery: string; delivered_at: number | null; delivery_message: string | null }): StoredDigest => {
 	const payload = JSON.parse(r.payload);
-	return { id: r.id, kind: r.kind, weekKey: r.week_key, createdAt: r.created_at, delivery: r.delivery, deliveredAt: r.delivered_at, message: r.delivery_message, digest: r.kind === 'weekly' ? payload : null, urgent: r.kind === 'urgent' ? payload : null };
+	return { id: r.id, kind: r.kind, weekKey: r.week_key, createdAt: r.created_at, delivery: r.delivery, deliveredAt: r.delivered_at, message: r.delivery_message, digest: r.kind === 'weekly' ? payload : null, monthly: r.kind === 'monthly' ? payload : null, urgent: r.kind === 'urgent' ? payload : null };
 };
-export const listDigests = (kind: 'weekly' | 'urgent', limit = 30) => (db().prepare('SELECT * FROM digests WHERE kind = ? ORDER BY created_at DESC, id DESC LIMIT ?').all(kind, limit) as never[]).map(hydrate);
+export const listDigests = (kind: 'weekly' | 'monthly' | 'urgent', limit = 30) => (db().prepare('SELECT * FROM digests WHERE kind = ? ORDER BY created_at DESC, id DESC LIMIT ?').all(kind, limit) as never[]).map(hydrate);
 export const getDigest = (id: number) => { const r = db().prepare('SELECT * FROM digests WHERE id = ?').get(id); return r ? hydrate(r as never) : null; };
 
-const record = (kind: 'weekly' | 'urgent', weekKey: string | null, payload: unknown, d: { delivery: string; at: number | null; message: string | null }) =>
+const record = (kind: 'weekly' | 'monthly' | 'urgent', weekKey: string | null, payload: unknown, d: { delivery: string; at: number | null; message: string | null }) =>
 	Number(db().prepare('INSERT INTO digests (kind, week_key, created_at, payload, delivery, delivered_at, delivery_message) VALUES (?,?,?,?,?,?,?)').run(kind, weekKey, Date.now(), JSON.stringify(payload), d.delivery, d.at, d.message).lastInsertRowid);
 
 /** The most recent occurrence (today included) of the digest weekday (0 = Sunday ... 6; default 1 = Monday). */
@@ -205,3 +205,124 @@ export async function runUrgentAlerts(o: { fetchImpl?: typeof fetch } = {}): Pro
 	return { alerted: fresh.length, delivery };
 }
 
+
+// ── the monthly report ───────────────────────────────────────────────────────
+const pathOnly = (u: string) => {
+	try {
+		const x = new URL(u);
+		return (x.pathname || '/') + x.search;
+	} catch {
+		return u;
+	}
+};
+const lastDayOf = (ym: string) => new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).toISOString().slice(0, 10);
+const shiftMonth = (ym: string, n: number) => {
+	const d = new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1));
+	return d.toISOString().slice(0, 7);
+};
+const spanOf = (ym: string) => { const start = `${ym}-01`, end = lastDayOf(ym); return { start, end, days: Number(end.slice(8, 10)) }; };
+
+/** The month a report made today should cover: the last complete calendar month. */
+export const reportMonth = (today: string) => shiftMonth(today.slice(0, 7), -1);
+/** Search Console data lags by about two days, so the report for a month is made from the 4th of the next. */
+export const MONTHLY_FROM_DAY = 4;
+/** Until this day of the month, an automatic report waits for every site to be synced through the month's end. */
+export const MONTHLY_WAIT_UNTIL_DAY = 10;
+
+/** One site's calendar month, against the month before and the same month last year (each only when its history is stored). */
+export function buildMonthSite(site: SiteRow, ym: string): MonthSite {
+	const m = spanOf(ym), pm = spanOf(shiftMonth(ym, -1)), ya = spanOf(shiftMonth(ym, -12));
+	const now = summary(site.id, m.start, m.end);
+	const complete = !!site.synced_through && site.synced_through >= m.end;
+	const cmpPrev = complete && comparability(site, { prevStart: pm.start, prevEnd: pm.end, days: pm.days }).comparable;
+	const cmpYear = complete && comparability(site, { prevStart: ya.start, prevEnd: ya.end, days: ya.days }).comparable;
+	const prev = cmpPrev ? summary(site.id, pm.start, pm.end) : null;
+	const yearAgo = cmpYear ? summary(site.id, ya.start, ya.end) : null;
+	let qm = { winners: [] as { key: string; change: number }[], losers: [] as { key: string; change: number }[] };
+	let pmv = qm;
+	if (cmpPrev) {
+		qm = computeMovers(keyed(topQueries(site.id, m.start, m.end, {}, 50_000)), keyed(topQueries(site.id, pm.start, pm.end, {}, 50_000)), { minChange: 10, limit: 3 });
+		pmv = computeMovers(keyed(topPages(site.id, m.start, m.end, {}, 20_000)), keyed(topPages(site.id, pm.start, pm.end, {}, 20_000)), { minChange: 10, limit: 3 });
+	}
+	const from = Date.parse(m.start + 'T00:00:00Z'), to = Date.parse(m.end + 'T23:59:59Z');
+	const decidedTests: MonthSite['decidedTests'] = [];
+	for (const t of listTests(site.id)) {
+		try {
+			const o = evaluateTestCached(site, t);
+			const r = mainResult(o);
+			if ((r.verdict === 'positive' || r.verdict === 'negative') && o.postDays >= 21) decidedTests.push({ name: t.name, verdict: r.verdict, lift: r.lift });
+		} catch {
+			/* shown on the Tests tab */
+		}
+	}
+	const q = queueFor(site);
+	const paths = (xs: { key: string; change: number }[]) => lite(xs).map((x) => ({ ...x, key: pathOnly(x.key) }));
+	return {
+		siteId: site.id,
+		name: displayName(site.site_url),
+		complete,
+		days: m.days,
+		clicks: now.clicks, impressions: now.impressions, position: now.position,
+		prev: prev ? { days: pm.days, clicks: prev.clicks, impressions: prev.impressions, position: prev.position } : null,
+		yearAgo: yearAgo ? { days: ya.days, clicks: yearAgo.clicks } : null,
+		pageWinners: paths(pmv.winners), pageLosers: paths(pmv.losers),
+		queryWinners: lite(qm.winners), queryLosers: lite(qm.losers),
+		droppedPages: new Set(recentEvents(site.id, 2000).filter((e) => e.kind === 'deindexed' && e.at >= from && e.at <= to).map((e) => e.url)).size,
+		decidedTests: decidedTests.slice(0, 3),
+		updates: updatesBetween(m.start, m.end).filter((u) => u.kind === 'core' || u.kind === 'spam').map((u) => ({ name: u.name, begin: u.begin, end: u.end })),
+		openActions: q.open.length,
+		blockingActions: q.open.filter((a) => a.blocking).length
+	};
+}
+
+export function buildMonthlyReport(ym: string, sites: SiteRow[] = visibleSites(), now = Date.now()): MonthlyReport {
+	const ms = sites.map((s) => {
+		try {
+			return buildMonthSite(s, ym);
+		} catch {
+			return null; // one broken site must not hide the others
+		}
+	}).filter((x): x is MonthSite => !!x);
+	const top = rankActions(ms.flatMap((m) => queueFor(sites.find((x) => x.id === m.siteId)!).open.map((a) => ({ ...a, site: m.name }))))
+		.slice(0, 10).map((a) => ({ key: a.key, type: a.type, title: a.title, blocking: a.blocking, impact: a.impact, confidence: a.confidence, href: a.href, site: a.site, siteId: a.siteId }));
+	return { createdAt: now, month: ym, label: monthLabel(ym), headline: monthlyHeadline(ms, top, ym), sites: ms, top };
+}
+
+const monthlyOn = () => env('DIGEST_MONTHLY', '1') !== '0';
+
+/**
+ * Make last month's report once, from the 4th of the month (catching up if the server was off), store it, and send it to the
+ * webhook if one is configured. A failed delivery is retried at most hourly. `force` makes one by hand for the last complete month.
+ */
+export async function runMonthlyReport(o: { force?: boolean; fetchImpl?: typeof fetch; today?: string } = {}): Promise<{ id: number | null; created: boolean; delivery: string; message: string | null }> {
+	const today = o.today ?? pacificToday();
+	if (!o.force && (!monthlyOn() || Number(today.slice(8, 10)) < MONTHLY_FROM_DAY)) return { id: null, created: false, delivery: 'none', message: 'Not due.' };
+	const ym = reportMonth(today);
+	const existing = o.force ? undefined : (db().prepare("SELECT id, payload, delivery FROM digests WHERE kind = 'monthly' AND week_key = ?").get(ym) as { id: number; payload: string; delivery: string } | undefined);
+	if (existing) {
+		const tried = Number((db().prepare("SELECT value FROM kv WHERE key = 'monthly_retry'").get() as { value: string } | undefined)?.value ?? 0);
+		if (existing.delivery !== 'failed' || !webhook().url || Date.now() - tried < 3600_000) return { id: null, created: false, delivery: 'none', message: `The ${monthLabel(ym)} report already exists.` };
+		db().prepare("INSERT OR REPLACE INTO kv (key, value) VALUES ('monthly_retry', ?)").run(String(Date.now()));
+		const stored = JSON.parse(existing.payload) as MonthlyReport;
+		const r = await postWebhook(renderMonthly(stored, config.origin), stored, o.fetchImpl);
+		db().prepare('UPDATE digests SET delivery = ?, delivered_at = ?, delivery_message = ? WHERE id = ?').run(r.ok ? 'sent' : 'failed', r.ok ? Date.now() : null, r.message, existing.id);
+		return { id: existing.id, created: false, delivery: r.ok ? 'sent' : 'failed', message: r.message };
+	}
+	// Made once per month, so it must not be made from half-downloaded data (a fresh install, or a server that was off): wait until
+	// every site's data reaches the month's last day. From the 10th it goes ahead anyway, the late sites shown as not complete.
+	if (!o.force && Number(today.slice(8, 10)) < MONTHLY_WAIT_UNTIL_DAY) {
+		const end = `${ym}-${String(new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).getUTCDate()).padStart(2, '0')}`;
+		const late = visibleSites().filter((s) => !s.synced_through || s.synced_through < end).length;
+		if (late) return { id: null, created: false, delivery: 'none', message: `Waiting for ${late} site${late === 1 ? '' : 's'} to sync through ${end}.` };
+	}
+	const report = buildMonthlyReport(ym);
+	if (!report.sites.length) return { id: null, created: false, delivery: 'none', message: 'There are no sites to report on yet.' };
+	let d = { delivery: 'none', at: null as number | null, message: null as string | null };
+	if (webhook().url) {
+		const r = await postWebhook(renderMonthly(report, config.origin), report, o.fetchImpl);
+		d = { delivery: r.ok ? 'sent' : 'failed', at: r.ok ? Date.now() : null, message: r.message };
+	}
+	const id = record('monthly', o.force ? null : ym, report, d);
+	audit('digest.monthly', { detail: `${o.force ? 'manual ' : ''}${ym} · ${d.delivery}` });
+	return { id, created: true, delivery: d.delivery, message: d.message };
+}
