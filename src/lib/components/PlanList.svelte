@@ -7,7 +7,7 @@
 	import { fmtInt } from '$lib/format';
 
 	/** One section of the two-week plan: a numbered list of compact rows, each with its first step, its estimate and a Done button. */
-	let { items, start = 1, tone = 'default' }: { items: ActionItem[]; start?: number; tone?: 'default' | 'bad' } = $props();
+	let { items, start = 1, tone = 'default', max = null }: { items: ActionItem[]; start?: number; tone?: 'default' | 'bad'; /** the largest estimate across the whole plan, so every row's bar shares one scale */ max?: number | null } = $props();
 	const effortWord = { low: 'quick fix', medium: 'a few hours', high: 'a project' } as const;
 	/** The number of an earlier row with the very same first step, so it is said once and pointed to after that. */
 	const sameAs = $derived.by(() => {
@@ -39,7 +39,9 @@
 				<p class="mt-0.5 text-sm text-muted-foreground" class:pii={names}>{sameAs[i] ? `Same fix as #${sameAs[i]}.` : firstStep(a.how)}</p>
 			</div>
 			<div class="shrink-0 text-right text-xs">
-				{#if a.impact != null}<div class="tnum font-semibold whitespace-nowrap text-foreground" title="Estimated extra clicks per 28 days, from this site's own click curve">≈ {fmtInt(Math.round(a.impact))} clicks / 28d</div>{:else}<div class="text-muted-foreground">{TYPE_LABEL[a.type]}</div>{/if}
+				{#if a.impact != null}<div class="tnum font-semibold whitespace-nowrap text-foreground" title="Estimated extra clicks per 28 days, from this site's own click curve">≈ {fmtInt(Math.round(a.impact))} clicks / 28d</div>
+				{#if max}<div class="mt-1 ml-auto h-1.5 w-24 rounded-full bg-muted" aria-hidden="true"><div class="ml-auto h-1.5 rounded-full" style="width:{Math.max(4, (a.impact / max) * 100)}%; background:var(--chart-1)"></div></div>{/if}
+				{:else}<div class="text-muted-foreground">{TYPE_LABEL[a.type]}</div>{/if}
 				<div class="mt-0.5 text-muted-foreground">{effortWord[a.effort]}</div>
 			</div>
 		</li>

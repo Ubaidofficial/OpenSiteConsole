@@ -6,6 +6,7 @@
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import { fmtInt, fmtPct, fmtPos, fmtSigned } from '$lib/format';
 	import PlanList from '$lib/components/PlanList.svelte';
+	import RankMix from '$lib/components/viz/RankMix.svelte';
 
 	let { data, form } = $props();
 	const markers = $derived([
@@ -22,6 +23,7 @@
 	let prefix = $state('');
 	let busy = $state(false);
 	let logOpen = $state(false);
+	const planMax = $derived(Math.max(0, ...[...data.plan.blocking, ...data.plan.quick, ...data.plan.bigger].map((a) => a.impact ?? 0)) || null);
 
 	const addNote = () => {
 		busy = true;
@@ -54,13 +56,13 @@
 	{:else}
 		<div class="space-y-5">
 			{#if data.plan.blocking.length}
-				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold text-bad">Fix first</h3><span class="text-xs text-muted-foreground">These stop the site earning, or stop you measuring it.</span></div><PlanList items={data.plan.blocking} tone="bad" /></div>
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold text-bad">Fix first</h3><span class="text-xs text-muted-foreground">These stop the site earning, or stop you measuring it.</span></div><PlanList items={data.plan.blocking} tone="bad" max={planMax} /></div>
 			{/if}
 			{#if data.plan.quick.length}
-				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold">Quick wins</h3><span class="text-xs text-muted-foreground">Small edits, usually minutes each.</span></div><PlanList items={data.plan.quick} start={data.plan.blocking.length + 1} /></div>
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold">Quick wins</h3><span class="text-xs text-muted-foreground">Small edits, usually minutes each.</span></div><PlanList items={data.plan.quick} start={data.plan.blocking.length + 1} max={planMax} /></div>
 			{/if}
 			{#if data.plan.bigger.length}
-				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold">Bigger opportunities</h3><span class="text-xs text-muted-foreground">More work each, for more clicks.</span></div><PlanList items={data.plan.bigger} start={data.plan.blocking.length + data.plan.quick.length + 1} /></div>
+				<div><div class="mb-1.5 flex flex-wrap items-baseline gap-x-2"><h3 class="text-sm font-semibold">Bigger opportunities</h3><span class="text-xs text-muted-foreground">More work each, for more clicks.</span></div><PlanList items={data.plan.bigger} start={data.plan.blocking.length + data.plan.quick.length + 1} max={planMax} /></div>
 			{/if}
 		</div>
 		<p class="mt-2 text-xs text-muted-foreground">Click estimates come from this site's own click curve. They are model figures, not promises, and are not added up because findings overlap.</p>
@@ -73,7 +75,15 @@
 		<p class="text-xs text-muted-foreground">Shaded bands = unusual days · dots = your change log · dashed end = last 2 days (Google may still revise them)</p>
 	</div>
 	<Chart data={data.series} {markers} anomalies={data.anomalies} />
-</section>
+	</section>
+
+	<section class="mb-5 rounded-2xl border bg-card p-5 shadow-xs" aria-labelledby="rank-h">
+		<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+			<h2 id="rank-h" class="text-base font-semibold tracking-tight">Where your searches rank</h2>
+			<p class="text-xs text-muted-foreground">Searches with at least a few impressions this period, by average position{data.positions.prev ? '; the change is against the previous period' : ''}.</p>
+		</div>
+		<RankMix now={data.positions.now} prev={data.positions.prev} />
+	</section>
 
 <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
 	<section>

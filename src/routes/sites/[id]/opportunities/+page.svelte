@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
+	import OppScatter from '$lib/components/viz/OppScatter.svelte';
+	import CtrCurve from '$lib/components/viz/CtrCurve.svelte';
+	import Dumbbell from '$lib/components/viz/Dumbbell.svelte';
 	import { fmtInt, fmtPct } from '$lib/format';
 	import { HIDDEN_GROUPS, HIDDEN_INTRO, HIDDEN_SOURCE_HINT } from '$lib/explain';
 	let { data } = $props();
@@ -60,6 +63,15 @@
 	/** The tiles pick which list is shown under them; the first kind found is shown to start with. */
 	let picked = $state<string | null>(null);
 	const sel = $derived(found.find((t) => t.id === picked) ?? found[0] ?? null);
+	/** Lists that are about a change get a before -> after picture above their table. */
+	const bell = $derived.by(() => {
+		if (!sel) return null;
+		const r = sel.rows as Record<string, number & string>[];
+		if (sel.id === 'lost') return { rows: r.slice(0, 8).map((x) => ({ label: String(x.query), before: Number(x.prevClicks), after: Number(x.clicks), pii: true })), better: 'up' as const, before: 'clicks before', after: 'clicks now', format: (v: number) => Math.round(v).toLocaleString('en-US'), change: 'pct' as const, unit: '' };
+		if (sel.id === 'rising') return { rows: r.slice(0, 8).map((x) => ({ label: String(x.query), before: Number(x.prevImpressions), after: Number(x.impressions), pii: true })), better: 'up' as const, before: 'impressions before', after: 'impressions now', format: (v: number) => Math.round(v).toLocaleString('en-US'), change: 'pct' as const, unit: '' };
+		if (sel.id === 'device') return { rows: r.slice(0, 8).map((x) => ({ label: String(x.query), before: Number(x.desktopPosition), after: Number(x.mobilePosition), pii: true })), better: 'down' as const, before: 'desktop position', after: 'phone position', format: (v: number) => v.toFixed(1), change: 'abs' as const, unit: 'places' };
+		return null;
+	});
 	const pick = async (id: string) => {
 		picked = id;
 		await tick();
@@ -73,15 +85,19 @@
 		<h2 class="text-lg font-semibold tracking-tight">{found.length} kinds of opportunity found</h2>
 		<p class="text-sm text-muted-foreground">Pick a kind to see its list. Estimates use this site's own click curve: model figures, not promises.</p>
 	</div>
-	<details class="ml-auto text-xs">
-		<summary class="cursor-pointer select-none text-muted-foreground">Your click curve <span class="chip ml-1">{data.curve.source === 'fitted' ? 'fitted to your data' : data.curve.source === 'mixed' ? 'partly fitted' : 'industry default'}</span></summary>
-		<div class="card absolute right-4 z-20 mt-2 max-w-md p-3">
-			<div class="tnum flex gap-3 overflow-x-auto">
-				{#each data.curve.values as v, i}<div><div class="text-muted-foreground">#{i + 1}</div><div class={data.curve.fitted[i] ? 'font-semibold' : 'text-muted-foreground'}>{fmtPct(v)}</div></div>{/each}
-			</div>
-			<p class="mt-2 text-muted-foreground">Click-through rate by position, non-branded searches only. Bold = measured on this site (500+ impressions at that position); grey = a fallback benchmark.</p>
-		</div>
-	</details>
+</div>
+
+<div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-5">
+	<section class="card p-4 xl:col-span-3" aria-labelledby="scatter-h">
+		<h3 id="scatter-h" class="text-sm font-medium">Where the opportunities are</h3>
+		<p class="mb-2 text-xs text-muted-foreground">Each dot is a search: further left ranks higher, higher up is seen more, bigger is worth more. Hover for details.</p>
+		<OppScatter points={data.striking.slice(0, 60).map((r) => ({ label: r.query, position: r.position, impressions: r.impressions, gain: r.expectedGain }))} />
+	</section>
+	<section class="card p-4 xl:col-span-2" aria-labelledby="curve-h">
+		<h3 id="curve-h" class="text-sm font-medium">Is your click rate normal for the position? <span class="chip ml-1 font-normal">{data.curve.source === 'fitted' ? 'fitted to your data' : data.curve.source === 'mixed' ? 'partly fitted' : 'industry default'}</span></h3>
+		<p class="mb-2 text-xs text-muted-foreground">Non-branded searches only. Dots below the line are snippets that earn fewer clicks than your site normally does there.</p>
+		<CtrCurve values={data.curve.values} fitted={data.curve.fitted} points={data.ctrGaps.slice(0, 20).map((g) => ({ label: g.query, position: g.position, ctr: g.ctr }))} />
+	</section>
 </div>
 
 <div class="stagger mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -98,6 +114,7 @@
 	<section id="op-list" class="card mb-6 scroll-mt-20 p-4" aria-live="polite">
 		<div class="mb-1 flex flex-wrap items-baseline gap-2"><h3 class="font-medium">{sel.title}</h3><span class="chip">{fmtInt(sel.rows.length)}</span>{#if sel.best != null}<span class="tnum ml-auto text-xs text-muted-foreground">biggest ≈ {fmtInt(Math.round(sel.best))} {sel.unit}</span>{/if}</div>
 		<p class="mb-3 max-w-3xl text-xs text-muted-foreground">{sel.blurb}</p>
+		{#if bell}<div class="mb-4 max-w-3xl">{#key sel.id}<Dumbbell rows={bell.rows} better={bell.better} beforeLabel={bell.before} afterLabel={bell.after} format={bell.format} change={bell.change} unit={bell.unit} />{/key}</div>{/if}
 		{#key sel.id}<DataTable rows={sel.rows} cols={sel.cols} sortKey={sel.sort} pageSize={15} />{/key}
 	</section>
 {/if}

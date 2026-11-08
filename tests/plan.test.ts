@@ -51,3 +51,28 @@ describe('the site tab bar', () => {
 		expect(SITE_PRIMARY_TABS).toContain('/opportunities');
 	});
 });
+
+describe('where the searches rank', () => {
+	it('counts searches into top 3 / 4-10 / 11-20 / below 20, ignoring one-off searches with too few impressions', async () => {
+		const { positionBuckets } = await import('../src/lib/plan');
+		const rows = [
+			{ position: 1.2, impressions: 50 }, { position: 3.4, impressions: 50 }, // top 3 (3.4 rounds to 3)
+			{ position: 3.6, impressions: 50 }, { position: 10.4, impressions: 50 }, // 4-10
+			{ position: 10.6, impressions: 50 }, { position: 20.4, impressions: 50 }, // 11-20
+			{ position: 35, impressions: 50 }, // below 20
+			{ position: 2, impressions: 3 } // too few impressions: left out
+		];
+		expect(positionBuckets(rows, 10)).toEqual([2, 2, 2, 1]);
+	});
+});
+
+describe('chart colours', () => {
+	it('stay on the palette validated for colour-blind readers (clicks and impressions were indistinguishable to protanopes before)', async () => {
+		const { readFileSync } = await import('node:fs');
+		const css = readFileSync('src/app.css', 'utf8');
+		const light = css.slice(0, css.indexOf('.dark {'));
+		const dark = css.slice(css.indexOf('.dark {'));
+		for (const [k, v] of [['chart-1', '#2a78d6'], ['chart-2', '#eb6834'], ['chart-3', '#1baf7a']]) expect(light, k).toMatch(new RegExp(`--${k}: ${v};`));
+		for (const [k, v] of [['chart-1', '#3987e5'], ['chart-2', '#d95926'], ['chart-3', '#199e70']]) expect(dark, k).toMatch(new RegExp(`--${k}: ${v};`));
+	});
+});

@@ -32,9 +32,35 @@
 	--good: oklch(0.52 0.14 152);
 	--warn: oklch(0.53 0.12 70);
 	--bad: var(--destructive);
-	--chart-1: oklch(0.55 0.2 262);
-	--chart-2: oklch(0.58 0.2 295);
-	--chart-3: oklch(0.68 0.15 65);
+	/* Chart colours: the first three slots of a palette validated for colour-blind readers in both modes (blue, orange, aqua;
+	   worst adjacent CVD ΔE about 9, normal-vision ΔE about 20). The previous blue/violet pair was ΔE 0.7 for protanopes:
+	   clicks and impressions were the same line to them. Never cycle past these; fold extra series into "Other". */
+	--chart-1: #2a78d6;
+	--chart-2: #eb6834;
+	--chart-3: #1baf7a;
+	/* one hue for magnitude (bars, heat), light to dark */
+	--seq-1: #cde2fb;
+	--seq-2: #86b6ef;
+	--seq-3: #3987e5;
+	--seq-4: #1c5cab;
+	/* ordered steps (best first) for ranked buckets such as top 3 / 4-10 / 11-20 / below; each clears 2:1 on the surface,
+	   with the ink to print on it */
+	--ord-1: #1c5cab;
+	--ord-2: #2a78d6;
+	--ord-3: #5598e7;
+	--ord-4: #86b6ef;
+	--ord-ink-1: #ffffff;
+	--ord-ink-2: #ffffff;
+	--ord-ink-3: #ffffff;
+	--ord-ink-4: #0b0b0b;
+	/* chart chrome: hairline grid and axis, recessive */
+	--grid: #e1e0d9;
+	--axis: #c3c2b7;
+	/* status (good / needs improvement / poor): never used for a series, always shown with a label */
+	--st-good: #0ca30c;
+	--st-warn: #fab219;
+	--st-serious: #ec835a;
+	--st-bad: #d03b3b;
 	--trend-up: oklch(0.7 0.2 150);
 	--trend-down: oklch(0.63 0.23 25);
 	--c-clicks: var(--chart-1);
@@ -64,9 +90,23 @@
 	--link: oklch(0.72 0.14 255);
 	--good: oklch(0.74 0.15 155);
 	--warn: oklch(0.79 0.13 80);
-	--chart-1: oklch(0.7 0.17 255);
-	--chart-2: oklch(0.72 0.16 295);
-	--chart-3: oklch(0.8 0.14 75);
+	--chart-1: #3987e5;
+	--chart-2: #d95926;
+	--chart-3: #199e70;
+	--seq-1: #184f95;
+	--seq-2: #1c5cab;
+	--seq-3: #3987e5;
+	--seq-4: #86b6ef;
+	--grid: #2c2c2a;
+	--axis: #383835;
+	--ord-1: #86b6ef;
+	--ord-2: #5598e7;
+	--ord-3: #2a78d6;
+	--ord-4: #184f95;
+	--ord-ink-1: #0b0b0b;
+	--ord-ink-2: #0b0b0b;
+	--ord-ink-3: #ffffff;
+	--ord-ink-4: #ffffff;
 	--trend-up: oklch(0.8 0.21 152);
 	--trend-down: oklch(0.71 0.2 22);
 }

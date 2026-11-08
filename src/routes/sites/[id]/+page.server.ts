@@ -2,14 +2,14 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getSite } from '$lib/server/clients';
 import { addDays } from '$lib/server/dates';
-import { anonymisedShare, annotationsFor, dailySeries, experiment, periodFor } from '$lib/server/queries';
+import { anonymisedShare, annotationsFor, dailySeries, experiment, historyCoversPrevious, periodFor, topQueries } from '$lib/server/queries';
 import { detectAnomalies, relativeLift } from '$lib/analytics';
 import { db, audit } from '$lib/server/db';
 import { updatesBetween } from '$lib/server/gupdates';
 import { enqueueGa4Pages } from '$lib/server/jobs';
 import { createTest, evaluateTestCached, suggestControlMatched, testsByAnnotation } from '$lib/server/seotests';
 import { queueFor } from '$lib/server/actions';
-import { planFrom } from '$lib/plan';
+import { planFrom, positionBuckets } from '$lib/plan';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { days } = await parent();
@@ -49,6 +49,11 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	);
 	return {
 		plan: planFrom(queueFor(site, days)),
+		// where the site's searches rank now, and in the period before (only when that period is really stored)
+		positions: {
+			now: positionBuckets(topQueries(site.id, period.start, period.end, {}, 50_000), Math.max(5, Math.round((days / 28) * 10))),
+			prev: historyCoversPrevious(site, period.prevStart) ? positionBuckets(topQueries(site.id, period.prevStart, period.prevEnd, {}, 50_000), Math.max(5, Math.round((days / 28) * 10))) : null
+		},
 		annotationTests,
 		series: dailySeries(site.id, period.start, period.end),
 		anomalies,

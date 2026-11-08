@@ -1,12 +1,16 @@
 <script lang="ts">
 	import Explainer from '$lib/components/Explainer.svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
+	import Dumbbell from '$lib/components/viz/Dumbbell.svelte';
 	import { fmtSigned } from '$lib/format';
 	import { page } from '$app/state';
 	let { data } = $props();
 	const yoy = $derived(data.mode === 'yoy');
 	const link = (m: string) => { const u = new URL(page.url); u.searchParams.set('mode', m); return u.pathname + u.search; };
 	const specific = $derived(data.rows.filter((r) => r.scope === 'page-specific').length);
+	const pathOf = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };
+	/** the biggest losses first, as before -> now dots on one scale */
+	const bells = $derived([...data.rows].sort((a, b) => b.lostClicks - a.lostClicks).map((r) => ({ label: pathOf(r.page), before: r.prevClicks, after: r.clicks, href: r.page, pii: true })));
 	const cols = $derived([
 		{ key: 'page', label: 'Page', type: 'link' as const },
 		{ key: 'lostClicks', label: 'Lost clicks', type: 'int' as const },
@@ -32,4 +36,5 @@
 	{#if !data.hasYear}{yoy ? 'The year view' : 'Year-over-year'} needs 12+ months of stored history; it will appear once the backfill reaches that far.{/if}</p>
 </Explainer>
 <p class="mb-2 text-sm"><b>{data.rows.length}</b> decaying pages · <b>{specific}</b> page-specific</p>
+{#if bells.length}<section class="card mb-4 p-4"><h2 class="mb-3 text-sm font-medium">Clicks {yoy ? 'a year ago' : 'before'} and now, biggest losses first</h2><Dumbbell rows={bells} better="up" beforeLabel={yoy ? 'a year ago' : 'before'} afterLabel="now" /></section>{/if}
 <DataTable rows={data.rows} {cols} sortKey="lostClicks" empty="No significant decay. Nothing lost more than 25% with statistical confidence." />
