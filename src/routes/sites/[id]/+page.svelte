@@ -7,6 +7,8 @@
 	import { fmtInt, fmtPct, fmtPos, fmtSigned } from '$lib/format';
 	import PlanList from '$lib/components/PlanList.svelte';
 	import RankMix from '$lib/components/viz/RankMix.svelte';
+	import SegBar from '$lib/components/viz/SegBar.svelte';
+	import { POSITION_BUCKETS } from '$lib/plan';
 
 	let { data, form } = $props();
 	const markers = $derived([
@@ -77,13 +79,29 @@
 	<Chart data={data.series} {markers} anomalies={data.anomalies} />
 	</section>
 
-	<section class="mb-5 rounded-2xl border bg-card p-5 shadow-xs" aria-labelledby="rank-h">
+	<div class="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
+	<section class="rounded-2xl border bg-card p-5 shadow-xs lg:col-span-2" aria-labelledby="rank-h">
 		<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
 			<h2 id="rank-h" class="text-base font-semibold tracking-tight">Where your searches rank</h2>
 			<p class="text-xs text-muted-foreground">Searches with at least a few impressions this period, by average position{data.positions.prev ? '; the change is against the previous period' : ''}.</p>
 		</div>
-		<RankMix now={data.positions.now} prev={data.positions.prev} />
+		<RankMix now={data.positions.now} prev={data.positions.prev} weeks={data.positions.weeks} hrefFor={(i) => `/sites/${page.params.id}/queries?days=${data.days}&pos=${POSITION_BUCKETS[i].key}`} />
 	</section>
+	<section class="rounded-2xl border bg-card p-5 shadow-xs" aria-labelledby="brand-h">
+		<h2 id="brand-h" class="mb-1 text-base font-semibold tracking-tight">Brand vs non-brand</h2>
+		{#if data.brand}
+			{@const b = data.brand}
+			{@const total = b.now.brand + b.now.other}
+			{@const d = b.prev && b.prev.other ? b.now.other / b.prev.other - 1 : null}
+			<p class="mb-3 text-xs text-muted-foreground">Non-brand clicks are the ones SEO work moves.</p>
+			<div class="flex items-baseline gap-2"><span class="text-2xl font-semibold">{fmtInt(b.now.other)}</span><span class="text-xs text-muted-foreground">non-brand clicks</span>{#if d != null}<span class="tnum text-xs font-medium {d >= 0 ? 'text-good' : 'text-bad'}">{fmtSigned(d)}</span>{/if}</div>
+			{#if total}<div class="mt-3"><SegBar title="Clicks from brand and non-brand searches" format={(v) => `${fmtInt(v)} clicks`} parts={[{ label: 'Non-brand', value: b.now.other, color: 'var(--chart-1)' }, { label: 'Brand', value: b.now.brand, color: 'var(--chart-2)' }]} /></div>{/if}
+			<p class="mt-2 text-[11px] text-muted-foreground">Brand = contains <span class="pii">{b.terms.join(', ')}</span>. <a class="underline" href="/sites/{page.params.id}/settings">Change</a> · <a class="underline" href="/sites/{page.params.id}/queries?b=nonbrand">See non-brand searches</a></p>
+		{:else}
+			<p class="text-sm text-muted-foreground">Set your brand terms in <a class="underline" href="/sites/{page.params.id}/settings">Settings</a> to split brand from non-brand clicks.</p>
+		{/if}
+	</section>
+</div>
 
 <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
 	<section>

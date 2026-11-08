@@ -49,7 +49,7 @@
 				{#if data.readOnly}<p class="text-xs text-warn">Only read access is available: this server runs with READ_ONLY=1.</p>{/if}
 				<p class="text-xs text-muted-foreground">It still cannot delete your data or change a site's content or settings.</p>
 			</fieldset>
-			<p class="text-xs text-muted-foreground">Unless you pick a higher level above, access is read-only: it can look at your Search Console, GA4, Bing and indexing data, and cannot change anything. You can remove it any time on the Agents page.</p>
+			<p class="text-xs text-muted-foreground">Unless you pick a higher level above, access is read-only: it can look at your Search Console, GA4, Bing and indexing data, and cannot change anything. You can remove it any time on the MCP page.</p>
 			{#if form?.error}<p class="text-sm text-bad">{form.error}</p>{/if}
 			<div class="flex gap-2">
 				<button class="btn btn-primary">Allow</button>

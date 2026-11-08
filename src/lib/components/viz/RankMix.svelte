@@ -1,11 +1,12 @@
 <script lang="ts">
 	import SegBar from './SegBar.svelte';
 	import { POSITION_BUCKETS } from '$lib/plan';
+	import PositionTrend from './PositionTrend.svelte';
 	/**
 	 * Where the site's searches rank: one bar split into top 3 / 4-10 / 11-20 / below 20 (ordered steps of one hue, best first), with
 	 * each bucket's count and its change against the previous period printed under it, so the shift reads without hovering.
 	 */
-	let { now, prev = null }: { now: number[]; prev?: number[] | null } = $props();
+	let { now, prev = null, weeks = [], hrefFor = null }: { now: number[]; prev?: number[] | null; weeks?: { start: string; end: string; counts: number[] }[]; /** where clicking a bucket goes (the Queries tab, filtered to that position range) */ hrefFor?: ((i: number) => string) | null } = $props();
 	const total = $derived(now.reduce((a, b) => a + b, 0));
 	const parts = $derived(POSITION_BUCKETS.map((b, i) => ({ label: b.label, value: now[i], color: `var(--ord-${i + 1})`, ink: `var(--ord-ink-${i + 1})` })));
 	// moving up is good for the top three buckets and bad for "below 20"
@@ -20,12 +21,18 @@
 			<div>
 				<dt class="flex items-center gap-1.5 text-xs text-muted-foreground"><span class="size-2 rounded-sm" style="background:var(--ord-{i + 1})"></span>{b.label}</dt>
 				<dd class="mt-0.5 flex items-baseline gap-1.5">
-					<span class="text-lg font-semibold">{now[i].toLocaleString('en-US')}</span>
+					{#if hrefFor}<a href={hrefFor(i)} class="text-lg font-semibold hover:underline" title="See these searches">{now[i].toLocaleString('en-US')}</a>{:else}<span class="text-lg font-semibold">{now[i].toLocaleString('en-US')}</span>{/if}
 					{#if d != null && d !== 0}<span class="tnum text-xs font-medium {(d > 0) === goodUp[i] ? 'text-good' : 'text-bad'}">{d > 0 ? '+' : '−'}{Math.abs(d)}</span>{:else if d === 0}<span class="text-xs text-muted-foreground">no change</span>{/if}
 				</dd>
 			</div>
-		{/each}
-	</dl>
+			{/each}
+		</dl>
+		{#if weeks.length >= 2}
+			<details class="mt-3 text-xs">
+				<summary class="cursor-pointer text-muted-foreground select-none">Week by week, last {weeks.length} weeks</summary>
+				<div class="mt-2"><PositionTrend {weeks} /></div>
+			</details>
+		{/if}
 {:else}
 	<p class="text-sm text-muted-foreground">Not enough searches yet to show where they rank.</p>
 {/if}

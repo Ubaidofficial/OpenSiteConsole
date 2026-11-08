@@ -458,7 +458,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
 	created_at INTEGER NOT NULL, last_used_at INTEGER
 );
 -- OAuth sign-in for the MCP endpoint (claude.ai "custom connector", ChatGPT). A grant owns one api_keys row: that row's secret IS the
--- access token, rotated on every refresh, so revoking the key on the Agents page revokes the sign-in.
+-- access token, rotated on every refresh, so revoking the key on the MCP page revokes the sign-in.
 CREATE TABLE IF NOT EXISTS oauth_clients (
 	id TEXT PRIMARY KEY, name TEXT NOT NULL, redirect_uris TEXT NOT NULL, created_at INTEGER NOT NULL
 );

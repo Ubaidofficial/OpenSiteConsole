@@ -2,6 +2,7 @@
 	import Explainer from '$lib/components/Explainer.svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
 	import Dumbbell from '$lib/components/viz/Dumbbell.svelte';
+	import DecayMap from '$lib/components/viz/DecayMap.svelte';
 	import { fmtSigned } from '$lib/format';
 	import { page } from '$app/state';
 	let { data } = $props();
@@ -37,4 +38,11 @@
 </Explainer>
 <p class="mb-2 text-sm"><b>{data.rows.length}</b> decaying pages · <b>{specific}</b> page-specific</p>
 {#if bells.length}<section class="card mb-4 p-4"><h2 class="mb-3 text-sm font-medium">Clicks {yoy ? 'a year ago' : 'before'} and now, biggest losses first</h2><Dumbbell rows={bells} better="up" beforeLabel={yoy ? 'a year ago' : 'before'} afterLabel="now" /></section>{/if}
-<DataTable rows={data.rows} {cols} sortKey="lostClicks" empty="No significant decay. Nothing lost more than 25% with statistical confidence." />
+{#if data.map.rows.length}
+<details class="card mb-4 p-4" open={!data.rows.length}>
+	<summary class="cursor-pointer text-sm font-medium select-none">Decay map: your biggest pages, week by week <span class="font-normal text-muted-foreground">· last {data.map.weeks.length} weeks</span></summary>
+	<p class="mt-1 mb-3 text-xs text-muted-foreground">Each row is shaded against that page's own best week, so a slow slide shows as a row fading to the right, even on pages too small to pass the significance test above.</p>
+	<DecayMap weeks={data.map.weeks} rows={data.map.rows} />
+</details>
+{/if}
+<DataTable rows={data.rows} {cols} sortKey="lostClicks"  empty="No significant decay. Nothing lost more than 25% with statistical confidence." />

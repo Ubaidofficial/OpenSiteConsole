@@ -50,7 +50,7 @@
     <nav class="nav" aria-label="Main">
       <a href="#wins">Hidden wins</a>
       <a href="#product">How it works</a>
-      <a href="#agents">Agents</a>
+      <a href="#agents">MCP</a>
       <a href="#compare">Compare</a>
       <a href="#self-host">Self-host</a>
       <a href="#faq">FAQ</a>
@@ -258,7 +258,7 @@
   <div class="wrap">
     <div class="agent-head">
       <div>
-      <p class="kicker mono rv">For AI agents</p>
+      <p class="kicker mono rv">MCP</p>
       <h2 id="h-agents" class="h-lg rv">Ask your agent about every site at once.</h2>
       <p class="sub rv">SEOConsole includes a Model Context Protocol server. Your agent calls 40 tools that read your own stored data, so one question can cover every site, every source and all the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
       </div>
@@ -285,36 +285,44 @@
       </div>
 
       <div class="connect rv" data-tabs>
-        <div class="tablist" role="tablist" aria-label="Connect a client">
+        <div class="tablist" role="tablist" aria-label="Connect an AI app">
           <button role="tab" id="tab-claude" aria-controls="panel-claude" aria-selected="true" class="mono"><img class="lg" src="/assets/logos/claude.svg" width="16" height="16" alt="">Claude</button>
+          <button role="tab" id="tab-chatgpt" aria-controls="panel-chatgpt" aria-selected="false" tabindex="-1" class="mono">ChatGPT</button>
           <button role="tab" id="tab-code" aria-controls="panel-code" aria-selected="false" tabindex="-1" class="mono"><img class="lg" src="/assets/logos/claude-code.svg" width="16" height="16" alt="">Claude Code</button>
-          <button role="tab" id="tab-other" aria-controls="panel-other" aria-selected="false" tabindex="-1" class="mono"><img class="lg" src="/assets/logos/mcp.svg" width="16" height="16" alt="">Any MCP client</button>
+          <button role="tab" id="tab-other" aria-controls="panel-other" aria-selected="false" tabindex="-1" class="mono"><img class="lg" src="/assets/logos/mcp.svg" width="16" height="16" alt="">Others</button>
         </div>
+        <p class="mcp-url">Your MCP address is your dashboard's address plus <code>/api/mcp</code>, for example <code>https://app.seoconsole.app/api/mcp</code>. The MCP page in your dashboard shows yours with a copy button.</p>
         <div class="panel" role="tabpanel" id="panel-claude" aria-labelledby="tab-claude">
           <ol class="steps-list">
-            <li>In Claude, open <b>Customize → Connectors → Add custom connector</b>.</li>
-            <li>Paste your server address: <code>https://your-server/api/mcp</code></li>
-            <li>Authentication: <b>Sign in now</b>. OAuth client: <b>Register automatically</b>.</li>
-            <li>Click Connect, sign in on your own SEOConsole, choose which sites it can read, and Allow.</li>
+            <li>In Claude, open <b>Settings → Connectors</b> and choose <b>Add custom connector</b>.</li>
+            <li>Name it <b>SEOConsole</b> and paste your MCP address.</li>
+            <li>Click Add, then Connect. Sign in on your SEOConsole, pick the sites Claude may read, and Allow.</li>
           </ol>
-          <p class="note">No key to paste. The token renews itself and shows up on your Agents page, where one click revokes it.</p>
+          <p class="note">No key to paste. If Claude says the connector already exists in your organization, it was added already: find SEOConsole in the list and click Connect.</p>
+        </div>
+        <div class="panel" role="tabpanel" id="panel-chatgpt" aria-labelledby="tab-chatgpt" hidden>
+          <ol class="steps-list">
+            <li>Once, on your server: add ChatGPT's callback address to <code>MCP_OAUTH_REDIRECTS</code> (the MCP page explains how).</li>
+            <li>In ChatGPT, turn on <b>Developer mode</b> under Settings → Apps &amp; Connectors → Advanced, then create a connector.</li>
+            <li>Paste your MCP address, choose <b>OAuth</b>, then sign in on your SEOConsole and Allow.</li>
+          </ol>
+          <p class="note">Needs a paid ChatGPT plan with developer mode. OpenAI moves these menus often, so check their help if a label differs.</p>
         </div>
         <div class="panel" role="tabpanel" id="panel-code" aria-labelledby="tab-code" hidden>
-          <div class="code"><button class="copy mono" type="button" data-copy="claude mcp add --scope user --transport http seoconsole https://your-server/api/mcp --header &quot;Authorization: Bearer osc_YOUR_KEY&quot;">Copy</button><pre class="mono" tabindex="0"><code>claude mcp add --scope user --transport http seoconsole \
-  https://your-server/api/mcp \
-  --header "Authorization: Bearer osc_YOUR_KEY"</code></pre></div>
-          <p class="note">Create the key on the Agents page, optionally limited to some sites. <code>--scope user</code> makes it available in every project.</p>
+          <div class="code"><button class="copy mono" type="button" data-copy="claude mcp add --scope user --transport http seoconsole https://app.seoconsole.app/api/mcp">Copy</button><pre class="mono" tabindex="0"><code>claude mcp add --scope user --transport http \
+  seoconsole https://app.seoconsole.app/api/mcp</code></pre></div>
+          <p class="note">Use your own address. Then type <code>/mcp</code> in Claude Code and sign in. <code>--scope user</code> makes it available in every project.</p>
         </div>
         <div class="panel" role="tabpanel" id="panel-other" aria-labelledby="tab-other" hidden>
-          <div class="code"><button class="copy mono" type="button" data-copy="{ &quot;mcpServers&quot;: { &quot;seoconsole&quot;: { &quot;url&quot;: &quot;https://your-server/api/mcp&quot;, &quot;headers&quot;: { &quot;Authorization&quot;: &quot;Bearer osc_YOUR_KEY&quot; } } } }">Copy</button><pre class="mono" tabindex="0"><code>{
+          <div class="code"><button class="copy mono" type="button" data-copy="{ &quot;mcpServers&quot;: { &quot;seoconsole&quot;: { &quot;url&quot;: &quot;https://app.seoconsole.app/api/mcp&quot;, &quot;headers&quot;: { &quot;Authorization&quot;: &quot;Bearer osc_YOUR_KEY&quot; } } } }">Copy</button><pre class="mono" tabindex="0"><code>{
   "mcpServers": {
     "seoconsole": {
-      "url": "https://your-server/api/mcp",
+      "url": "https://app.seoconsole.app/api/mcp",
       "headers": { "Authorization": "Bearer osc_YOUR_KEY" }
     }
   }
 }</code></pre></div>
-          <p class="note">Any client that speaks HTTP MCP with a bearer token or OAuth. Claude is the only one confirmed so far.</p>
+          <p class="note">Cursor, Codex and other MCP apps: sign in if the app offers it, or create a key on the MCP page and use this shape.</p>
         </div>
       </div>
     </div>

@@ -6,7 +6,7 @@
  *   2. /oauth/authorize  the owner signs in with the admin password and approves; we hand back a one-time code.
  *   3. /oauth/token      the client trades the code (plus its PKCE verifier) for an access token and a refresh token.
  * An access token is an ordinary API key row (osc_...) with an expiry, so the MCP endpoint, its rate limits, site scoping and the
- * revoke button on the Agents page all work unchanged. Refreshing swaps that key's secret in place.
+ * revoke button on the MCP page all work unchanged. Refreshing swaps that key's secret in place.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { config } from './config';
@@ -49,7 +49,7 @@ export const protectedResourceMetadata = (origin: string) => ({
 	authorization_servers: [origin],
 	scopes_supported: [SCOPE],
 	bearer_methods_supported: ['header'],
-	resource_name: 'SEOConsole (read-only search data)'
+	resource_name: 'SEOConsole: your search data (read by default; changes only where you allow them)'
 });
 
 export const authorizationServerMetadata = (origin: string) => ({
@@ -219,7 +219,7 @@ export function refreshTokens(p: { refreshToken: string; clientId: string }, now
 	return tokenBody(access, next);
 }
 
-/** For the Agents page: which keys are OAuth sign-ins, and for which app. */
+/** For the MCP page: which keys are OAuth sign-ins, and for which app. */
 export function oauthLabels(): Map<number, string> {
 	const rows = db().prepare('SELECT g.key_id, c.name FROM oauth_grants g JOIN oauth_clients c ON c.id = g.client_id').all() as { key_id: number; name: string }[];
 	return new Map(rows.map((r) => [r.key_id, r.name]));

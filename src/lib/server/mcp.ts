@@ -421,7 +421,7 @@ const TOOLS: Tool[] = [
 				clarity: { linkedSites: n('clarity'), tools: ['get_clarity_snapshot'] },
 				openseo: { linkedSites: n('openseo'), tools: ['get_openseo_project'] },
 				coreWebVitals: { connected: cruxIntegration() != null, tools: ['get_web_vitals'] },
-				hint: 'A source with linkedSites below `sites` can be completed on the Connect page. The tools listed here only read. A few other tools change things, and they only work if the owner allowed changes for this connection on the Agents page.'
+				hint: 'A source with linkedSites below `sites` can be completed on the Connect page. The tools listed here only read. A few other tools change things, and they only work if the owner allowed changes for this connection on the MCP page.'
 			};
 		}
 	},
@@ -1153,7 +1153,7 @@ TOOLS.push(...EXTRA_READ_TOOLS, ...WRITE_TOOLS);
 /** What a tool needs: the app's own change tools (`write`) need the submit level; search-engine tools say it with `needs`. */
 const needOf = (t: Tool): Exclude<Permission, 'read'> | undefined => t.needs ?? (t.write ? 'submit' : undefined);
 
-/** Every tool name, for the Agents page (so the list shown there cannot go stale). */
+/** Every tool name, for the MCP page (so the list shown there cannot go stale). */
 export const MCP_TOOL_NAMES: string[] = TOOLS.map((t) => t.name);
 /** The tools that need more than a read-only key, by the permission they need. */
 export const MCP_WRITE_TOOLS = { submit: TOOLS.filter((t) => needOf(t) === 'submit').map((t) => t.name), delete: TOOLS.filter((t) => needOf(t) === 'delete').map((t) => t.name) };
@@ -1183,7 +1183,7 @@ export async function handleMcp(request: Request): Promise<Response> {
 		// RFC 9728 / the MCP authorization spec: a 401 that names the discovery document is what starts "Sign in" in an MCP client.
 		// A credential that was sent but is no good (revoked, or an expired token to refresh) is reported as invalid_token.
 		const challenge = `Bearer resource_metadata="${config.origin}/.well-known/oauth-protected-resource/api/mcp"${presentedKey(request) ? ', error="invalid_token"' : ''}`;
-		return new Response(JSON.stringify(rpcErr(null, -32001, 'Missing or invalid API key (create one on the Agents page, or sign in from a connector)')), { status: 401, headers: { ...headers, 'www-authenticate': challenge } });
+		return new Response(JSON.stringify(rpcErr(null, -32001, 'Missing or invalid API key (create one on the MCP page, or sign in from a connector)')), { status: 401, headers: { ...headers, 'www-authenticate': challenge } });
 	}
 	if (rateLimited(auth.id)) return new Response(JSON.stringify(rpcErr(null, -32029, `Too many requests: at most ${MCP_RATE_PER_MINUTE} a minute per key.`)), { status: 429, headers: { ...headers, 'retry-after': '60' } });
 	let msg: { jsonrpc?: string; id?: unknown; method?: string; params?: Record<string, unknown> };
@@ -1217,7 +1217,7 @@ export async function handleMcp(request: Request): Promise<Response> {
 				const need = needOf(tool);
 				if (need && !permits(auth.permission, need)) {
 					const level = need === 'delete' ? 'the "delete" permission (submit plus the few things that cannot be undone: removing a sitemap, discarding the queue)' : 'the "submit" permission';
-					return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: `${tool.name} changes things, so it needs an API key created with ${level}. This key has "${auth.permission}". The owner can change that on the Agents page (or choose that level when signing in a connector). Do not retry until they have.` }] }));
+					return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: `${tool.name} changes things, so it needs an API key created with ${level}. This key has "${auth.permission}". The owner can change that on the MCP page (or choose that level when signing in a connector). Do not retry until they have.` }] }));
 				}
 				const out = await tool.run(args, sites, { keyId: auth.id, keyName: auth.name, permission: auth.permission, scoped: auth.scope !== null });
 				if (tool.write) {
