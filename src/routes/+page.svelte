@@ -9,6 +9,7 @@
 	import { trendOf } from '$lib/trend';
 	import SiteAvatar from '$lib/components/SiteAvatar.svelte';
 	import Delta from '$lib/components/Delta.svelte';
+	import GetStarted from '$lib/components/GetStarted.svelte';
 	import { privacy } from '$lib/privacy.svelte';
 	import { fmtInt, fmtPct, fmtPos, ago } from '$lib/format';
 
@@ -96,12 +97,16 @@
 	</div>
 </div>
 
+{#if data.onboarding && !data.onboarding.hidden}<GetStarted steps={data.onboarding.steps} progress={data.onboarding.progress} />{/if}
+
 {#if data.cards.length === 0}
+	{#if !data.onboarding || data.onboarding.hidden}
 	<div class="card p-10 text-center">
 		<p class="mb-2 text-lg font-semibold">No sites yet</p>
 		<p class="mb-5 text-muted-foreground">Connect a Google account to import every Search Console property it can see.</p>
 		<a class="btn btn-primary" href="/accounts">Connect an account</a>
 	</div>
+	{/if}
 {:else}
 	<div class="stagger mb-5 grid grid-cols-2 gap-4 md:grid-cols-4">
 		{#each kpis as k}
@@ -203,4 +208,7 @@
 		Periods end at each site's newest synced day (Search Console data lags ~2 days; days are Pacific time). Green line = clicks growing, red = falling (vs the previous period); dashed end = the last 2 days, which Google may still revise.
 		<a class="underline underline-offset-2" href="?days={data.days}&hidden={data.showHidden ? 0 : 1}">{data.showHidden ? 'Hide' : 'Show'} hidden sites</a>
 	</p>
+{/if}
+{#if data.onboarding?.hidden}
+	<form method="POST" action="?/showOnboarding" use:enhance class="mt-2 text-xs text-muted-foreground"><button class="underline underline-offset-2">Get-started guide{data.onboarding.progress.complete ? '' : ` (${data.onboarding.progress.done} of ${data.onboarding.progress.total} done)`}</button></form>
 {/if}

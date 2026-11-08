@@ -145,6 +145,7 @@ Sites are matched by domain; anything unmatched is listed and can be linked by h
 
 ## Using the dashboard
 
+- **Get started** (dashboard, owner and admins): a checklist from connecting Google to a useful setup: connect Search Console (flagged *setup required* while `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are missing), import history, work through the to-do list, connect Bing/GA4/Tag Manager/Clarity, turn on the indexing monitor, set brand terms, set the digest webhook, connect an AI agent, and (optional) invite the team. Each step ticks itself off from data the app already stores (nothing is tracked about the person), the next one is open, some offer a prompt to give your agent instead, and *Hide* puts it away for the installation (a *Get-started guide* link at the bottom of the dashboard brings it back). On a new install it replaces the *No sites yet* card.
 - **Privacy eye** (header): blurs site names, accounts, avatars, page and sitemap URLs, and branded queries (those containing your brand terms) for screenshots and screen sharing; hover tooltips that would reveal them are suppressed. The choice is remembered per browser. Numbers and non-branded queries stay visible. Your browser's own status bar can still show a link's address on hover.
 - **Eye on a card:** hides that site from the dashboard (it leaves the totals and stops syncing). A toast offers Undo, and "Show hidden sites" at the bottom brings it back.
 - **Light theme only**: there is no theme switcher, and the app ignores your OS dark-mode setting.

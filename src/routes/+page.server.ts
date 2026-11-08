@@ -9,6 +9,8 @@ import { displayName } from '$lib/server/clients';
 import { ctrOf, pctChangeMin, positionShift } from '$lib/analytics';
 import { allLinks } from '$lib/server/links';
 import { hideCoveredDuplicates, hideableDuplicates, purgeRemovedSite } from '$lib/server/duplicates';
+import { onboardingFor, setOnboardingHidden } from '$lib/server/onboarding';
+import { hasRole } from '$lib/server/roles';
 
 export const load: PageServerLoad = ({ url, locals }) => {
 	const days = daysParam(url);
@@ -22,6 +24,8 @@ export const load: PageServerLoad = ({ url, locals }) => {
 	return {
 		days,
 		showHidden,
+		// The get-started guide is for whoever sets the installation up: the owner and admins.
+		onboarding: hasRole(locals?.user?.role, 'admin') ? onboardingFor() : null,
 		totals: {
 			clicks: totals.now.clicks,
 			impressions: totals.now.impressions,
@@ -96,6 +100,8 @@ export const actions: Actions = {
 		return { queued: n, removed, listError };
 	},
 	hideDuplicates: async () => ({ hidden: hideCoveredDuplicates() }),
+	hideOnboarding: async () => (setOnboardingHidden(true), { ok: 'Guide hidden. “Get-started guide” at the bottom of the dashboard brings it back.' }),
+	showOnboarding: async () => (setOnboardingHidden(false), { ok: 'Guide shown.' }),
 	purgeRemoved: async ({ request }) => {
 		try {
 			const id = intParam((await request.formData()).get('id'));
