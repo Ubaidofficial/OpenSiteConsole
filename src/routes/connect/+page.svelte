@@ -86,7 +86,7 @@
 <div class="stagger grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
 	<!-- 1 Google -->
 	<details class="card p-4 [&[open]>summary]:mb-2" open={!complete.google}>
-		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium">1 · Google Search Console <span class="chip ml-1">+ GA4 &amp; Tag Manager access</span></h2><span class="ml-auto text-xs {complete.google ? 'text-good' : 'text-muted-foreground'}">{statusOf.google}</span></summary>
+		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/search-console.svg" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />1 · Google Search Console <span class="chip ml-1">+ GA4 &amp; Tag Manager access</span></h2><span class="ml-auto text-xs {complete.google ? 'text-good' : 'text-muted-foreground'}">{statusOf.google}</span></summary>
 		<p class="mb-3 text-xs text-muted-foreground">One Google sign-in grants Search Console, GA4 and Tag Manager (read-only) together. Repeat for each Google account.</p>
 		<ul class="mb-3 space-y-1 text-sm">
 			{#each data.accounts as a}
@@ -104,7 +104,7 @@
 
 	<!-- 2 Bing -->
 	<details class="card p-4 [&[open]>summary]:mb-2" open={!complete.bing}>
-		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium">2 · Bing Webmaster Tools</h2><span class="ml-auto text-xs {complete.bing ? 'text-good' : 'text-muted-foreground'}">{statusOf.bing}</span></summary>
+		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/bing.svg" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />2 · Bing Webmaster Tools</h2><span class="ml-auto text-xs {complete.bing ? 'text-good' : 'text-muted-foreground'}">{statusOf.bing}</span></summary>
 		<ol class="mb-3 ml-4 list-decimal space-y-0.5 text-xs text-muted-foreground">
 			<li>Sign in at <a class="underline" href="https://www.bing.com/webmasters" target="_blank" rel="noreferrer noopener">bing.com/webmasters</a> and make sure your sites are added and verified.</li>
 			<li><b>Settings</b> (top right) → <b>API Access</b> → accept the terms → <b>API Key</b> → <b>Generate API Key</b>.</li>
@@ -129,7 +129,7 @@
 
 	<!-- 3 GA4 -->
 	<details class="card p-4 [&[open]>summary]:mb-2" open={!complete.ga4}>
-		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium">3 · Google Analytics 4</h2><span class="ml-auto text-xs {complete.ga4 ? 'text-good' : 'text-muted-foreground'}">{statusOf.ga4}</span></summary>
+		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/ga4.svg" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />3 · Google Analytics 4</h2><span class="ml-auto text-xs {complete.ga4 ? 'text-good' : 'text-muted-foreground'}">{statusOf.ga4}</span></summary>
 		<p class="mb-3 text-xs text-muted-foreground">Needs the <b>Analytics Admin API</b> and <b>Analytics Data API</b> enabled in your Google Cloud project. Properties are matched to sites by the website address of their web data stream.</p>
 		<form method="POST" action="?/ga4Auto" use:enhance={submit('ga4')}><button class="btn btn-primary" disabled={busy === 'ga4'}>{busy === 'ga4' ? 'Matching…' : 'Find & link GA4 properties'}</button></form>
 		{#if msgFor('ga4')?.ok}<p class="mt-2 text-sm text-good">{msgFor('ga4')?.ok}</p>{/if}
@@ -140,7 +140,7 @@
 
 <!-- 4 Tag Manager -->
 <details class="card mt-4 p-4 [&[open]>summary]:mb-2" open={!complete.gtm}>
-		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium">4 · Google Tag Manager <span class="chip ml-1">read-only</span></h2><span class="ml-auto text-xs {complete.gtm ? 'text-good' : 'text-muted-foreground'}">{statusOf.gtm}</span></summary>
+		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/tag-manager.svg" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />4 · Google Tag Manager <span class="chip ml-1">read-only, plus an optional Clarity install</span></h2><span class="ml-auto text-xs {complete.gtm ? 'text-good' : 'text-muted-foreground'}">{statusOf.gtm}</span></summary>
 	<p class="mb-3 text-xs text-muted-foreground">
 		Reads each site's <b>published</b> container and checks it against GA4 and Search Console (Tag Manager tab). Needs the <b>Tag Manager API</b> enabled in your Google Cloud project. SEOConsole never edits or publishes a container.
 	</p>
@@ -151,7 +151,7 @@
 
 <!-- 5 Clarity -->
 <details class="card mt-4 p-4 [&[open]>summary]:mb-2" open={!complete.clarity}>
-		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium">5 · Microsoft Clarity</h2><span class="ml-auto text-xs {complete.clarity ? 'text-good' : 'text-muted-foreground'}">{statusOf.clarity}</span></summary>
+		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/clarity.png" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />5 · Microsoft Clarity</h2><span class="ml-auto text-xs {complete.clarity ? 'text-good' : 'text-muted-foreground'}">{statusOf.clarity}</span></summary>
 	<p class="mb-3 text-xs text-muted-foreground">
 		One token per project: Clarity → <b>Settings</b> → <b>Data Export</b> → <b>Generate new API token</b>. Clarity allows <b>10 API calls per project per day</b> and shows only the last 1–3 days, so one snapshot is stored daily.
 		The token only reads data: Clarity's <b>script</b> must also be on the site to record anything. Each site's <b>Clarity</b> tab checks the pages for it and can add it through Tag Manager.
@@ -204,7 +204,7 @@
 
 <!-- 6 Core Web Vitals -->
 <details class="card mt-4 p-4 [&[open]>summary]:mb-2" open={!complete.crux}>
-		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium">7 · Core Web Vitals <span class="chip ml-1">optional</span></h2><span class="ml-auto text-xs {complete.crux ? 'text-good' : 'text-muted-foreground'}">{statusOf.crux}</span></summary>
+		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/chrome.svg" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />7 · Core Web Vitals <span class="chip ml-1">optional</span></h2><span class="ml-auto text-xs {complete.crux ? 'text-good' : 'text-muted-foreground'}">{statusOf.crux}</span></summary>
 	<Explainer lead="Real-user page speed from Google's Chrome UX Report.">
 	<p>Real-user speed data (LCP, INP, CLS and more) from Google's Chrome UX Report, saved once a day per site. It needs a free API key: in Google Cloud Console enable the <b>Chrome UX Report API</b>, then create an API key under Credentials. Sites with too little Chrome traffic have no data, which is normal.</p>
 </Explainer>

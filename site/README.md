@@ -27,7 +27,7 @@ docker run --rm -p 8080:8080 seoconsole-site
 
 ## How it works
 
-- `assets/main.js` drives everything that moves: the hero product tilts flat as you scroll (a `--p` value from 0 to 1), sections fade in, the six-step story swaps its screenshot as each step reaches the middle of the screen, and the agent terminal types itself once. Motion is switched off for visitors who ask their system for reduced motion, and the page is complete with JavaScript off.
+- `assets/main.js` drives everything that moves: the dashboard screenshot tilts flat as you scroll (a `--p` value from 0 to 1), sections fade in, charts draw and numbers count up, the six-step story swaps its screenshot as each step reaches the middle of the screen, and the agent terminal types itself once. Motion is switched off for visitors who ask their system for reduced motion, and the page is complete with JavaScript off.
 - The agent conversation uses real output from the app's MCP tools on the demo data (`get_action_queue`, `get_opportunities`). The assistant's wording is an example, and the page says so.
 - Nothing is loaded from another site: the font is self-hosted and there are no analytics, so the strict policy in `security-headers.conf` (default-src 'self') holds.
 
@@ -51,9 +51,11 @@ The hidden-win cards quote example rows from the demo data. Demo data is generat
 
 No customer counts, testimonials or ratings, because there are none. The hosted plan is shown as planned, not available. The logo and the name have not been checked against existing trademarks.
 
-## The pixel art
+## The visuals
 
-Every illustration on the page (the dig site in the hero, the eight "hidden win" scenes, the many-sites and agent pictures, the landscape behind the dashboard) is drawn by [`art/make_art.py`](art/make_art.py) with a fixed palette and seed, and written to `assets/art/`. Run `python3 site/art/make_art.py` (needs Pillow) to regenerate them. Several are sprite sheets: the stylesheet steps through their frames with `steps()`, only while they are on screen, and shows the first frame for people who ask for less motion. `tests/site.test.ts` checks that each sprite's width is a whole number of its frames and that no image goes unused.
+There are no illustrations or stock images. The hero's ranked list, the eight "hidden win" charts, the portfolio table and the toolkit cards are plain HTML and inline SVG, drawn from numbers in the app's demo data (read through its MCP tools; the sparklines are the real daily click series). Each card says "Demo data" or "Illustration, not real data". Demo data is generated relative to today's date, so these numbers drift: when you refresh the screenshots, re-read them (`get_action_queue`, `get_portfolio`, `get_ai_traffic`, `get_web_vitals`, `get_sitemap_coverage`, `get_opportunities`) and update the page.
+
+Motion: charts draw, bars grow and counters count up once, when they scroll into view. The starting states only exist with JavaScript on and before an element is revealed (`html.js … :not(.in)`, checked by `tests/site.test.ts`), so the page is complete without JavaScript, and with reduced motion everything is shown still and finished. The portfolio's privacy switch is a real button: it blurs the site names the way the app's privacy mode does, and shows itself once when the card first appears.
 
 ## Product logos
 
