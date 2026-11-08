@@ -78,7 +78,7 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Reports', feature: 'Internal-linking tool', ours: n('Not built.'), theirs: y('A monthly credit allowance per plan.') },
 			{ group: 'Beyond testing', feature: 'Indexing toolkit (submit, request list, re-checks, monitor)', ours: y('IndexNow, Bing and (for job and livestream pages) Google’s Indexing API, plus a Request Indexing list and day 1/3/5 re-checks.'), theirs: u() },
 			{ group: 'Beyond testing', feature: 'Bing, Clarity and Tag Manager next to Search Console', ours: y(), theirs: u('Its pages list Search Console and Google Analytics only.') },
-			{ group: 'Beyond testing', feature: 'MCP server for AI agents', ours: y('Read tools for all the data; anything that changes something needs a key created for it.'), theirs: u() },
+			{ group: 'Beyond testing', feature: 'MCP server for AI agents', ours: y('Read tools for all the data; anything that changes something needs a key created for it.'), theirs: y('An API and an MCP server are listed on its features page (read on 2026-11-08).') },
 			{ group: 'Beyond testing', feature: 'Many sites and Google accounts in one place', ours: y('No limit; it runs on your own server.'), theirs: p('Priced by the number of sites: 1, 5 or 20, more on request.') },
 			{ group: 'Beyond testing', feature: 'History beyond Search Console’s 16 months', ours: y('Kept in your own database from the first sync.'), theirs: u() },
 			{ group: 'Beyond testing', feature: 'More than one user', ours: n('One admin password; no roles.'), theirs: y('Unlimited users.') },
@@ -91,7 +91,7 @@ export const COMPETITORS: Competitor[] = [
 			{ src: '/img/compare/quickwins.jpg', alt: 'The Quick wins tab listing titles to rewrite with estimated extra clicks', caption: 'Quick wins: the cheapest improvements first, with an estimate of the extra clicks.' },
 			{ src: '/img/compare/decay.jpg', alt: 'The Decay tab with a choice between the previous period and the same time last year', caption: 'Decay, against the previous period or the same time last year.' }
 		],
-		sources: [{ label: 'SEOTesting.com home page', url: 'https://seotesting.com/' }, { label: 'SEOTesting.com pricing', url: 'https://seotesting.com/pricing/' }]
+		sources: [{ label: 'SEOTesting.com home page', url: 'https://seotesting.com/' }, { label: 'SEOTesting.com pricing', url: 'https://seotesting.com/pricing/' }, { label: 'SEOTesting.com features', url: 'https://seotesting.com/home/features/' }, { label: 'SEOTesting.com LLM tests', url: 'https://seotesting.com/llm-testing/' }]
 	},
 	{
 		slug: 'indexchex',
@@ -171,6 +171,101 @@ export const COMPETITORS: Competitor[] = [
 			{ src: '/img/compare/actions.jpg', alt: 'The Actions page with filters by site, kind and effort', caption: 'Actions: what to do first across all your sites.' }
 		],
 		sources: [{ label: 'Promptwatch pricing', url: 'https://promptwatch.com/pricing' }, { label: 'Promptwatch prompt tracking', url: 'https://promptwatch.com/prompt-tracking' }, { label: 'Promptwatch crawler logs', url: 'https://promptwatch.com/crawler-logs' }]
+	},
+	{
+		slug: 'gsc-wizard',
+		name: 'GSC Wizard',
+		url: 'https://www.gscwizard.com/',
+		blurb: 'A hosted Search Console analytics tool that adds Bing, Yandex, GA4 and Merchant Center, with an MCP server and a ChatGPT app.',
+		checkedOn: '2026-11-08',
+		price: 'Starter €17 a month (15 properties, owner + 1 seat), Pro €39 (75 properties, + 3 seats), Business €249 (650 properties, + 10 seats); custom plans from €349. Prices exclude VAT, monthly only; 7-day free trial, no card.',
+		weWin: [
+			'Free to self-host, with no limit on properties or seats.',
+			'Clarity and Tag Manager next to Search Console, with a tracking audit and a one-click Clarity install.',
+			'Your data stays on your own server, and history is kept for every property, not only the ones on a storage plan.',
+			'An MCP server that can also act (submit URLs, sitemaps, IndexNow) when you allow it.'
+		],
+		theyWin: [
+			'Hosted: nothing to install or run, and it reports serving tens of thousands of properties (its own claim).',
+			'Yandex Webmaster, Google Merchant Center, traffic forecasting, topic clusters and hreflang reports: SEOConsole has none of these.',
+			'A ChatGPT app, a REST API and a Looker Studio connector.'
+		],
+		rows: [
+			{ group: 'Data', feature: 'Many sites and Google accounts in one place', ours: y('No limit.'), theirs: y('15, 75 or 650 properties by plan; extra Google accounts can be linked.') },
+			{ group: 'Data', feature: 'History beyond Search Console’s 16 months', ours: y('Kept for every property from the first sync.'), theirs: p('Up to 10 years on “full storage” properties only; others get 16 months.') },
+			{ group: 'Data', feature: 'Bing next to Google', ours: y(), theirs: y('Bing Webmaster Tools and Yandex Webmaster.') },
+			{ group: 'Data', feature: 'GA4 next to Search Console', ours: y(), theirs: y() },
+			{ group: 'Data', feature: 'Clarity and Tag Manager', ours: y('Including a tracking audit and a one-click Clarity install through Tag Manager.'), theirs: u() },
+			{ group: 'Analysis', feature: 'SEO tests with a control group and significance', ours: y('Before/after, split and redirect tests.'), theirs: y('A/B tests with control and treatment groups, p-values and effect sizes.') },
+			{ group: 'Analysis', feature: 'Decay, cannibalization, striking distance and CTR gaps', ours: y(), theirs: y() },
+			{ group: 'Analysis', feature: 'AI-assistant traffic by page', ours: y('From GA4 referrers.'), theirs: y('An AI / LLM traffic view from GA4.') },
+			{ group: 'Analysis', feature: 'Core Web Vitals', ours: y('Field data from the Chrome UX Report, stored daily.'), theirs: y('CrUX field data with trends and alerts.') },
+			{ group: 'Indexing', feature: 'Indexing toolkit (IndexNow, Bing, inspection, monitoring)', ours: y('IndexNow, Bing, a Request Indexing list and day 1/3/5 re-checks.'), theirs: y('URL Inspection in bulk, IndexNow and an Index Tracker for up to 1,800 URLs a day.') },
+			{ group: 'Reports', feature: 'Scheduled reports and alerts', ours: y('A weekly digest and urgent alerts to Slack, Discord or a webhook.'), theirs: y('Daily, weekly and monthly reports to Slack; alerts to Slack, Teams and webhooks.') },
+			{ group: 'Access', feature: 'MCP server for AI agents', ours: y('Reads by default; acting needs a level you grant.'), theirs: y('A remote MCP server on every plan.') },
+			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('Hosted; a dedicated server is offered on custom plans only.') },
+			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted.') },
+			{ group: 'More', feature: 'Yandex, Merchant Center, forecasting, topic clusters, hreflang', ours: n('Not built.'), theirs: y() },
+			{ group: 'Price and maturity', feature: 'Price', ours: y('Free to self-host.'), theirs: p('From €17 a month for 15 properties, excluding VAT.') },
+			MATURITY(y('Established; it says it tracks 88,650+ properties for 5,750+ SEOs (its own claim).'))
+		],
+		shots: [
+			{ src: '/img/compare/actions.jpg', alt: 'The Actions page with filters by site, kind and effort', caption: 'A ranked to-do list across every site.' },
+			{ src: '/img/compare/pages.jpg', alt: 'The Pages table with Google, Bing, Google Analytics and AI-assistant columns side by side', caption: 'Search Console beside Bing, Analytics and AI visits.' }
+		],
+		sources: [
+			{ label: 'GSC Wizard features', url: 'https://www.gscwizard.com/features.html' },
+			{ label: 'GSC Wizard pricing', url: 'https://www.gscwizard.com/pricing.html' },
+			{ label: 'GSC Wizard llms.txt (what it is not for)', url: 'https://www.gscwizard.com/llms.txt' },
+			{ label: 'GSC Wizard indexing docs', url: 'https://www.gscwizard.com/docs/indexing.html' }
+		]
+	},
+	{
+		slug: 'seo-stack',
+		name: 'SEO Stack',
+		url: 'https://www.seo-stack.io/',
+		blurb: 'A hosted warehouse for Search Console and GA4 data with AI visibility tracking, an AI assistant, content writing and an MCP server.',
+		checkedOn: '2026-11-08',
+		price: 'Basic $129.99 a month (10 websites, 5 team members), Pro $349.99 (30 websites, 10 members), Agency $679.99 (200 websites, 15 members); extra websites $10 a month each. 14-day trial, card required.',
+		weWin: [
+			'Free to self-host, with no limit on websites or team members.',
+			'Bing, Clarity and Tag Manager next to Search Console and GA4.',
+			'Split and redirect tests with a control group and significance, not only before/after.',
+			'An indexing toolkit with IndexNow and Bing submission, and your data on your own server.'
+		],
+		theyWin: [
+			'AI visibility tracking (citations, mentions and share of voice across AI assistants) and an in-app AI assistant.',
+			'AI content writing, briefs and a site audit: SEOConsole does not write content.',
+			'Hosted, with white-label client reports on its Agency plan (its pages are not consistent on this).'
+		],
+		rows: [
+			{ group: 'Data', feature: 'Many sites in one place', ours: y('No limit.'), theirs: y('10, 30 or 200 websites by plan; more at $10 a month each.') },
+			{ group: 'Data', feature: 'History beyond Search Console’s 16 months', ours: y('Kept from the first sync.'), theirs: y('60 or 120+ months by plan, from the day you connect.') },
+			{ group: 'Data', feature: 'Bing next to Google', ours: y(), theirs: u() },
+			{ group: 'Data', feature: 'GA4 next to Search Console', ours: y(), theirs: y() },
+			{ group: 'Data', feature: 'Clarity and Tag Manager', ours: y('Including a tracking audit and a one-click Clarity install through Tag Manager.'), theirs: u() },
+			{ group: 'Analysis', feature: 'SEO tests with a control group and significance', ours: y('Before/after, split and redirect tests.'), theirs: p('Before/after “AI Experiments” with a written analysis; its pages say a true site-wide A/B test is not possible.') },
+			{ group: 'Analysis', feature: 'Decay, cannibalization, striking distance and CTR gaps', ours: y(), theirs: y() },
+			{ group: 'Analysis', feature: 'AI-assistant traffic by page', ours: y('From GA4 referrers.'), theirs: y('AI assistants as a GA4 channel.') },
+			{ group: 'Indexing', feature: 'Indexing toolkit (IndexNow, Bing, inspection, monitoring)', ours: y('IndexNow, Bing, a Request Indexing list and day 1/3/5 re-checks.'), theirs: p('Page indexing checks at scale; IndexNow is not stated.') },
+			{ group: 'Reports', feature: 'Scheduled reports and alerts', ours: y('A weekly digest and urgent alerts to Slack, Discord or a webhook.'), theirs: p('Weekly or monthly PDF reports by email; Slack is listed as coming soon.') },
+			{ group: 'Access', feature: 'MCP server for AI agents', ours: y('Reads by default; acting needs a level you grant.'), theirs: y('On all plans; a REST API is not out yet (its own words).') },
+			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('Hosted, with exports to Sheets, CSV and PDF.') },
+			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted.') },
+			{ group: 'More', feature: 'AI visibility tracking, AI assistant, AI content writing', ours: n('Not built.'), theirs: y('Token and content allowances by plan.') },
+			{ group: 'Price and maturity', feature: 'Price', ours: y('Free to self-host.'), theirs: p('From $129.99 a month for 10 websites.') },
+			MATURITY(y('Established; it says it is trusted by over 5,000 users (its own claim).'))
+		],
+		shots: [
+			{ src: '/img/compare/tests.jpg', alt: 'A SEOConsole SEO test result with clicks against control pages, a Google update overlap warning and conversions', caption: 'A test result with control pages, the smallest detectable change and conversions.' },
+			{ src: '/img/compare/submit.jpg', alt: 'The Submit tab sending URLs to IndexNow and Bing', caption: 'Indexing: IndexNow and Bing submission with re-checks.' }
+		],
+		sources: [
+			{ label: 'SEO Stack pricing', url: 'https://www.seo-stack.io/pricing' },
+			{ label: 'SEO Stack vs Google Search Console', url: 'https://www.seo-stack.io/compare/vs-google-search-console' },
+			{ label: 'SEO Stack for agencies', url: 'https://www.seo-stack.io/solutions/agencies' },
+			{ label: 'SEO Stack AI experiments', url: 'https://www.seo-stack.io/platform/ai-experiments' }
+		]
 	},
 	{
 		slug: 'google-search-console',

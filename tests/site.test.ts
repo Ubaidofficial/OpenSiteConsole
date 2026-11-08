@@ -264,11 +264,18 @@ describe('site: the product visuals and their motion', () => {
 		expect(html).toMatch(/names and logos here belong to their owners/);
 		expect(html).toMatch(/not affiliated with or endorsed by them/);
 	});
-	it('the comparison keeps the rows where the others are ahead, and says when it was checked', () => {
+	it('the comparison: features first, price as the last row, five tools, when it was read, and where the full sourced pages are', () => {
 		const t = /<section class="sec compare"[\s\S]*?<\/section>/.exec(html)![0];
-		expect(t).toMatch(/Where they are ahead/);
-		expect((t.match(/<span class="v n">No<\/span>/g) ?? []).length).toBeGreaterThanOrEqual(4); // our own "No"s are in it
-		expect(t).toMatch(/7 November 2026/);
+		const heads = [...t.matchAll(/<th scope="col"[^>]*>(?:<img[^>]*>)?([^<]+)<\/th>/g)].map((m) => m[1]);
+		expect(heads).toEqual(['SEOConsole', 'Search Console', 'SEOTesting.com', 'GSC Wizard', 'SEO Stack']);
+		const rows = [...t.matchAll(/<tr(?: class="([a-z]+)")?><th scope="row">([^<]+)<\/th>/g)].map((m) => [m[1], m[2]]);
+		expect(rows.at(-1)).toEqual(['price', 'Price']); // the price closes the table
+		expect(rows.filter((r) => r[1] === 'Price')).toHaveLength(1);
+		expect(t).not.toMatch(/Track record|How established/);
+		// every row has a cell per tool
+		for (const tr of t.match(/<tr(?: class="[a-z]+")?><th scope="row">[\s\S]*?<\/tr>/g)!) expect((tr.match(/<td>/g) ?? []).length, tr.slice(0, 80)).toBe(5);
+		expect(t).toMatch(/7 and 8 November 2026/);
+		expect(t).toMatch(/“not stated”, not “no”/);
 		expect(t).toContain('https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/src/lib/compare.ts');
 	});
 	it('the wipe-in of the wide screenshot hides content only once the script has marked the page', () => {

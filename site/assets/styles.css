@@ -627,6 +627,14 @@ html.js .c-sitemap:not(.in) .fun li::before { width: 0; }
 .pf-sw { white-space: nowrap; flex: none; }
 @media (max-width: 640px) { .pf-tb { min-width: 0; } .pf-tb th:nth-child(2), .pf-tb td:nth-child(2) { display: none; } .pf-tb th, .pf-tb td { padding-inline: 10px; } .sp svg { width: 64px; } }
 
+/* comparison: five tools, the first column stays put while the table scrolls sideways, and the price closes it */
+.ctable table { min-width: 1000px; }
+.ctable tbody th, .ctable tfoot th { position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: 1px 0 0 var(--line); }
+.ctable tfoot th, .ctable tfoot td { border-top: 2px solid var(--fg); border-bottom: 0; padding-block: 18px; background: var(--bg2); vertical-align: top; }
+.ctable tfoot th { font-size: 15px; font-weight: 700; }
+.ctable tfoot td b { display: block; font-size: 17px; letter-spacing: -0.03em; }
+.ctable tfoot td:nth-of-type(1) { background: #eaffbf; } .ctable tfoot td:nth-of-type(1) b { font-size: 19px; }
+
 /* which product each finding reads from: the real logos, small */
 .srcs { display: inline-flex; gap: 4px; margin-right: 8px; padding: 3px 5px; border-radius: 7px; background: #fff; border: 1px solid var(--line); vertical-align: middle; }
 .srcs .lg { width: 14px; height: 14px; }

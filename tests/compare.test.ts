@@ -9,15 +9,16 @@ const all = COMPETITORS.flatMap((c) => c.rows.map((r) => ({ c, r })));
 
 describe('the comparison pages are fair', () => {
 	it('cover the tools people weigh SEOConsole against, each with a distinct address', () => {
-		expect(COMPETITORS.map((c) => c.slug)).toEqual(['seotesting', 'indexchex', 'promptwatch', 'google-search-console']);
+		expect(COMPETITORS.map((c) => c.slug)).toEqual(['seotesting', 'indexchex', 'promptwatch', 'gsc-wizard', 'seo-stack', 'google-search-console']);
 		expect(new Set(COMPETITORS.map((c) => c.slug)).size).toBe(COMPETITORS.length);
 		for (const c of COMPETITORS) expect(bySlug(c.slug)).toBe(c);
 		expect(bySlug('nope')).toBeUndefined();
 	});
 	it('each says where it was read and when, and lists its sources as real https addresses', () => {
 		for (const c of COMPETITORS) {
-			expect(c.checkedOn, c.slug).toBe(CHECKED_ON);
-			expect(CHECKED_ON).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			// each page carries the day its competitor's pages were read; none is older than the shared date
+			expect(c.checkedOn, c.slug).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			expect(c.checkedOn >= CHECKED_ON, c.slug).toBe(true);
 			expect(c.price.length, c.slug).toBeGreaterThan(3);
 			expect(c.sources.length, c.slug).toBeGreaterThan(0);
 			for (const s of c.sources) expect(s.url, `${c.slug}: ${s.label}`).toMatch(/^https:\/\/[^\s]+$/);
@@ -103,7 +104,7 @@ describe('the comparison routes', () => {
 		const idx = await import('../src/routes/compare/+page.server');
 		const out = (await idx.load({} as never)) as { tools: { slug: string }[]; hosted: string; checkedOn: string };
 		expect(out.tools.map((t) => t.slug)).toEqual(COMPETITORS.map((c) => c.slug));
-		expect(out.checkedOn).toBe(CHECKED_ON);
+		expect(out.checkedOn).toBe([...new Set([CHECKED_ON, ...COMPETITORS.map((c) => c.checkedOn)])].sort().join(' and ')); // every day a competitor was read
 	});
 	it('are readable without signing in, and show a signed-out visitor no menu; the footer and tab titles know them', async () => {
 		process.env.ADMIN_PASSWORD = 'pw-for-compare-tests';
