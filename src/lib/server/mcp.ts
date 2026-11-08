@@ -218,7 +218,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_page_insights',
-		description: `Every page across Google, Bing, GA4, AI assistants (via GA4) and Clarity side by side, joined on URL path, each with its change against the previous equal period (null when that period is not stored; a source with nothing for a page is null, not zero). Sources: google (clicks, impressions, CTR, position), bing (clicks, impressions, position), ga4 (organic sessions, engaged share, key events), ai (sessions from AI assistants, split per assistant), clarity (latest 24 hours only). \`notes\` says what each does not measure.`,
+		description: `Every page across Google, Bing, GA4, AI assistants (via GA4) and Clarity, joined on URL path, each with its change vs the previous equal period (null when not stored; a source with nothing for a page is null, not zero). google: clicks, impressions, CTR, position; bing: clicks, impressions, position; ga4: organic sessions, engaged share, key events; ai: sessions per assistant; clarity: latest 24 h only. \`notes\` says what each does not measure.`,
 		schema: { ...siteArg, ...daysArg, path_contains: { type: 'string', description: 'Only paths containing this text (case-insensitive)' }, sort: { type: 'string', enum: ['google_clicks', 'bing_clicks', 'ga4_sessions', 'ga4_key_events', 'ai_sessions', 'google_clicks_change'], description: 'default google_clicks' }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
@@ -502,7 +502,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_seo_tests',
-		description: `SEO tests for a site (before/after, split against control pages, redirect) with results: change in clicks and impressions of the test pages against the control (or, for LLM tests with metric ai_sessions, in GA4 sessions from AI assistants, with a per-assistant breakdown), a 95% interval, a p-value and a verdict (positive, negative, inconclusive, too-little-data). Observational, not randomised: significant means unlikely to be noise given the control, not proof of cause. Fewer than three earlier windows to measure noise = estimate only, no verdict.`,
+		description: `SEO tests (before/after, split, redirect) with results: change in clicks and impressions vs control pages (LLM tests with metric ai_sessions: GA4 AI-assistant sessions, per assistant), 95% interval, p-value, verdict (positive, negative, inconclusive, too-little-data). Observational: significant = unlikely to be noise given the control, not proof of cause. Under three earlier windows: estimate only, no verdict.`,
 		schema: siteArg,
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
@@ -538,7 +538,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_action_queue',
-		description: 'THE prioritised to-do list: every finding (measurement problems, pages blocked or de-indexed, traffic collapses, dead pages, cannibalization, CTR gaps, decay, striking distance, on-page and sitemap problems, finished tests) in the order to do it. Blocking items come first, then estimated clicks per 28 days weighted by confidence. Estimates are model figures from the site\'s own CTR curve, not promises, and are not additive. Omit `site` for the top items across all sites. Done or snoozed items are left out. Each item has a `key` for mark_action.',
+		description: 'THE prioritised to-do list: every finding (measurement, blocked or de-indexed pages, robots.txt, traffic drops, dead pages, cannibalization, CTR gaps, decay, striking distance, on-page, sitemap, finished tests) in order. Blocking first, then estimated clicks per 28 days x confidence (model figures from the site\'s CTR curve, not promises, not additive). Omit `site` for all sites. Done and snoozed items are left out; each has a `key` for mark_action.',
 		schema: { site: { type: 'string', description: 'Optional: site id, domain or property URL. Omit for all visible sites.' }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const lim = limit(a, 15);
@@ -1158,7 +1158,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_quick_wins',
-		description: `The low-hanging fruit, by group: ctr (top-10 pages with a click rate far below the site's own curve: rewrite title and description), page-one (positions 8-15), questions (question searches at positions 3-20: add a direct answer), sitemap (pages earning clicks but not listed), onpage (flagged titles and descriptions), indexing (pages worth asking Google about). Each has why, how, top rows and the total; \`gain\` = estimated extra clicks per window (null when unknown), not additive.`,
+		description: `Low-hanging fruit by group: ctr (top-10 pages far below the site's CTR curve: rewrite title/description), page-one (positions 8-15), questions (question searches at 3-20: add a direct answer), sitemap (pages with clicks not listed), onpage (flagged titles/descriptions), indexing (pages worth asking Google about). Each: why, how, top rows, total; \`gain\` = est. extra clicks per window (null if unknown), not additive.`,
 		schema: { ...siteArg, ...daysArg },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
@@ -1193,6 +1193,41 @@ export function writeLimited(keyId: number, now = Date.now()): boolean {
 	return false;
 }
 
+export type ToolAuth = NonNullable<ReturnType<typeof authenticate>>;
+/** Why a call was refused, so the REST API can answer with the matching HTTP status. */
+export type ToolRefusal = 'read-only' | 'write-rate' | 'permission' | 'failed';
+export type ToolCallResult = { kind: 'ok'; data: unknown } | { kind: 'unknown' } | { kind: 'refused'; reason: ToolRefusal; error: string };
+
+/** The one path every tool call takes, from MCP and from the REST API alike: permission, read-only mode, the write rate limit and the audit log. */
+export async function callTool(auth: ToolAuth, name: string, args: Record<string, unknown>, sites = allSites().filter((s) => !auth.scope || auth.scope.includes(s.id))): Promise<ToolCallResult> {
+	const tool = TOOLS.find((t) => t.name === name);
+	if (!tool) return { kind: 'unknown' };
+	const need = needOf(tool);
+	if (need) {
+		// Changes need an explicit yes from the owner, never just a valid key, and never in read-only mode.
+		// The tools of the submit/delete family check READ_ONLY themselves (a dry run is still allowed); the app-changing ones are refused here.
+		if (tool.write && config.readOnly) return { kind: 'refused', reason: 'read-only', error: 'This server is in read-only mode (READ_ONLY=1), so nothing can be changed through it.' };
+		if (permits(auth.permission, need) && writeLimited(auth.id)) return { kind: 'refused', reason: 'write-rate', error: `Too many changes: at most ${MCP_WRITES_PER_MINUTE} a minute per key. Wait a minute.` };
+		if (!permits(auth.permission, need)) {
+			const level = need === 'delete' ? 'the "delete" permission (submit plus the few things that cannot be undone: removing a sitemap, discarding the queue)' : 'the "submit" permission';
+			return { kind: 'refused', reason: 'permission', error: `${tool.name} changes things, so it needs an API key created with ${level}. This key has "${auth.permission}". The owner can change that on the MCP page (or choose that level when signing in a connector). Do not retry until they have.` };
+		}
+	}
+	try {
+		const out = await tool.run(args, sites, { keyId: auth.id, keyName: auth.name, permission: auth.permission, scoped: auth.scope !== null });
+		if (tool.write) {
+			const site = args.site == null ? null : sites.find((x) => String(x.id) === String(args.site).trim() || hostKey(x.site_url) === hostKey(String(args.site)));
+			audit(`mcp.${tool.name}`, { siteId: site?.id, detail: `${auth.name}: ${JSON.stringify(args).slice(0, 500)}` });
+		}
+		return { kind: 'ok', data: out };
+	} catch (e) {
+		return { kind: 'refused', reason: 'failed', error: e instanceof Error ? e.message : 'Tool failed' };
+	}
+}
+
+/** Name, description, input schema and the permission each tool needs: the tool list for MCP and the index of the REST API. */
+export const toolCatalog = () => TOOLS.map((t) => ({ name: t.name, description: t.description, schema: t.schema, needs: needOf(t) ?? 'read' as Permission }));
+
 const rpc = (id: unknown, result: unknown) => ({ jsonrpc: '2.0', id, result });
 const rpcErr = (id: unknown, code: number, message: string) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
@@ -1224,30 +1259,9 @@ export async function handleMcp(request: Request): Promise<Response> {
 		case 'tools/list':
 			return reply(rpc(msg.id, { tools: TOOLS.map((t) => ({ name: t.name, description: t.description + (needOf(t) && !/(submit|delete) permission/.test(t.description) ? ` Needs the ${needOf(t)} permission.` : ''), inputSchema: { type: 'object', properties: t.schema }, annotations: needOf(t) ? { readOnlyHint: false, destructiveHint: needOf(t) === 'delete', openWorldHint: true } : { readOnlyHint: true } })) }));
 		case 'tools/call': {
-			const tool = TOOLS.find((t) => t.name === msg.params?.name);
-			if (!tool) return reply(rpcErr(msg.id, -32602, `Unknown tool ${String(msg.params?.name)}`));
-			const args = (msg.params?.arguments as Record<string, unknown>) ?? {};
-			if (needOf(tool)) {
-				// Changes need an explicit yes from the owner, never just a valid key, and never in read-only mode.
-				// The tools of the submit/delete family check READ_ONLY themselves (a dry run is still allowed); the app-changing ones are refused here.
-				if (tool.write && config.readOnly) return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: 'This server is in read-only mode (READ_ONLY=1), so nothing can be changed through it.' }] }));
-				if (permits(auth.permission, needOf(tool)!) && writeLimited(auth.id)) return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: `Too many changes: at most ${MCP_WRITES_PER_MINUTE} a minute per key. Wait a minute.` }] }));
-			}
-			try {
-				const need = needOf(tool);
-				if (need && !permits(auth.permission, need)) {
-					const level = need === 'delete' ? 'the "delete" permission (submit plus the few things that cannot be undone: removing a sitemap, discarding the queue)' : 'the "submit" permission';
-					return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: `${tool.name} changes things, so it needs an API key created with ${level}. This key has "${auth.permission}". The owner can change that on the MCP page (or choose that level when signing in a connector). Do not retry until they have.` }] }));
-				}
-				const out = await tool.run(args, sites, { keyId: auth.id, keyName: auth.name, permission: auth.permission, scoped: auth.scope !== null });
-				if (tool.write) {
-					const site = args.site == null ? null : sites.find((x) => String(x.id) === String(args.site).trim() || hostKey(x.site_url) === hostKey(String(args.site)));
-					audit(`mcp.${tool.name}`, { siteId: site?.id, detail: `${auth.name}: ${JSON.stringify(args).slice(0, 500)}` });
-				}
-				return reply(rpc(msg.id, { content: [{ type: 'text', text: JSON.stringify(out) }] }));
-			} catch (e) {
-				return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: e instanceof Error ? e.message : 'Tool failed' }] }));
-			}
+			const r = await callTool(auth, String(msg.params?.name ?? ''), (msg.params?.arguments as Record<string, unknown>) ?? {}, sites);
+			if (r.kind === 'unknown') return reply(rpcErr(msg.id, -32602, `Unknown tool ${String(msg.params?.name)}`));
+			return reply(rpc(msg.id, r.kind === 'ok' ? { content: [{ type: 'text', text: JSON.stringify(r.data) }] } : { isError: true, content: [{ type: 'text', text: r.error }] }));
 		}
 		default:
 			return reply(rpcErr(msg.id, -32601, `Method not found: ${msg.method}`));

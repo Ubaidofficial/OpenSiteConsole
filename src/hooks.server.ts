@@ -28,6 +28,8 @@ export const init: ServerInit = async () => {
  */
 const OAUTH_PROGRAM_ENDPOINTS = new Set(['/oauth/register', '/oauth/token']);
 const isDiscovery = (path: string) => path.startsWith('/.well-known/oauth-');
+/** The MCP endpoint and the REST API: programs that authenticate with an API key, never with a session cookie. */
+const isApi = (path: string) => path === '/api/mcp' || path === '/api/v1' || path.startsWith('/api/v1/');
 /** The privacy policy, terms and comparison pages are public: Google's OAuth verification and anyone about to sign in must be able to read them. They show no data about the installation. */
 const isLegal = (path: string) => path === '/privacy' || path === '/terms' || path === '/compare' || path.startsWith('/compare/');
 /** Reachable without a session: the sign-in form and invite links (each with its own attempt limit), and the public pages above. */
@@ -57,13 +59,13 @@ const gate: Handle = async ({ event, resolve }) => {
 			secFetchSite: event.request.headers.get('sec-fetch-site'),
 			contentType: event.request.headers.get('content-type'),
 			urlOrigin: event.url.origin,
-			programEndpoint: path === '/api/mcp' || OAUTH_PROGRAM_ENDPOINTS.has(path)
+			programEndpoint: isApi(path) || OAUTH_PROGRAM_ENDPOINTS.has(path)
 		})
 	) {
 		return new Response('Cross-site requests are not allowed.', { status: 403 });
 	}
 
-	if (path === '/api/mcp' || OAUTH_PROGRAM_ENDPOINTS.has(path) || isDiscovery(path)) {
+	if (isApi(path) || OAUTH_PROGRAM_ENDPOINTS.has(path) || isDiscovery(path)) {
 		event.locals.authed = false;
 		event.locals.user = null;
 		return resolve(event);

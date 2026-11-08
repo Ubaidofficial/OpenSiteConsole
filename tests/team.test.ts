@@ -61,7 +61,7 @@ describe('every state-changing route is classified', () => {
 	// Pages whose actions run for someone who is not signed in yet: they are public, and carry their own attempt limits.
 	const PUBLIC_ACTION_ROUTES = new Set(['/login', '/invite/[token]']);
 	// Endpoints for programs, not browsers; each authenticates with its own credential (API key, client registration, PKCE).
-	const PROGRAM_ENDPOINTS = new Set(['POST /api/mcp', 'POST /oauth/register', 'POST /oauth/token']);
+	const PROGRAM_ENDPOINTS = new Set(['POST /api/mcp', 'POST /api/v1/[...path]', 'POST /oauth/register', 'POST /oauth/token']);
 
 	it('each form action in src/routes has a role in FORM_ACTIONS, and FORM_ACTIONS lists nothing that does not exist', () => {
 		const found = new Map<string, string[]>();
