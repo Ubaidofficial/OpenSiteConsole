@@ -554,7 +554,9 @@ describe('privacy policy, terms and the menu', () => {
 		for (const needle of [/Indexing API/, /quotas/, /as is/i, /MIT licence/, /Limit of liability|liable/]) expect(terms, String(needle)).toMatch(needle);
 	});
 	it('the pages are not behind the login in the hook, and the README and .env.example say how to fill them in', () => {
-		expect(readFileSync('src/hooks.server.ts', 'utf8')).toMatch(/path !== '\/login' && !isLegal\(path\)/);
+		const hook = readFileSync('src/hooks.server.ts', 'utf8');
+		expect(hook).toMatch(/const isPublic = \(path: string\) => path === '\/login' .*\|\| isLegal\(path\);/);
+		expect(hook).toMatch(/!event\.locals\.authed && !isPublic\(path\)/);
 		expect(readFileSync('.env.example', 'utf8')).toMatch(/LEGAL_ENTITY=/);
 	});
 });
