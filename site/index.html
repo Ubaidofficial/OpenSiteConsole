@@ -31,12 +31,12 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $9 a month is planned but not open yet."}},
-{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 40 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
+{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 41 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
 {"@type":"Question","name":"Where does my data live?","acceptedAnswer":{"@type":"Answer","text":"In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM."}},
 {"@type":"Question","name":"How far back does history go?","acceptedAnswer":{"@type":"Answer","text":"As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has."}},
 {"@type":"Question","name":"Which AI clients work?","acceptedAnswer":{"@type":"Answer","text":"Claude's custom connector works with one-click sign-in, and Claude Code works with a command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, though not every client has been tested."}},
 {"@type": "Question", "name": "How is it different from Google Search Console?", "acceptedAnswer": {"@type": "Answer", "text": "It reads from Search Console, so it does not replace it. It puts every property and Google account in one place, keeps history past 16 months, adds Bing, GA4 and Clarity, and turns the data into a ranked to-do list, SEO tests and a weekly digest. Search Console keeps tools SEOConsole does not copy, such as Removals, Manual actions, Security issues, the Links report and the Request Indexing button itself."}},
-{"@type": "Question", "name": "How does it compare with SEOTesting.com?", "acceptedAnswer": {"@type": "Answer", "text": "Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure. SEOTesting.com is hosted, has unlimited users, LLM tests and an internal-linking tool, and costs from $50 a month (its pricing page, read on 7 November 2026). SEOConsole is free to self-host for any number of sites, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server."}},
+{"@type": "Question", "name": "How does it compare with SEOTesting.com?", "acceptedAnswer": {"@type": "Answer", "text": "Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure. SEOTesting.com is hosted, has unlimited users and LLM tests, and costs from $50 a month (its pricing page, read on 7 November 2026). SEOConsole is free to self-host for any number of sites, adds Bing, Clarity, Tag Manager, an indexing toolkit, internal-link suggestions without credits and an MCP server, and keeps your data on your own server."}},
 {"@type":"Question","name":"How mature is it?","acceptedAnswer":{"@type":"Answer","text":"Early. It has more than 500 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed. Verification on real accounts is ongoing, so expect to find rough edges and report them."}}
 ]}
 </script>
@@ -81,7 +81,7 @@
       <ul class="proof rv" aria-label="The short version">
         <li>No account, no trial clock</li>
         <li>Your data stays in a file on your server</li>
-        <li><b>60</b> MCP tools, read-only until you allow changes</li>
+        <li><b>61</b> MCP tools, read-only until you allow changes</li>
       </ul>
     </div>
 
@@ -260,7 +260,7 @@
       <div>
       <p class="kicker mono rv">MCP</p>
       <h2 id="h-agents" class="h-lg rv">Ask your agent about every site at once.</h2>
-      <p class="sub rv">SEOConsole includes a Model Context Protocol server. Your agent calls 40 tools that read your own stored data, so one question can cover every site, every source and all the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
+      <p class="sub rv">SEOConsole includes a Model Context Protocol server. Your agent calls 41 tools that read your own stored data, so one question can cover every site, every source and all the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
       </div>
       <figure class="art-card rv"><div class="spr s4 sc-agent" role="img" aria-label="Pixel illustration: a chat window sends questions through glowing packets to your SEOConsole database, and a gem comes back."></div></figure>
     </div>
@@ -328,7 +328,7 @@
     </div>
 
     <ul class="stats rv" aria-label="MCP server facts">
-      <li><b data-count="40">40</b><span>tools that read</span></li>
+      <li><b data-count="41">41</b><span>tools that read</span></li>
       <li><b>20</b><span>that act, only if you allow it; deleting is a separate level</span></li>
       <li><b>OAuth</b><span>or API key, scoped per site</span></li>
       <li><b>Audit log</b><span>of every change, with rate limits per key</span></li>
@@ -433,6 +433,7 @@
           <tr><th scope="row">SEO tests with a control group and significance</th><td><span class="v y">Yes</span><small>Before/after, split and redirect</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span><small>Before/after, split and switch</small></td></tr>
           <tr><th scope="row">Decay, cannibalization and CTR gaps</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td></tr>
           <tr><th scope="row">Indexing toolkit: IndexNow, Bing, request list, re-checks</th><td><span class="v y">Yes</span></td><td><span class="v p">Partly</span><small>Request Indexing button, by hand</small></td><td><span class="v u">Not stated</span></td></tr>
+          <tr><th scope="row">Internal-link suggestions</th><td><span class="v y">Yes</span><small>No credits</small></td><td><span class="v n">No</span><small>Its Links report lists links, no suggestions</small></td><td><span class="v y">Yes</span><small>Monthly credit allowance</small></td></tr>
           <tr><th scope="row">MCP server for AI agents</th><td><span class="v y">Yes</span></td><td><span class="v u">Not stated</span></td><td><span class="v u">Not stated</span></td></tr>
           <tr><th scope="row">Your data stays on your server</th><td><span class="v y">Yes</span><small>When self-hosted</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v n">No</span><small>Hosted service</small></td></tr>
         </tbody>
@@ -440,7 +441,7 @@
           <tr class="grp"><th scope="rowgroup" colspan="4">Where they are ahead</th></tr>
           <tr><th scope="row">Nothing to install or run</th><td><span class="v n">No</span><small>Self-host only, for now</small></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span><small>Hosted</small></td></tr>
           <tr><th scope="row">More than one user</th><td><span class="v n">No</span><small>One admin password</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span><small>Unlimited users</small></td></tr>
-          <tr><th scope="row">LLM tests and an internal-linking tool</th><td><span class="v n">No</span><small>Not built</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span></td></tr>
+          <tr><th scope="row">LLM tests</th><td><span class="v n">No</span><small>Not built</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span></td></tr>
           <tr><th scope="row">Removals, Manual actions, Security issues, Links, Crawl stats</th><td><span class="v n">No</span><small>Not replicated</small></td><td><span class="v y">Yes</span></td><td><span class="v x" aria-label="Not compared">—</span></td></tr>
           <tr><th scope="row">Track record</th><td><span class="v p">Partly</span><small>A young project</small></td><td><span class="v y">Yes</span><small>Google’s own</small></td><td><span class="v y">Yes</span><small>Established</small></td></tr>
         </tbody>
@@ -495,12 +496,12 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
     <h2 id="h-faq" class="h-lg rv">Common questions.</h2>
     <div class="qa rv">
       <details><summary>Is it really free?</summary><p>Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $9 a month is planned but not open yet.</p></details>
-      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 40 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
+      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 41 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
       <details><summary>Where does my data live?</summary><p>In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM. Whatever an agent reads is sent to that agent’s provider, so connect only agents you trust with that data.</p></details>
       <details><summary>How far back does history go?</summary><p>As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has.</p></details>
       <details><summary>Which AI clients work?</summary><p>Claude’s custom connector works with one-click sign-in, and Claude Code works with a single command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, but only Claude has been confirmed.</p></details>
       <details><summary>How is it different from Google Search Console?</summary><p>It reads from Search Console, so it does not replace it. It puts every property and Google account in one place, keeps history past 16 months, adds Bing, GA4 and Clarity, and turns the data into a ranked to-do list, SEO tests and a weekly digest. Search Console keeps tools SEOConsole does not copy, such as Removals, Manual actions, Security issues, the Links report and the Request Indexing button itself.</p></details>
-      <details><summary>How does it compare with SEOTesting.com?</summary><p>Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure. SEOTesting.com is hosted, has unlimited users, LLM tests and an internal-linking tool, and costs from $50 a month (its pricing page, read on 7 November 2026). SEOConsole is free to self-host for any number of sites, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server.</p></details>
+      <details><summary>How does it compare with SEOTesting.com?</summary><p>Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure. SEOTesting.com is hosted, has unlimited users and LLM tests, and costs from $50 a month (its pricing page, read on 7 November 2026). SEOConsole is free to self-host for any number of sites, adds Bing, Clarity, Tag Manager, an indexing toolkit, internal-link suggestions without credits and an MCP server, and keeps your data on your own server.</p></details>
       <details><summary>How mature is it?</summary><p>Early. It has more than 500 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed end to end. Verification on real accounts is ongoing, so expect rough edges and please report them.</p></details>
     </div>
   </div>

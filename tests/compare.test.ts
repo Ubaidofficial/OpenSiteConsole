@@ -36,7 +36,7 @@ describe('the comparison pages are fair', () => {
 	});
 	it('what SEOConsole does not do is marked No, however good it would look to claim it', () => {
 		const mustBeNo: [RegExp, string][] = [
-			[/LLM tests/, 'seotesting'], [/Internal-linking tool/, 'seotesting'], [/More than one user/, 'seotesting'],
+			[/LLM tests/, 'seotesting'], [/More than one user/, 'seotesting'],
 			[/Check any URL, such as backlinks/, 'indexchex'], [/Get third-party or backlink URLs crawled/, 'indexchex'], [/Instant/i, 'indexchex'],
 			[/Track prompts across AI models/, 'promptwatch'], [/Citation and source analysis/, 'promptwatch'], [/Competitor share of voice/, 'promptwatch'], [/AI crawler logs/, 'promptwatch'],
 			[/Removals, Manual actions/, 'google-search-console']
@@ -46,6 +46,12 @@ describe('the comparison pages are fair', () => {
 			expect(row, `${slug}: ${re}`).toBeDefined();
 			expect(row!.ours.v, `${slug}: ${row!.feature}`).toBe('no');
 		}
+		// the internal-linking tool exists now (the Internal links tab): a yes, without credits, that names its limit
+		const links = bySlug('seotesting')!.rows.find((r) => r.feature === 'Internal-linking tool')!;
+		expect(links.ours.v).toBe('yes');
+		expect(links.ours.note).toMatch(/no credits/);
+		expect(links.ours.note).toMatch(/JavaScript is not run/);
+		expect(existsSync('src/routes/sites/[id]/links/+page.svelte')).toBe(true);
 		// and the things it only half does say "partly", with the reason
 		for (const [slug, re] of [['seotesting', /Monthly plain-English report/], ['seotesting', /Daily watch/], ['indexchex', /Google’s Indexing API/], ['google-search-console', /^Request Indexing$/]] as const) {
 			const row = bySlug(slug)!.rows.find((r) => re.test(r.feature))!;

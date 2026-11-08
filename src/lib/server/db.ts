@@ -451,6 +451,35 @@ CREATE TABLE IF NOT EXISTS onpage_checks (
 	payload TEXT NOT NULL,              -- JSON {status, finalUrl, error?, parsed, queries, issues, score}
 	PRIMARY KEY (site_id, url)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS link_pages (             -- the internal-link crawl: one row per fetched page, newest crawl only
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,                  -- as Search Console lists it
+	final_url TEXT NOT NULL,            -- after redirects
+	status INTEGER NOT NULL,
+	error TEXT,
+	title TEXT,
+	h1 TEXT,
+	body TEXT NOT NULL DEFAULT '',      -- main content text, one paragraph per line
+	links TEXT NOT NULL DEFAULT '[]',   -- JSON PageLink[]: same-site links with anchor text
+	fetched_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, url)
+);
+CREATE TABLE IF NOT EXISTS link_crawls (            -- the last internal-link crawl per site
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	status TEXT NOT NULL DEFAULT 'idle', -- idle | running
+	started_at INTEGER,
+	finished_at INTEGER,
+	pages INTEGER NOT NULL DEFAULT 0,
+	ok INTEGER NOT NULL DEFAULT 0,
+	failed INTEGER NOT NULL DEFAULT 0,
+	error TEXT
+);
+CREATE TABLE IF NOT EXISTS link_done (              -- internal-link suggestions marked done (source>target, normalised)
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	key TEXT NOT NULL,
+	at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, key)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS clarity_scans (          -- is Clarity's script on the site's pages? (newest check only)
 	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
 	checked_at INTEGER NOT NULL,

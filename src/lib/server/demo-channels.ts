@@ -2,7 +2,7 @@ import type { BingClient, BingDay, BingSite, BingTermRow } from './bing';
 import type { Ga4Day, Ga4Property } from './ga4';
 import type { ClarityMetric } from './clarity';
 import type { GtmContainer, GtmLive } from './gtm';
-import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01, plantedQuery } from './demo';
+import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, demoSearches, h01, plantedQuery } from './demo';
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
 import { db } from './db';
@@ -240,6 +240,35 @@ export async function demoGa4AiTraffic(property: string, start: string, end: str
  * Demo page fetcher for the on-page check (demo sites are .example domains that do not exist). Pages get deterministic
  * HTML with planted problems: some lack a meta description, some have a generic title, one is noindex, one has two H1s.
  */
+const SENTENCES = [
+	(q: string) => `If you are comparing options, our notes on ${q} cover what matters most.`,
+	(q: string) => `Readers often ask about ${q} before they buy anything.`,
+	(q: string) => `We tested a lot of gear while writing about ${q}, and the differences were bigger than expected.`,
+	(q: string) => `A short checklist helps with ${q}: decide the budget first, then the features.`,
+	(q: string) => `${q[0].toUpperCase() + q.slice(1)} comes up in almost every conversation we have with new customers.`,
+	(q: string) => `There is no single answer to ${q}, but a few rules of thumb help.`
+];
+
+/**
+ * Demo page body: a menu (home and three section pages), a main column whose sentences mention searches that OTHER pages rank for
+ * (so the internal-link tool has mentions to find), two links in the text to other pages, and a footer. Deterministic per page.
+ */
+function demoBody(siteUrl: string, topic: string, url: URL, h1: string): string {
+	const searches = demoSearches(siteUrl);
+	const pages = [...new Set(searches.flatMap((s) => s.pages))].map((p) => new URL(p).pathname).sort((a, b) => Number(a.split('-').pop()) - Number(b.split('-').pop()));
+	const slug = topic.replace(/\s+/g, '-');
+	const here = url.pathname;
+	const nav = `<header><nav><a href="/">Home</a> <a href="/guides/${slug}-1">Guides</a> <a href="/products/${slug}-4">Products</a> <a href="/blog/${slug}-9">Blog</a></nav></header>`;
+	const others = searches.filter((s) => !s.pages.some((p) => new URL(p).pathname === here));
+	const picked = others.map((s, i) => ({ s, k: h01(siteUrl, here, 'mention', i) })).sort((a, b) => a.k - b.k).slice(0, 7);
+	const sentences = picked.map(({ s }, i) => SENTENCES[Math.floor(h01(here, s.q, i) * SENTENCES.length)](s.q));
+	const paras = [`<p>This page is part of our ${topic} section, written for people who want to get the basics right.</p>`];
+	for (let i = 0; i < sentences.length; i += 3) paras.push(`<p>${sentences.slice(i, i + 3).join(' ')}</p>`);
+	const linkTo = pages.filter((p) => p !== here).map((p, i) => ({ p, k: h01(siteUrl, here, 'link', i) })).sort((a, b) => a.k - b.k).slice(0, 2).map((x) => x.p);
+	if (linkTo.length) paras.push(`<p>See also <a href="${linkTo[0]}">our ${topic} notes</a>${linkTo[1] ? ` and <a href="${linkTo[1]}">this related page</a>` : ''}.</p>`);
+	return `${nav}<main>${h1}${paras.join('')}</main><footer><a href="/about">About</a> <a href="/contact">Contact</a> <a href="mailto:hello@${hostKey(siteUrl)}">Email us</a></footer>`;
+}
+
 export function demoPageFetch(siteUrl: string): typeof fetch {
 	const host = hostKey(siteUrl);
 	const def = sites.find((s) => hostKey(s.siteUrl) === host) ?? sites[0];
@@ -256,7 +285,7 @@ export function demoPageFetch(siteUrl: string): typeof fetch {
 		// Tracking snippets, so the Clarity check has every case: Clarity in the page (greenleaf), Tag Manager only (the rest), nothing (northwind).
 		const gtmSnip = def.brand === 'northwind' ? '' : `<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s);j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId(def.brand)}');</script>`;
 		const claritySnip = def.brand === 'greenleaf' ? claritySnippet(DEMO_CLARITY_ID) : '';
-		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}">${gtmSnip}${claritySnip}</head><body>${h1}<p>demo</p></body></html>`;
+		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}">${gtmSnip}${claritySnip}</head><body>${demoBody(def.siteUrl, def.topic, url, h1)}</body></html>`;
 		return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
 	}) as typeof fetch;
 }

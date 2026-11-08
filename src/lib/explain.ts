@@ -10,7 +10,7 @@ export const TYPE_LABEL: Record<ActionType, string> = {
 	'not-indexed': 'Not indexed', update: 'Google update', cannibalization: 'Cannibalization', 'ctr-gap': 'CTR gap', decay: 'Decay',
 	striking: 'Striking distance', onpage: 'On-page', sitemap: 'Sitemap', lastmod: 'Sitemap dates', submitted: 'Sent, not indexed', request: 'Request indexing', vitals: 'Web vitals', test: 'Test',
 	'lost-query': 'Lost searches', rising: 'Rising searches', 'page-edge': 'Page on the edge', gem: 'Hidden gem', questions: 'Unanswered questions',
-	bing: 'Bing', device: 'Phone gap', engagement: 'Visitors leave', friction: 'Friction'
+	bing: 'Bing', device: 'Phone gap', engagement: 'Visitors leave', friction: 'Friction', 'internal-link': 'Internal links'
 };
 
 export const TYPE_EXPLAIN: Record<ActionType, string> = {
@@ -41,7 +41,8 @@ export const TYPE_EXPLAIN: Record<ActionType, string> = {
 	bing: 'Bing and Google disagree about your site: Bing ranks a page near the top where Google does not, or Bing shows nothing for pages that earn Google clicks.',
 	device: 'You rank noticeably worse on phones than on desktop for the same search. Most visitors are on phones, so check the mobile page and its speed.',
 	engagement: 'Visitors who arrive from Google leave faster or convert less than on the rest of the site: the page may not match what the search promised.',
-	friction: 'Microsoft Clarity recorded many visits with rage clicks or dead clicks (repeated clicks on things that do nothing) on a page that Google sends visitors to.'
+	friction: 'Microsoft Clarity recorded many visits with rage clicks or dead clicks (repeated clicks on things that do nothing) on a page that Google sends visitors to.',
+	'internal-link': 'A page close to ranking better (positions 4 to 20) that other pages of yours already mention in their text without linking to it. A link from those words helps Google find the page and understand what it is about.'
 };
 
 export const BLOCKING_EXPLAIN = 'This stops the site earning traffic or stops you measuring it, so it is listed before everything else, however large the other items look.';
@@ -98,6 +99,7 @@ export const SITE_TABS = [
 	['/indexing', 'Indexing', 'Watch whether Google has indexed your pages, using a rotating sample of URL inspections.'],
 	['/indexnow', 'IndexNow', 'Tell Bing and other IndexNow search engines the moment a page changes.'],
 	['/onpage', 'On-page', 'Checks pages for common on-page problems, such as a missing title or description.'],
+	['/links', 'Internal links', 'Which of your pages should link to pages close to ranking better, with the anchor text already on the page, and pages nothing links to.'],
 	['/sitemaps', 'Sitemaps', 'Your sitemaps as Google sees them, with a check that each can be fetched and read.'],
 	['/inspect', 'Inspect', 'Look up Google\'s index status for specific URLs (URL Inspection).'],
 	['/bing', 'Bing', 'Bing Webmaster data for this site, once Bing is linked.'],
@@ -121,7 +123,7 @@ export const SITE_PRIMARY_TABS = ['', '/quickwins', '/actions', '/opportunities'
 
 export const SITE_TAB_GROUPS = [
 	['Traffic', ['', '/queries', '/pages', '/trends', '/groups', '/segments', '/types']],
-	['Findings', ['/quickwins', '/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/vitals', '/tests']],
+	['Findings', ['/quickwins', '/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/links', '/vitals', '/tests']],
 	['Indexing', ['/submit', '/request', '/indexing', '/indexnow', '/sitemaps', '/inspect']],
 	['Other sources', ['/bing', '/analytics', '/tags', '/clarity']],
 	['Site', ['/settings']]

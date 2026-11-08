@@ -19,6 +19,7 @@ import { cruxLatest } from './crux';
 import { rate, VITALS, fmtVital } from '../vitals';
 import { allSites } from './queries';
 import { hiddenReport } from './hidden';
+import { groupByTarget, linkReport } from './internallinks';
 
 type Site = SiteRow;
 const r0 = (n: number) => Math.round(n);
@@ -33,7 +34,7 @@ const pathOf = (u: string) => {
 	}
 };
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`;
-const VERSION = 'a4';
+const VERSION = 'a5';
 
 /** Every finding for one site, unranked state-free. Cheap enough to run on demand; see actionsFor for the cached, ranked form. */
 export function buildActions(site: Site, days = 28): ActionItem[] {
@@ -202,6 +203,17 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 		/* a source that is missing must not stop the queue */
 	}
 
+	// ── internal links: pages that mention a near-ranking page's searches without linking to it (needs a crawl) ──
+	try {
+		const lr = linkReport(site, days);
+		for (const g of groupByTarget(lr.suggestions).slice(0, 3)) {
+			const top = g.rows[0];
+			add({ key: `links:${normalizeUrl(g.target)}`, type: 'internal-link', title: `Link to ${pathOf(g.target)} from ${g.rows.length} page${g.rows.length === 1 ? '' : 's'} that already mention its searches`, why: `It ranks ${top.position.toFixed(1)} for “${top.query}”, and reaching position 3 would be worth about ${n0(g.prize)} more clicks on your own CTR curve. ${g.rows.length === 1 ? 'A crawled page mentions' : `${g.rows.length} crawled pages mention`} it in their text but do not link to it. A link is one push, not a guarantee of the prize.`, how: 'Turn the words shown into a link to the page, in the sentence where they already appear. The Internal links tab has each sentence and a copy button.', impact: g.prize, confidence: 'low', effort: 'low', blocking: false, href: `${base}/links`, evidence: g.rows.slice(0, 5).map((r) => `${pathOf(r.source)}: “${r.anchor}”`) });
+		}
+	} catch {
+		/* no crawl yet */
+	}
+
 	// ── 7. hygiene found by the on-page check, sitemaps and field data ───────
 	const issueHow: Record<string, [string, string, 'low' | 'medium']> = {
 		'no-title': ['have no <title>', 'Add a unique, descriptive title that leads with the main query.', 'medium'],
@@ -297,6 +309,8 @@ function cacheKey(site: Site, days: number): string {
 		one('SELECT MAX(fetched_at) m, COUNT(*) n FROM url_inspections WHERE site_id = ?', site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_events WHERE site_id = ?', site.id),
 		one('SELECT MAX(checked_at) m, COUNT(*) n FROM onpage_checks WHERE site_id = ?', site.id),
+		one('SELECT MAX(fetched_at) m, COUNT(*) n FROM link_pages WHERE site_id = ?', site.id),
+		one('SELECT MAX(at) m, COUNT(*) n FROM link_done WHERE site_id = ?', site.id),
 		one('SELECT fetched_at f FROM sitemap_sync WHERE site_id = ?', site.id),
 		one("SELECT MAX(built_at) b, COUNT(*) n, SUM(status = 'pending') p, SUM(status = 'requested') r FROM index_requests WHERE site_id = ?", site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_submissions WHERE site_id = ?', site.id),
