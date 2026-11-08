@@ -368,6 +368,23 @@ CREATE TABLE IF NOT EXISTS ga4_page_meta (
 	pulled_at INTEGER NOT NULL,
 	error TEXT
 ) WITHOUT ROWID;
+-- Daily AI-assistant sessions per landing page, only for sites with an LLM test (an SEO test judged on AI-assistant sessions).
+CREATE TABLE IF NOT EXISTS ga4_ai_daily (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	date TEXT NOT NULL,
+	assistant TEXT NOT NULL,            -- ChatGPT | Perplexity | Gemini | Claude | Copilot
+	page TEXT NOT NULL,                 -- landing path, no query string
+	sessions INTEGER NOT NULL,
+	key_events REAL NOT NULL,
+	PRIMARY KEY (site_id, date, assistant, page)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_ai_daily_meta (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	from_date TEXT,
+	through_date TEXT,
+	pulled_at INTEGER NOT NULL,
+	error TEXT
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS digests (
 	id INTEGER PRIMARY KEY,
 	kind TEXT NOT NULL,                 -- weekly | urgent

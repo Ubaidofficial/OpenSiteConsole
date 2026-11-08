@@ -5,6 +5,8 @@ import { siteEnd } from './queries';
 import { urlSection, spansHosts } from '../groups';
 import { updatesBetween } from './gupdates';
 import { conversionsFor, ga4Fingerprint, type ConversionOutcome } from './ga4tests';
+import { aiFingerprint, evaluateAi, isAssistant, TEST_METRICS, type AiTestOutcome, type TestMetric } from './llmtests';
+import type { Assistant } from '../ai';
 import { emptyScope, indexSeries, isEmptyScope, liftTestCalibrated, matchSections, pickControl, placebosFrom, scopeMatcher, type LiftResult, type Scope } from '../experiments';
 
 /** YYYY-MM-DD that is an actual calendar day (rejects 2026-02-31 and 9999-99-99, which a hand-made request could send). */
@@ -20,13 +22,21 @@ export interface SeoTest {
 	window_days: number;
 	treatment: Scope;
 	control: Scope | { restOfSite: true };
-	meta: { old?: Scope; new?: Scope; controlNote?: string; controlMethod?: 'sections' | 'traffic' | 'rest' | 'named'; annotationId?: number };
+	meta: { old?: Scope; new?: Scope; controlNote?: string; controlMethod?: 'sections' | 'traffic' | 'rest' | 'named'; annotationId?: number; metric?: TestMetric; assistant?: Assistant };
 	note: string | null;
 	created_at: number;
+	/** what the test is judged on: Search Console clicks, or GA4 sessions from AI assistants (an "LLM test") */
+	metric: TestMetric;
+	/** LLM tests only: the one assistant counted, or null for all of them */
+	assistant: Assistant | null;
 }
 
 interface Raw { id: number; site_id: number; name: string; kind: TestKind; start_date: string; window_days: number; treatment: string; control: string; meta: string; note: string | null; created_at: number }
-const hydrate = (r: Raw): SeoTest => ({ ...r, treatment: JSON.parse(r.treatment), control: JSON.parse(r.control), meta: JSON.parse(r.meta) });
+const hydrate = (r: Raw): SeoTest => {
+	const meta = JSON.parse(r.meta) as SeoTest['meta'];
+	const metric: TestMetric = meta.metric === 'ai_sessions' ? 'ai_sessions' : 'clicks';
+	return { ...r, treatment: JSON.parse(r.treatment), control: JSON.parse(r.control), meta, metric, assistant: metric === 'ai_sessions' && isAssistant(meta.assistant) ? meta.assistant : null };
+};
 const isRest = (c: SeoTest['control']): c is { restOfSite: true } => 'restOfSite' in c;
 
 export const listTests = (siteId: number): SeoTest[] => (db().prepare('SELECT * FROM seo_tests WHERE site_id = ? ORDER BY start_date DESC, id DESC').all(siteId) as Raw[]).map(hydrate);
@@ -49,6 +59,10 @@ export interface NewTest {
 	old?: Scope;
 	new?: Scope;
 	note?: string;
+	/** default 'clicks'; 'ai_sessions' makes it an LLM test */
+	metric?: TestMetric;
+	/** LLM tests only: count just this assistant (default: all of them) */
+	assistant?: Assistant | null;
 }
 
 export function createTest(siteId: number, t: NewTest): number {
@@ -57,7 +71,11 @@ export function createTest(siteId: number, t: NewTest): number {
 	if (!isRealDate(t.startDate)) throw new Error('Enter the date the change went live as a real date (YYYY-MM-DD).');
 	const windowDays = Math.min(90, Math.max(7, Math.round(t.windowDays ?? 28)));
 	let treatment = t.treatment;
-	const meta: SeoTest['meta'] = { controlNote: t.controlNote, controlMethod: t.controlMethod, annotationId: t.annotationId };
+	const metric = t.metric ?? 'clicks';
+	if (!TEST_METRICS.includes(metric)) throw new Error('Choose what the test is measured on: search clicks or AI-assistant sessions.');
+	if (t.assistant != null && !isAssistant(t.assistant)) throw new Error('Unknown AI assistant: choose ChatGPT, Perplexity, Gemini, Claude or Copilot, or all of them.');
+	if (t.assistant && metric !== 'ai_sessions') throw new Error('An assistant can only be chosen for a test on AI-assistant sessions.');
+	const meta: SeoTest['meta'] = { controlNote: t.controlNote, controlMethod: t.controlMethod, annotationId: t.annotationId, ...(metric === 'ai_sessions' ? { metric, ...(t.assistant ? { assistant: t.assistant } : {}) } : {}) };
 	if (t.kind === 'switch') {
 		if (!t.old || isEmptyScope(t.old) || !t.new || isEmptyScope(t.new)) throw new Error('A redirect test needs the old URLs and the new URLs.');
 		// Old and new are measured together: traffic that moves from one to the other must not count as a loss.
@@ -95,6 +113,17 @@ export interface TestOutcome {
 	/** 100 = the pre-change average, 7-day smoothed */
 	series: { date: string; treatment: number; control: number }[];
 	startDate: string;
+	metric: TestMetric;
+	/** LLM tests: the result on AI-assistant sessions (null for a search-clicks test) */
+	ai: AiTestOutcome | null;
+}
+
+const EMPTY_LIFT = (note: string | null): LiftResult => ({ lift: null, ciLow: null, ciHigh: null, p: null, verdict: 'too-little-data', totals: { tPre: 0, tPost: 0, cPre: 0, cPost: 0 }, note, calibration: { placebos: 0, noiseSd: null, detectable: null } });
+
+/** The result a test is judged on: clicks for a search test, AI-assistant sessions for an LLM test. */
+export function mainResult(o: TestOutcome): LiftResult {
+	if (o.metric !== 'ai_sessions') return o.clicks;
+	return o.ai?.sessions ?? EMPTY_LIFT(o.ai?.note ?? null);
 }
 
 /** How many earlier windows (beyond the real "before" window) are fetched to calibrate noise. */
@@ -176,14 +205,17 @@ export function evaluateTest(site: Pick<SiteRow, 'id' | 'synced_through' | 'back
 		controlPages: cPages.size,
 		position: postDays && impPre && impPost ? { before: pwPre / impPre, after: pwPost / impPost } : null,
 		parts: oldM ? parts : null,
-		conversions: conversionsFor(site.id, test, postEnd),
+		// An LLM test is judged on AI-assistant sessions; Google-organic conversions are not loaded for it.
+		conversions: test.metric === 'ai_sessions' ? { status: 'unsupported', note: 'This test is measured on AI-assistant sessions, so Google-organic conversions are not part of it.', keyEvents: null, sessions: null, rate: null, coverage: null } : conversionsFor(site.id, test, postEnd),
 		updates: updatesBetween(preStart, postDays ? postEnd : preEnd).map((u) => {
 			const inBefore = u.begin <= preEnd && (u.end ?? postEnd) >= preStart;
 			const inAfter = postDays > 0 && u.begin <= postEnd && (u.end ?? postEnd) >= test.start_date;
 			return { name: u.name, kind: u.kind, begin: u.begin, end: u.end, window: inBefore && inAfter ? ('both' as const) : inAfter ? ('after' as const) : ('before' as const) };
 		}),
 		series: st.map((p, i) => ({ date: p.date, treatment: Math.round(p.value * 10) / 10, control: Math.round(sc[i].value * 10) / 10 })),
-		startDate: test.start_date
+		startDate: test.start_date,
+		metric: test.metric,
+		ai: test.metric === 'ai_sessions' ? evaluateAi(site.id, test) : null
 	};
 }
 
@@ -195,7 +227,7 @@ export function testsByAnnotation(siteId: number): Map<number, SeoTest> {
 }
 
 /** Bump when the maths in evaluateTest / experiments.ts changes, so stored results are recomputed. */
-const ALGORITHM = 'v6-conversions';
+const ALGORITHM = 'v7-llm-tests';
 
 type CacheSite = Pick<SiteRow, 'id' | 'synced_through' | 'backfill_done' | 'backfilled_to' | 'last_sync_at'>;
 
@@ -208,7 +240,7 @@ type CacheSite = Pick<SiteRow, 'id' | 'synced_through' | 'backfill_done' | 'back
 export function evaluateTestCached(site: CacheSite, test: SeoTest): TestOutcome {
 	// The list of Google updates is part of the answer, so a change to it (an import, a hand-added entry) must recompute.
 	const upd = db().prepare('SELECT COUNT(*) n, MAX(updated_at) m FROM google_updates').get() as { n: number; m: number | null };
-	const key = JSON.stringify([ALGORITHM, ga4Fingerprint(site.id), upd.n, upd.m, site.synced_through, site.last_sync_at, site.backfill_done, site.backfilled_to, test.start_date, test.window_days, test.treatment, test.control, test.meta]);
+	const key = JSON.stringify([ALGORITHM, test.metric === 'ai_sessions' ? aiFingerprint(site.id) : ga4Fingerprint(site.id), upd.n, upd.m, site.synced_through, site.last_sync_at, site.backfill_done, site.backfilled_to, test.start_date, test.window_days, test.treatment, test.control, test.meta]);
 	const d = db();
 	const hit = d.prepare('SELECT cache_key, outcome FROM seo_test_results WHERE test_id = ?').get(test.id) as { cache_key: string; outcome: string } | undefined;
 	if (hit && hit.cache_key === key) return JSON.parse(hit.outcome) as TestOutcome;

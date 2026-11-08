@@ -218,3 +218,52 @@ export async function organicLandingDaily(accountId: number, property: string, s
 	}
 	return [...merged.values()];
 }
+
+export interface Ga4AiDay { date: string; assistant: Assistant; page: string; sessions: number; keyEvents: number }
+
+/**
+ * Sessions from AI assistants by day, assistant and landing page: what an LLM test (an SEO test judged on AI-assistant sessions)
+ * needs. Same source filter as aiAssistantTraffic, so the same assistants are recognised and the same caveat holds: an assistant
+ * that sends no referrer lands in Direct and cannot be counted. Paged like organicLandingDaily; AI traffic is small, so the cap is
+ * rarely near.
+ */
+export async function aiAssistantDaily(accountId: number, property: string, startDate: string, endDate: string, http: HttpOptions = {}): Promise<Ga4AiDay[]> {
+	const LIMIT = 100_000;
+	const MAX_ROWS = 300_000;
+	const merged = new Map<string, Ga4AiDay>();
+	for (let offset = 0; offset < MAX_ROWS; offset += LIMIT) {
+		const r = await googleJson<{ rows?: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[] }>(
+			tok(accountId),
+			`${DATA}/${property}:runReport`,
+			{
+				method: 'POST',
+				body: JSON.stringify({
+					dateRanges: [{ startDate, endDate }],
+					dimensions: [{ name: 'date' }, { name: 'sessionSource' }, { name: 'landingPagePlusQueryString' }],
+					metrics: [{ name: 'sessions' }, { name: 'keyEvents' }],
+					dimensionFilter: { filter: { fieldName: 'sessionSource', stringFilter: { matchType: 'PARTIAL_REGEXP', value: GA4_SOURCE_PATTERN, caseSensitive: false } } },
+					orderBys: [{ dimension: { dimensionName: 'date' } }, { dimension: { dimensionName: 'sessionSource' } }, { dimension: { dimensionName: 'landingPagePlusQueryString' } }],
+					limit: LIMIT,
+					offset
+				})
+			},
+			http
+		);
+		const rows = r.rows ?? [];
+		for (const row of rows) {
+			const assistant = assistantOf(row.dimensionValues[1].value);
+			if (!assistant) continue;
+			const date = ymd(row.dimensionValues[0].value);
+			const page = landingPath(row.dimensionValues[2].value);
+			const k = `${date}\n${assistant}\n${page}`;
+			const cur = merged.get(k) ?? { date, assistant, page, sessions: 0, keyEvents: 0 };
+			cur.sessions += Number(row.metricValues[0].value);
+			cur.keyEvents += Number(row.metricValues[1].value);
+			merged.set(k, cur);
+		}
+		if (rows.length < LIMIT) break;
+		// Oldest day first, so a cut-off load would drop the latest days and read as a collapse after the change.
+		if (offset + LIMIT >= MAX_ROWS) throw new Error(`GA4 returned more than ${MAX_ROWS.toLocaleString('en-US')} AI-assistant rows for ${startDate} to ${endDate}; the test cannot be judged on a partial load.`);
+	}
+	return [...merged.values()];
+}

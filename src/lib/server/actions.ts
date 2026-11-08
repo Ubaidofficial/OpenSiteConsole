@@ -13,7 +13,7 @@ import { sitemapCoverage } from './sitemapcov';
 import { requestQueue } from './requestindex';
 import { submissionStatus } from './submission';
 import { lastmodReport } from './lastmod';
-import { listTests, evaluateTestCached } from './seotests';
+import { listTests, evaluateTestCached, mainResult } from './seotests';
 import { updatesBetween } from './gupdates';
 import { cruxLatest } from './crux';
 import { rate, VITALS, fmtVital } from '../vitals';
@@ -272,14 +272,16 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 	for (const t of listTests(id)) {
 		try {
 			const o = evaluateTestCached(site, t);
-			const v = o.clicks.verdict;
+			const r = mainResult(o);
+			const v = r.verdict;
+			const what = o.metric === 'ai_sessions' ? ' in AI-assistant sessions' : '';
 			const kv = o.conversions.status === 'ok' ? o.conversions.keyEvents?.verdict : undefined;
 			if (v === 'positive' && kv === 'negative' && o.postDays >= 21) {
 				add({ key: `test:${t.id}:conflict`, type: 'test', title: `“${t.name}”: more clicks, fewer conversions`, why: `Clicks are up ${pct(o.clicks.lift ?? 0)} against the control, but GA4 key events from Google organic are down ${pct(o.conversions.keyEvents?.lift ?? 0)}. The change is probably attracting a different, less valuable audience.`, how: 'Do not roll it out on clicks alone. Look at what the new queries and landing pages promise versus what the page delivers, and tighten the title and content to the intent that converts.', impact: null, confidence: 'medium', effort: 'medium', blocking: false, href: `${base}/tests`, evidence: [] });
 			} else if ((v === 'positive' || v === 'negative') && o.postDays >= 21) {
-				add({ key: `test:${t.id}:${v}`, type: 'test', title: v === 'positive' ? `Roll out “${t.name}”: it likely worked (${pct(o.clicks.lift ?? 0)} vs control)` : `Revert or rework “${t.name}”: it likely hurt (${pct(o.clicks.lift ?? 0)} vs control)`, why: `After ${o.postDays} days, ${o.treatmentPages} changed pages against ${o.controlPages} control pages${o.clicks.ciLow != null ? ` (95% range ${pct(o.clicks.ciLow)} to ${pct(o.clicks.ciHigh ?? 0)})` : ''}. Observational, not randomised.`, how: v === 'positive' ? 'Apply the same change to similar pages and log it, then test the rollout.' : 'Undo the change on the affected pages, or understand what went wrong before repeating it.', impact: null, confidence: o.updates.some((x) => x.window !== 'before' && (x.kind === 'core' || x.kind === 'spam')) ? 'low' : 'high', effort: 'medium', blocking: false, href: `${base}/tests`, evidence: [] });
-			} else if (v === 'inconclusive' && o.postDays >= 28 && o.postDays < 84 && (o.clicks.calibration.detectable ?? 0) > 0.25) {
-				add({ key: `test:${t.id}:extend`, type: 'test', title: `“${t.name}” cannot tell yet: let it run or widen it`, why: `No clear effect, but this test could only have seen a change bigger than about ${Math.round((o.clicks.calibration.detectable ?? 0) * 100)}%, so the answer is weak evidence either way.`, how: 'Let it run longer, include more pages, or test a bigger change.', impact: null, confidence: 'medium', effort: 'low', blocking: false, href: `${base}/tests`, evidence: [] });
+				add({ key: `test:${t.id}:${v}`, type: 'test', title: v === 'positive' ? `Roll out “${t.name}”: it likely worked (${pct(r.lift ?? 0)} vs control${what})` : `Revert or rework “${t.name}”: it likely hurt (${pct(r.lift ?? 0)} vs control${what})`, why: `After ${o.postDays} days, ${o.treatmentPages} changed pages against ${o.controlPages} control pages${r.ciLow != null ? ` (95% range ${pct(r.ciLow)} to ${pct(r.ciHigh ?? 0)})` : ''}. Observational, not randomised.`, how: v === 'positive' ? 'Apply the same change to similar pages and log it, then test the rollout.' : 'Undo the change on the affected pages, or understand what went wrong before repeating it.', impact: null, confidence: o.updates.some((x) => x.window !== 'before' && (x.kind === 'core' || x.kind === 'spam')) ? 'low' : 'high', effort: 'medium', blocking: false, href: `${base}/tests`, evidence: [] });
+			} else if (v === 'inconclusive' && o.postDays >= 28 && o.postDays < 84 && (r.calibration.detectable ?? 0) > 0.25) {
+				add({ key: `test:${t.id}:extend`, type: 'test', title: `“${t.name}” cannot tell yet: let it run or widen it`, why: `No clear effect, but this test could only have seen a change bigger than about ${Math.round((r.calibration.detectable ?? 0) * 100)}%, so the answer is weak evidence either way.`, how: 'Let it run longer, include more pages, or test a bigger change.', impact: null, confidence: 'medium', effort: 'low', blocking: false, href: `${base}/tests`, evidence: [] });
 			}
 		} catch {
 			/* a broken test is shown on the Tests tab */

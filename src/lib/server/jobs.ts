@@ -10,7 +10,7 @@ import { cruxIntegration, syncCrux } from './crux';
 import { monitorSite } from './indexmon';
 import { runSubmissionWork, submissionWorkDue } from './submission';
 import { listTests, warmTests } from './seotests';
-import { ensureGa4PageDaily } from './ga4tests';
+import { ensureGa4TestData } from './ga4tests';
 import { runUrgentAlerts, runWeeklyDigest } from './digest';
 import { actionsFor } from './actions';
 import { getSite } from './clients';
@@ -73,7 +73,7 @@ export function enqueueSiteSync(siteId: number, mode: 'incremental' | 'auto' = '
 /** Load the daily GA4 landing-page data a site's SEO tests need, then recompute the tests. */
 export function enqueueGa4Pages(siteId: number): boolean {
 	return enqueue(`ga4pages:${siteId}`, async () => {
-		await ensureGa4PageDaily(siteId, listTests(siteId));
+		await ensureGa4TestData(siteId, listTests(siteId));
 		warmTests(siteId);
 	});
 }
@@ -82,7 +82,7 @@ export function enqueueLinkSync(siteId: number, kind: Exclude<LinkKind, 'openseo
 	// After GA4 itself has synced, refresh the per-page data the tests use (a no-op for a site with no tests).
 	const syncGa4AndPages = async (id: number) => {
 		const r = await syncGa4(id);
-		await ensureGa4PageDaily(id, listTests(id));
+		await ensureGa4TestData(id, listTests(id));
 		warmTests(id);
 		return r;
 	};
