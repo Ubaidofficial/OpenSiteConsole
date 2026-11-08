@@ -83,9 +83,11 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/sites/[id]/indexing': { sitemapRefresh: E, watchAdd: E, watchRemove: E, toggle: E, check: E },
 	'/sites/[id]/indexnow': { createKey: E, regenerate: E, verify: E, verifyAll: E, auto: E, submit: E, presetRecent: E, presetRemoved: E },
 	'/sites/[id]/inspect': { submitSelected: E, addToRequests: E, inspect: E, top: E },
-	'/sites/[id]/onpage': { top: E, urls: E },
+	'/sites/[id]/onpage': { top: E, urls: E, oseoAudit: E },
 	'/sites/[id]/request': { build: E, requested: E, dismiss: E },
 	'/sites/[id]/settings': { save: A, resync: A, removeProperty: A },
+	'/sites/[id]/queries': { oseoVolumes: E },
+	'/sites/[id]/opportunities': { oseoPreview: E, oseoTrack: E },
 	'/sites/[id]/sitemaps': { lastmodCompare: E, check: E, robotsCheck: E, submit: E, delete: E },
 	'/sites/[id]/submit': { preset: E, submit: E, sitemapSubmit: E, sitemapResubmit: E, sitemapCheck: E, refreshQuota: E, clearQueue: E, check: E },
 	'/sites/[id]/tests': { create: E, remove: E }

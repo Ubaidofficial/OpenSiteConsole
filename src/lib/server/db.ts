@@ -529,6 +529,28 @@ CREATE TABLE IF NOT EXISTS clarity_scans (          -- is Clarity's script on th
 	checked_at INTEGER NOT NULL,
 	payload TEXT NOT NULL               -- JSON ScannedPage[]
 );
+CREATE TABLE IF NOT EXISTS oseo_volumes (           -- search volume from OpenSEO for the site's own queries (lower-cased)
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	keyword TEXT NOT NULL,
+	volume INTEGER,                      -- monthly searches; NULL = OpenSEO had no data (usually too low to measure)
+	kd INTEGER,                          -- keyword difficulty 0-100
+	cpc REAL,
+	intent TEXT,
+	fetched_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, keyword)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS oseo_tracked (           -- searches sent to an OpenSEO rank tracker from here
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	keyword TEXT NOT NULL,
+	tracker_id TEXT NOT NULL,
+	added_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, keyword)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS oseo_audits (            -- OpenSEO's latest site audit for the linked project (newest read only)
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	fetched_at INTEGER NOT NULL,
+	payload TEXT NOT NULL                -- JSON AuditSnapshot (src/lib/server/openseolink.ts)
+);
 CREATE TABLE IF NOT EXISTS ai_prompts (             -- AI visibility: the questions asked of AI assistants, per site
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,

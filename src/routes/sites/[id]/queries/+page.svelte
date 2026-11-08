@@ -6,7 +6,10 @@
 	import { POSITION_BUCKETS } from '$lib/plan';
 	import BarList from '$lib/components/viz/BarList.svelte';
 
-	let { data } = $props();
+	import { enhance } from '$app/forms';
+	import { ago } from '$lib/format';
+	let { data, form } = $props();
+	let fetching = $state(false);
 	let open = $state<string | null>(null);
 	let history = $state<any[]>([]);
 	let loading = $state(false);
@@ -26,14 +29,15 @@
 		[history, pagesFor] = await Promise.all([fetch(u).then((r) => r.json()), fetch(pu).then((r) => r.json())]);
 		loading = false;
 	}
-	const cols = [
+	const cols = $derived([
 		{ key: 'query', label: 'Query', type: 'text' as const, pii: (r: { branded: boolean }) => r.branded },
 		{ key: 'clicks', label: 'Clicks', type: 'int' as const, bar: true },
 		{ key: 'clicksDelta', label: 'Δ %', title: 'Change in clicks compared with the previous period of the same length (for example +9.5% = 9.5% more clicks than before). A dash means there were no clicks before, so there is no percentage.', type: 'delta' as const },
 		{ key: 'impressions', label: 'Impressions', type: 'int' as const },
 		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
-		{ key: 'position', label: 'Position', type: 'pos' as const }
-	];
+		{ key: 'position', label: 'Position', type: 'pos' as const },
+		...(data.openseo?.known ? [{ key: 'volume', label: 'Volume', type: 'int' as const, title: 'Monthly searches for this query in the market of the linked OpenSEO project (from DataForSEO through OpenSEO). A dash: not fetched yet, or too small to measure.' }, { key: 'kd', label: 'KD', type: 'int' as const, title: 'Keyword difficulty from OpenSEO, 0 to 100: how hard the top results are to outrank' }] : [])
+	]);
 </script>
 
 <div class="mb-3 flex flex-wrap items-center gap-2">
@@ -67,6 +71,13 @@
 </details>
 <p class="mb-2 text-xs text-muted-foreground"><b class="text-foreground">{data.rows.length.toLocaleString('en-US')}</b> searches. Branded = contains <span class="pii">{data.brandTerms.length ? data.brandTerms.join(', ') : '(no brand terms — set them in Settings)'}</span>. Click a row for its full-history chart.</p>
 
+{#if data.openseo}
+	<form method="POST" action="?/oseoVolumes" use:enhance={() => { fetching = true; return async ({ update }) => { await update(); fetching = false; }; }} class="mb-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+		<button class="btn !h-8 text-xs" disabled={fetching || !data.openseo.pending}>{fetching ? 'Asking OpenSEO…' : data.openseo.known ? 'Fetch volume for new searches' : 'Show search volume (OpenSEO)'}</button>
+		<span>{data.openseo.known ? `${data.openseo.known.toLocaleString('en-US')} searches have a volume, fetched ${ago(data.openseo.fetchedAt ?? 0)}.` : 'Monthly searches and difficulty for your top searches, from your OpenSEO project.'} {data.openseo.pending ? `Next fetch: up to ${data.openseo.pending} searches, which uses OpenSEO credits.` : 'All current searches are covered.'}</span>
+	</form>
+	{#if form?.ok}<p class="mb-2 text-xs text-good">{form.ok}</p>{/if}{#if form?.error}<p class="mb-2 text-xs text-bad">{form.error}</p>{/if}
+{/if}
 <DataTable rows={data.rows} {cols} sortKey="clicks" onRowClick={toggle} />
 
 {#if open}

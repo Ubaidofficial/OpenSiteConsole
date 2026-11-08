@@ -1,4 +1,5 @@
 import { db } from './db';
+import { linksFor } from './links';
 import type { SiteRow } from './clients';
 import { displayName } from './clients';
 import { addDays } from './dates';
@@ -21,6 +22,7 @@ import { allSites } from './queries';
 import { hiddenReport } from './hidden';
 import { groupByTarget, linkReport } from './internallinks';
 import { CHANGE_REVIEW_DAYS, ERROR_STREAK, robotsBlockedPages, robotsChanges, robotsHosts } from './robotswatch';
+import { auditFindings, storedAudit } from './openseolink';
 
 type Site = SiteRow;
 const r0 = (n: number) => Math.round(n);
@@ -35,7 +37,7 @@ const pathOf = (u: string) => {
 	}
 };
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`;
-const VERSION = 'a6';
+const VERSION = 'a7';
 
 /** Every finding for one site, unranked state-free. Cheap enough to run on demand; see actionsFor for the cached, ranked form. */
 export function buildActions(site: Site, days = 28): ActionItem[] {
@@ -264,6 +266,20 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 	} catch {
 		/* no sitemap data */
 	}
+	// ── OpenSEO's site audit, on the pages that earn clicks ───────────────────
+	try {
+		const snap = linksFor(id).openseo ? storedAudit(id) : null;
+		if (snap && !snap.error) {
+			const clicksByPage = new Map<string, number>();
+			for (const u of new Set([...nowPages.keys(), ...prevPages.keys()])) clicksByPage.set(normalizeUrl(u), clicksOf(u));
+			for (const f of auditFindings(snap, clicksByPage).slice(0, 6)) {
+				add({ key: `audit:${f.issueType}:${keyHash(f.pages.map((p) => p.url))}`, type: 'audit', title: `OpenSEO audit: ${f.title} on ${f.pages.length} page${f.pages.length === 1 ? ' that earns' : 's that earn'} clicks`, why: `OpenSEO's latest site audit rates it ${f.severity}${f.total > f.pages.length ? ` (${n0(f.total)} pages in all)` : ''}; these pages earned up to ${n0(f.clicks)} clicks in a recent ${days}-day period, so they are the ones to fix first.`, how: f.howToFix ?? 'Open the audit in OpenSEO for the details of each page.', impact: null, confidence: f.severity === 'critical' ? 'high' : 'medium', effort: 'low', blocking: false, href: `${base}/onpage#openseo`, evidence: f.pages.slice(0, 5).map((p) => `${pathOf(p.url)} (${n0(p.clicks)} clicks)`) });
+			}
+		}
+	} catch {
+		/* a missing source must not stop the queue */
+	}
+
 	// ── indexing: what the Request and Submit tabs know ──────────────────────
 	try {
 		const q = requestQueue(id);
@@ -342,6 +358,7 @@ function cacheKey(site: Site, days: number): string {
 		one('SELECT fetched_at f FROM sitemap_sync WHERE site_id = ?', site.id),
 		one("SELECT GROUP_CONCAT(origin || ' ' || fingerprint || ' ' || state || ' ' || fail_streak, '|') f FROM robots_checks WHERE site_id = ?", site.id),
 		one('SELECT MAX(id) m FROM robots_changes WHERE site_id = ?', site.id),
+		one('SELECT fetched_at f FROM oseo_audits WHERE site_id = ?', site.id),
 		one("SELECT MAX(built_at) b, COUNT(*) n, SUM(status = 'pending') p, SUM(status = 'requested') r FROM index_requests WHERE site_id = ?", site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_submissions WHERE site_id = ?', site.id),
 		one('SELECT COUNT(*) n, MAX(due_at) m FROM index_rechecks WHERE site_id = ?', site.id),

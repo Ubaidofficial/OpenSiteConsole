@@ -21,6 +21,8 @@ import { autoSubmit } from './indexnow';
 import { crawlLinks, RECRAWL_MS } from './internallinks';
 import { robotsCheckDue, runRobotsCheck } from './robotswatch';
 import { aiVisDue, runDue as runAiVis } from './aivis';
+import { auditDue, syncAudit } from './openseolink';
+import { linksFor as siteLinks } from './links';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -201,6 +203,8 @@ export function schedulerTick() {
 		if (!process.env.VITEST) {
 			const cs = d.prepare('SELECT checked_at FROM clarity_scans WHERE site_id = ?').get(s.id) as { checked_at: number } | undefined;
 			if (!cs || Date.now() - cs.checked_at > 24 * 3600_000) enqueueClarityScan(s.id);
+			// OpenSEO's latest site audit, read once a day for a linked site (free: it reads OpenSEO's stored results, it runs no audit).
+			if (siteLinks(s.id).openseo && auditDue(s.id)) enqueue(`oseo-audit:${s.id}`, () => syncAudit(s.id));
 			// robots.txt once a day per host: a rule that blocks pages with clicks is then caught the next day.
 			if (robotsCheckDue(s.id)) enqueue(`robots:${s.id}`, () => runRobotsCheck(s.id));
 			// The internal-link crawl fetches up to LINK_CRAWL_PAGES of the site's pages: once a week (a site with no data yet is retried).
