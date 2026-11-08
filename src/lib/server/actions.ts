@@ -13,12 +13,13 @@ import { sitemapCoverage } from './sitemapcov';
 import { requestQueue } from './requestindex';
 import { submissionStatus } from './submission';
 import { lastmodReport } from './lastmod';
-import { listTests, evaluateTestCached } from './seotests';
+import { listTests, evaluateTestCached, mainResult } from './seotests';
 import { updatesBetween } from './gupdates';
 import { cruxLatest } from './crux';
 import { rate, VITALS, fmtVital } from '../vitals';
 import { allSites } from './queries';
 import { hiddenReport } from './hidden';
+import { groupByTarget, linkReport } from './internallinks';
 
 type Site = SiteRow;
 const r0 = (n: number) => Math.round(n);
@@ -33,7 +34,7 @@ const pathOf = (u: string) => {
 	}
 };
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`;
-const VERSION = 'a4';
+const VERSION = 'a5';
 
 /** Every finding for one site, unranked state-free. Cheap enough to run on demand; see actionsFor for the cached, ranked form. */
 export function buildActions(site: Site, days = 28): ActionItem[] {
@@ -202,6 +203,17 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 		/* a source that is missing must not stop the queue */
 	}
 
+	// ── internal links: pages that mention a near-ranking page's searches without linking to it (needs a crawl) ──
+	try {
+		const lr = linkReport(site, days);
+		for (const g of groupByTarget(lr.suggestions).slice(0, 3)) {
+			const top = g.rows[0];
+			add({ key: `links:${normalizeUrl(g.target)}`, type: 'internal-link', title: `Link to ${pathOf(g.target)} from ${g.rows.length} page${g.rows.length === 1 ? '' : 's'} that already mention its searches`, why: `It ranks ${top.position.toFixed(1)} for “${top.query}”, and reaching position 3 would be worth about ${n0(g.prize)} more clicks on your own CTR curve. ${g.rows.length === 1 ? 'A crawled page mentions' : `${g.rows.length} crawled pages mention`} it in their text but do not link to it. A link is one push, not a guarantee of the prize.`, how: 'Turn the words shown into a link to the page, in the sentence where they already appear. The Internal links tab has each sentence and a copy button.', impact: g.prize, confidence: 'low', effort: 'low', blocking: false, href: `${base}/links`, evidence: g.rows.slice(0, 5).map((r) => `${pathOf(r.source)}: “${r.anchor}”`) });
+		}
+	} catch {
+		/* no crawl yet */
+	}
+
 	// ── 7. hygiene found by the on-page check, sitemaps and field data ───────
 	const issueHow: Record<string, [string, string, 'low' | 'medium']> = {
 		'no-title': ['have no <title>', 'Add a unique, descriptive title that leads with the main query.', 'medium'],
@@ -272,14 +284,16 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 	for (const t of listTests(id)) {
 		try {
 			const o = evaluateTestCached(site, t);
-			const v = o.clicks.verdict;
+			const r = mainResult(o);
+			const v = r.verdict;
+			const what = o.metric === 'ai_sessions' ? ' in AI-assistant sessions' : '';
 			const kv = o.conversions.status === 'ok' ? o.conversions.keyEvents?.verdict : undefined;
 			if (v === 'positive' && kv === 'negative' && o.postDays >= 21) {
 				add({ key: `test:${t.id}:conflict`, type: 'test', title: `“${t.name}”: more clicks, fewer conversions`, why: `Clicks are up ${pct(o.clicks.lift ?? 0)} against the control, but GA4 key events from Google organic are down ${pct(o.conversions.keyEvents?.lift ?? 0)}. The change is probably attracting a different, less valuable audience.`, how: 'Do not roll it out on clicks alone. Look at what the new queries and landing pages promise versus what the page delivers, and tighten the title and content to the intent that converts.', impact: null, confidence: 'medium', effort: 'medium', blocking: false, href: `${base}/tests`, evidence: [] });
 			} else if ((v === 'positive' || v === 'negative') && o.postDays >= 21) {
-				add({ key: `test:${t.id}:${v}`, type: 'test', title: v === 'positive' ? `Roll out “${t.name}”: it likely worked (${pct(o.clicks.lift ?? 0)} vs control)` : `Revert or rework “${t.name}”: it likely hurt (${pct(o.clicks.lift ?? 0)} vs control)`, why: `After ${o.postDays} days, ${o.treatmentPages} changed pages against ${o.controlPages} control pages${o.clicks.ciLow != null ? ` (95% range ${pct(o.clicks.ciLow)} to ${pct(o.clicks.ciHigh ?? 0)})` : ''}. Observational, not randomised.`, how: v === 'positive' ? 'Apply the same change to similar pages and log it, then test the rollout.' : 'Undo the change on the affected pages, or understand what went wrong before repeating it.', impact: null, confidence: o.updates.some((x) => x.window !== 'before' && (x.kind === 'core' || x.kind === 'spam')) ? 'low' : 'high', effort: 'medium', blocking: false, href: `${base}/tests`, evidence: [] });
-			} else if (v === 'inconclusive' && o.postDays >= 28 && o.postDays < 84 && (o.clicks.calibration.detectable ?? 0) > 0.25) {
-				add({ key: `test:${t.id}:extend`, type: 'test', title: `“${t.name}” cannot tell yet: let it run or widen it`, why: `No clear effect, but this test could only have seen a change bigger than about ${Math.round((o.clicks.calibration.detectable ?? 0) * 100)}%, so the answer is weak evidence either way.`, how: 'Let it run longer, include more pages, or test a bigger change.', impact: null, confidence: 'medium', effort: 'low', blocking: false, href: `${base}/tests`, evidence: [] });
+				add({ key: `test:${t.id}:${v}`, type: 'test', title: v === 'positive' ? `Roll out “${t.name}”: it likely worked (${pct(r.lift ?? 0)} vs control${what})` : `Revert or rework “${t.name}”: it likely hurt (${pct(r.lift ?? 0)} vs control${what})`, why: `After ${o.postDays} days, ${o.treatmentPages} changed pages against ${o.controlPages} control pages${r.ciLow != null ? ` (95% range ${pct(r.ciLow)} to ${pct(r.ciHigh ?? 0)})` : ''}. Observational, not randomised.`, how: v === 'positive' ? 'Apply the same change to similar pages and log it, then test the rollout.' : 'Undo the change on the affected pages, or understand what went wrong before repeating it.', impact: null, confidence: o.updates.some((x) => x.window !== 'before' && (x.kind === 'core' || x.kind === 'spam')) ? 'low' : 'high', effort: 'medium', blocking: false, href: `${base}/tests`, evidence: [] });
+			} else if (v === 'inconclusive' && o.postDays >= 28 && o.postDays < 84 && (r.calibration.detectable ?? 0) > 0.25) {
+				add({ key: `test:${t.id}:extend`, type: 'test', title: `“${t.name}” cannot tell yet: let it run or widen it`, why: `No clear effect, but this test could only have seen a change bigger than about ${Math.round((r.calibration.detectable ?? 0) * 100)}%, so the answer is weak evidence either way.`, how: 'Let it run longer, include more pages, or test a bigger change.', impact: null, confidence: 'medium', effort: 'low', blocking: false, href: `${base}/tests`, evidence: [] });
 			}
 		} catch {
 			/* a broken test is shown on the Tests tab */
@@ -297,6 +311,8 @@ function cacheKey(site: Site, days: number): string {
 		one('SELECT MAX(fetched_at) m, COUNT(*) n FROM url_inspections WHERE site_id = ?', site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_events WHERE site_id = ?', site.id),
 		one('SELECT MAX(checked_at) m, COUNT(*) n FROM onpage_checks WHERE site_id = ?', site.id),
+		one('SELECT MAX(fetched_at) m, COUNT(*) n FROM link_pages WHERE site_id = ?', site.id),
+		one('SELECT MAX(at) m, COUNT(*) n FROM link_done WHERE site_id = ?', site.id),
 		one('SELECT fetched_at f FROM sitemap_sync WHERE site_id = ?', site.id),
 		one("SELECT MAX(built_at) b, COUNT(*) n, SUM(status = 'pending') p, SUM(status = 'requested') r FROM index_requests WHERE site_id = ?", site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_submissions WHERE site_id = ?', site.id),

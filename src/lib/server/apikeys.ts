@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { db } from './db';
+import { forgetSiteForMembers } from './users';
 
 export const KEY_PREFIX = 'osc_';
 const hash = (k: string) => createHash('sha256').update(k).digest('hex');
@@ -44,7 +45,7 @@ export const setKeyCanWrite = (id: number, on: boolean) => {
 	return setKeyPermission(id, on ? (cur.permission === 'delete' ? 'delete' : 'submit') : 'read');
 };
 /**
- * Take a deleted site out of every key's scope. SQLite reuses the id of the newest site once it is deleted, so a key scoped to
+ * Take a deleted site out of every key's (and team member's) scope. SQLite reuses the id of the newest site once it is deleted, so a key scoped to
  * that id would otherwise silently start seeing whatever site is added next. A key left with no sites sees nothing (an empty
  * list is not "all sites"; only a key stored with no list at all is).
  */
@@ -55,6 +56,7 @@ export function forgetSite(siteId: number) {
 		const ids = JSON.parse(k.site_ids) as number[];
 		if (ids.includes(siteId)) upd.run(JSON.stringify(ids.filter((x) => x !== siteId)), k.id);
 	}
+	forgetSiteForMembers(siteId); // team members limited to some sites, and their pending invites, the same way
 }
 
 export const deleteApiKey = (id: number) => void db().prepare('DELETE FROM api_keys WHERE id = ?').run(id);

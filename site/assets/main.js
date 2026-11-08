@@ -53,13 +53,6 @@
     reveals.forEach((el) => io.observe(el));
   }
 
-  /* pixel sprites only step through their frames while they are on screen (saves battery; otherwise the first frame shows) */
-  const sprites = $$('.spr');
-  if ('IntersectionObserver' in window) {
-    const spo = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('on', e.isIntersecting)), { rootMargin: '80px' });
-    sprites.forEach((el) => spo.observe(el));
-  } else sprites.forEach((el) => el.classList.add('on'));
-
   /* the data-flow beam only animates while it is on screen */
   const beam = $('[data-beam]');
   /* The lines are written in percent (a 0-100 box). Redraw them in real pixels so each pulse is one even segment:
@@ -98,14 +91,18 @@
     }), { threshold: 0.4 }).observe(alist);
   }
 
-  /* the eight scene cards lean toward the pointer */
-  if (!still) $$('.win').forEach((c) => {
-    c.addEventListener('pointermove', (e) => {
-      const r = c.getBoundingClientRect();
-      c.style.setProperty('--ry', ((e.clientX - r.left) / r.width - 0.5) * 9 + 'deg');
-      c.style.setProperty('--rx', (0.5 - (e.clientY - r.top) / r.height) * 7 + 'deg');
-    });
-    c.addEventListener('pointerleave', () => { c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg'); });
+  /* privacy mode on the portfolio card: a real switch, and it shows itself once when the card first comes into view */
+  $$('[data-pf]').forEach((pf) => {
+    const sw = $('[data-privacy]', pf);
+    const set = (on) => { pf.classList.toggle('priv', on); sw.setAttribute('aria-pressed', String(on)); };
+    sw.addEventListener('click', () => { pf.dataset.touched = '1'; set(sw.getAttribute('aria-pressed') !== 'true'); });
+    if (still || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(async (es, ob) => {
+      if (!es.some((e) => e.isIntersecting)) return;
+      ob.disconnect();
+      await sleep(2200); if (pf.dataset.touched) return; set(true);
+      await sleep(2200); if (pf.dataset.touched) return; set(false);
+    }, { threshold: 0.5 }).observe(pf);
   });
 
   /* pinned story: the screenshot on the right follows the step in the middle of the screen */
@@ -155,7 +152,8 @@
     new IntersectionObserver((es, ob) => es.forEach((e) => { if (e.isIntersecting && !started) { started = true; ob.disconnect(); play(); } }), { threshold: 0.35 }).observe(term);
   }
 
-  /* count-up for the headline number */
+  /* count-up for numbers marked data-count (written in full in the HTML, so they are right without JavaScript) */
+  const nf = new Intl.NumberFormat('en-US');
   $$('[data-count]').forEach((el) => {
     const to = Number(el.dataset.count);
     if (still || !('IntersectionObserver' in window)) return;
@@ -163,7 +161,7 @@
       if (!e.isIntersecting) return;
       ob.disconnect();
       const t0 = performance.now();
-      const tick = (t) => { const k = clamp((t - t0) / 1100, 0, 1); el.textContent = String(Math.round(to * (1 - Math.pow(2, -10 * k)))); if (k < 1) requestAnimationFrame(tick); else el.textContent = String(to); };
+      const tick = (t) => { const k = clamp((t - t0) / 1300, 0, 1); el.textContent = nf.format(Math.round(to * (1 - Math.pow(2, -10 * k)))); if (k < 1) requestAnimationFrame(tick); else el.textContent = nf.format(to); };
       requestAnimationFrame(tick);
     }), { threshold: 0.6 }).observe(el);
   });
@@ -203,7 +201,7 @@
   }));
 
   /* cursor-following highlight on the feature cards */
-  if (!still) $$('.card').forEach((c) => c.addEventListener('pointermove', (e) => {
+  if (!still) $$('.card, .win').forEach((c) => c.addEventListener('pointermove', (e) => {
     const r = c.getBoundingClientRect();
     c.style.setProperty('--mx', e.clientX - r.left + 'px');
     c.style.setProperty('--my', e.clientY - r.top + 'px');

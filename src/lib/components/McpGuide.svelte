@@ -56,7 +56,7 @@
 			<ol class="ml-5 list-decimal space-y-2">
 				<li>In Claude (claude.ai or the desktop app), open <b>Settings → Connectors</b> (on some versions <b>Customize → Connectors</b>) and choose <b>Add custom connector</b>.</li>
 				<li>Name it <b>SEOConsole</b> and paste the address above as the URL. Leave the advanced settings empty.</li>
-				<li>Click <b>Add</b>, then <b>Connect</b>. A SEOConsole page opens: sign in with your admin password, pick which sites Claude may read, and click <b>Allow</b>.</li>
+				<li>Click <b>Add</b>, then <b>Connect</b>. A SEOConsole page opens: sign in as the owner or an admin, pick which sites Claude may read, and click <b>Allow</b>.</li>
 				<li>In a chat, open the tools menu and switch SEOConsole on. Try: <i>“What should I fix first across my sites?”</i></li>
 			</ol>
 			<div class="mt-4 rounded-lg border border-dashed p-3 text-xs text-muted-foreground">

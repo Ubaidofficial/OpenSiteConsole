@@ -9,15 +9,16 @@ const all = COMPETITORS.flatMap((c) => c.rows.map((r) => ({ c, r })));
 
 describe('the comparison pages are fair', () => {
 	it('cover the tools people weigh SEOConsole against, each with a distinct address', () => {
-		expect(COMPETITORS.map((c) => c.slug)).toEqual(['seotesting', 'indexchex', 'promptwatch', 'google-search-console']);
+		expect(COMPETITORS.map((c) => c.slug)).toEqual(['seotesting', 'indexchex', 'promptwatch', 'gsc-wizard', 'seo-stack', 'google-search-console']);
 		expect(new Set(COMPETITORS.map((c) => c.slug)).size).toBe(COMPETITORS.length);
 		for (const c of COMPETITORS) expect(bySlug(c.slug)).toBe(c);
 		expect(bySlug('nope')).toBeUndefined();
 	});
 	it('each says where it was read and when, and lists its sources as real https addresses', () => {
 		for (const c of COMPETITORS) {
-			expect(c.checkedOn, c.slug).toBe(CHECKED_ON);
-			expect(CHECKED_ON).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			// each page carries the day its competitor's pages were read; none is older than the shared date
+			expect(c.checkedOn, c.slug).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			expect(c.checkedOn >= CHECKED_ON, c.slug).toBe(true);
 			expect(c.price.length, c.slug).toBeGreaterThan(3);
 			expect(c.sources.length, c.slug).toBeGreaterThan(0);
 			for (const s of c.sources) expect(s.url, `${c.slug}: ${s.label}`).toMatch(/^https:\/\/[^\s]+$/);
@@ -36,7 +37,7 @@ describe('the comparison pages are fair', () => {
 	});
 	it('what SEOConsole does not do is marked No, however good it would look to claim it', () => {
 		const mustBeNo: [RegExp, string][] = [
-			[/LLM tests/, 'seotesting'], [/Internal-linking tool/, 'seotesting'], [/More than one user/, 'seotesting'],
+
 			[/Check any URL, such as backlinks/, 'indexchex'], [/Get third-party or backlink URLs crawled/, 'indexchex'], [/Instant/i, 'indexchex'],
 			[/Track prompts across AI models/, 'promptwatch'], [/Citation and source analysis/, 'promptwatch'], [/Competitor share of voice/, 'promptwatch'], [/AI crawler logs/, 'promptwatch'],
 			[/Removals, Manual actions/, 'google-search-console']
@@ -46,6 +47,21 @@ describe('the comparison pages are fair', () => {
 			expect(row, `${slug}: ${re}`).toBeDefined();
 			expect(row!.ours.v, `${slug}: ${row!.feature}`).toBe('no');
 		}
+		// LLM tests are built (tests/llm-tests.test.ts), and the claim carries its limit
+		const llm = bySlug('seotesting')!.rows.find((r) => /LLM tests/.test(r.feature))!;
+		expect(llm.ours.v).toBe('yes');
+		expect(llm.ours.note).toMatch(/referrer/);
+		// built since: several users with roles (the Team page), which the README documents
+		const users = bySlug('seotesting')!.rows.find((r) => r.feature === 'More than one user')!;
+		expect(users.ours.v).toBe('yes');
+		expect(users.ours.note).toMatch(/Unlimited users, free/);
+		expect(readFileSync('README.md', 'utf8')).toMatch(/## Team and roles/);
+		// the internal-linking tool exists now (the Internal links tab): a yes, without credits, that names its limit
+		const links = bySlug('seotesting')!.rows.find((r) => r.feature === 'Internal-linking tool')!;
+		expect(links.ours.v).toBe('yes');
+		expect(links.ours.note).toMatch(/no credits/);
+		expect(links.ours.note).toMatch(/JavaScript is not run/);
+		expect(existsSync('src/routes/sites/[id]/links/+page.svelte')).toBe(true);
 		// and the things it only half does say "partly", with the reason
 		for (const [slug, re] of [['seotesting', /Monthly plain-English report/], ['seotesting', /Daily watch/], ['indexchex', /Google’s Indexing API/], ['google-search-console', /^Request Indexing$/]] as const) {
 			const row = bySlug(slug)!.rows.find((r) => re.test(r.feature))!;
@@ -103,7 +119,7 @@ describe('the comparison routes', () => {
 		const idx = await import('../src/routes/compare/+page.server');
 		const out = (await idx.load({} as never)) as { tools: { slug: string }[]; hosted: string; checkedOn: string };
 		expect(out.tools.map((t) => t.slug)).toEqual(COMPETITORS.map((c) => c.slug));
-		expect(out.checkedOn).toBe(CHECKED_ON);
+		expect(out.checkedOn).toBe([...new Set([CHECKED_ON, ...COMPETITORS.map((c) => c.checkedOn)])].sort().join(' and ')); // every day a competitor was read
 	});
 	it('are readable without signing in, and show a signed-out visitor no menu; the footer and tab titles know them', async () => {
 		process.env.ADMIN_PASSWORD = 'pw-for-compare-tests';

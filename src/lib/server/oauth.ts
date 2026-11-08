@@ -3,7 +3,7 @@
  *
  * The flow (public client, authorization code + PKCE S256, refresh tokens that rotate):
  *   1. /oauth/register   the client registers its callback address (dynamic client registration).
- *   2. /oauth/authorize  the owner signs in with the admin password and approves; we hand back a one-time code.
+ *   2. /oauth/authorize  the owner (or an admin) signs in and approves; we hand back a one-time code.
  *   3. /oauth/token      the client trades the code (plus its PKCE verifier) for an access token and a refresh token.
  * An access token is an ordinary API key row (osc_...) with an expiry, so the MCP endpoint, its rate limits, site scoping and the
  * revoke button on the MCP page all work unchanged. Refreshing swaps that key's secret in place.

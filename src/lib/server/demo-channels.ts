@@ -2,7 +2,7 @@ import type { BingClient, BingDay, BingSite, BingTermRow } from './bing';
 import type { Ga4Day, Ga4Property } from './ga4';
 import type { ClarityMetric } from './clarity';
 import type { GtmContainer, GtmLive } from './gtm';
-import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, h01, plantedQuery } from './demo';
+import { DEMO_ACCOUNTS, DEMO_HISTORY_DAYS, DemoClient, demoSearches, h01, plantedQuery } from './demo';
 import { addDays, eachDay, pacificToday } from './dates';
 import { hostKey } from './hosts';
 import { db } from './db';
@@ -221,25 +221,98 @@ export async function demoGa4Landing(property: string, start: string, end: strin
 	return [];
 }
 
+type DemoAssistant = 'ChatGPT' | 'Perplexity' | 'Gemini' | 'Claude' | 'Copilot';
+const AI_SHARES: [DemoAssistant, number][] = [['ChatGPT', 0.55], ['Perplexity', 0.2], ['Gemini', 0.13], ['Claude', 0.08], ['Copilot', 0.04]];
+const siteOfProperty = (property: string) => DEMO_ACCOUNTS.flatMap((a) => DEMO_GA4_PROPERTIES(a.sub).map((p, i) => ({ p, s: a.sites[i] }))).find((x) => x.p.prop.property === property)?.s ?? sites[0];
+
 /**
- * Demo AI-assistant sessions, a small share of the demo Google-organic landing pages (ChatGPT largest), so the AI view
- * lines up with the pages the other reports show. Not every page gets any.
+ * The planted LLM-test pages of a demo site: AI-assistant sessions to `liftPage` rise about 2.4x from `changeDate` (as if it had been
+ * rewritten for AI answers), `flatPage` was "changed" on the same day and nothing happened. A demo LLM test on the first comes out
+ * positive; on the second it shows no clear effect.
  */
-export async function demoGa4AiTraffic(property: string, start: string, end: string): Promise<{ assistant: 'ChatGPT' | 'Perplexity' | 'Gemini' | 'Claude' | 'Copilot'; page: string; sessions: number; engagedSessions: number; keyEvents: number }[]> {
-	const pages = (await demoGa4Landing(property, start, end)).sort((a, b) => b.sessions - a.sessions).slice(0, 12);
-	const shares = [['ChatGPT', 0.05], ['Perplexity', 0.02], ['Gemini', 0.015], ['Claude', 0.01], ['Copilot', 0.005]] as const;
-	return pages.flatMap((p) =>
-		shares.flatMap(([assistant, share]) => {
-			const sessions = Math.round(p.sessions * share * (0.6 + h01(property, p.page, assistant)));
-			return sessions >= 1 ? [{ assistant, page: p.page, sessions, engagedSessions: Math.round(sessions * 0.7), keyEvents: Math.round(sessions * 0.05 * 10) / 10 }] : [];
-		})
-	);
+export function demoAiPlant(siteUrl: string, today = pacificToday()) {
+	const slug = siteOf(siteUrl).topic.replace(/\s+/g, '-');
+	return { liftPage: `/blog/${slug}-9`, flatPage: `/products/${slug}-4`, changeDate: addDays(today, -2 - 42) };
+}
+
+/**
+ * Demo AI-assistant sessions by day, assistant and landing page. Each page has its own steady level (ChatGPT the largest share),
+ * with a weekly pattern, gentle growth common to the whole site and day-to-day noise, plus the planted change of demoAiPlant.
+ * Counts are small, as real AI traffic is, and whole numbers (randomised rounding keeps the averages right).
+ */
+export function demoGa4AiDaily(property: string, startDate: string, endDate: string): { date: string; assistant: DemoAssistant; page: string; sessions: number; keyEvents: number }[] {
+	const s = siteOfProperty(property);
+	const slug = s.topic.replace(/\s+/g, '-');
+	const plant = demoAiPlant(s.siteUrl);
+	const end = lastDay();
+	// Expected AI sessions a day for each page at the start of the history (all assistants together).
+	const base: [string, number][] = [['/', 4], ...[3.5, 3, 2.5, 5, 1.5, 1.2, 1, 0.8, 3, 2, 1.5, 1.2, 1, 0.6].map((v, i): [string, number] => [`/${i < 3 ? 'guides' : i < 8 ? 'products' : 'blog'}/${slug}-${i + 1}`, v])];
+	const out: ReturnType<typeof demoGa4AiDaily> = [];
+	const from = startDate < addDays(end, -DEMO_HISTORY_DAYS) ? addDays(end, -DEMO_HISTORY_DAYS) : startDate;
+	for (const date of eachDay(from, endDate > end ? end : endDate)) {
+		const age = (Date.parse(end) - Date.parse(date)) / 86_400_000;
+		const dow = new Date(date + 'T00:00:00Z').getUTCDay();
+		const common = (dow === 0 || dow === 6 ? 0.75 : 1.08) * (1 + ((DEMO_HISTORY_DAYS - age) / DEMO_HISTORY_DAYS) * 0.4);
+		const since = Math.round((Date.parse(date) - Date.parse(plant.changeDate)) / 86_400_000);
+		for (const [page, level] of base) {
+			// the planted rise builds over the first week after the change, as pages are re-read by the assistants
+			const lift = page === plant.liftPage && since >= 0 ? 1 + 1.4 * Math.min(1, (since + 1) / 7) : 1;
+			const mean = level * s.scale * common * lift * (0.8 + h01(property, date, page) * 0.4);
+			for (const [assistant, share] of AI_SHARES) {
+				const sessions = Math.floor(mean * share + h01(property, date, page, assistant));
+				if (sessions > 0) out.push({ date, assistant, page, sessions, keyEvents: Math.round(sessions * 0.05 * 10) / 10 });
+			}
+		}
+	}
+	return out;
+}
+
+/** Demo AI-assistant sessions over a whole window, by assistant and landing page: the daily figures summed, so the two views agree. */
+export async function demoGa4AiTraffic(property: string, start: string, end: string): Promise<{ assistant: DemoAssistant; page: string; sessions: number; engagedSessions: number; keyEvents: number }[]> {
+	const sum = new Map<string, { assistant: DemoAssistant; page: string; sessions: number; engagedSessions: number; keyEvents: number }>();
+	for (const r of demoGa4AiDaily(property, start, end)) {
+		const k = `${r.assistant}\n${r.page}`;
+		const cur = sum.get(k) ?? { assistant: r.assistant, page: r.page, sessions: 0, engagedSessions: 0, keyEvents: 0 };
+		cur.sessions += r.sessions;
+		cur.keyEvents += r.keyEvents;
+		sum.set(k, cur);
+	}
+	return [...sum.values()].map((r) => ({ ...r, engagedSessions: Math.round(r.sessions * 0.7), keyEvents: Math.round(r.keyEvents * 10) / 10 }));
 }
 
 /**
  * Demo page fetcher for the on-page check (demo sites are .example domains that do not exist). Pages get deterministic
  * HTML with planted problems: some lack a meta description, some have a generic title, one is noindex, one has two H1s.
  */
+const SENTENCES = [
+	(q: string) => `If you are comparing options, our notes on ${q} cover what matters most.`,
+	(q: string) => `Readers often ask about ${q} before they buy anything.`,
+	(q: string) => `We tested a lot of gear while writing about ${q}, and the differences were bigger than expected.`,
+	(q: string) => `A short checklist helps with ${q}: decide the budget first, then the features.`,
+	(q: string) => `${q[0].toUpperCase() + q.slice(1)} comes up in almost every conversation we have with new customers.`,
+	(q: string) => `There is no single answer to ${q}, but a few rules of thumb help.`
+];
+
+/**
+ * Demo page body: a menu (home and three section pages), a main column whose sentences mention searches that OTHER pages rank for
+ * (so the internal-link tool has mentions to find), two links in the text to other pages, and a footer. Deterministic per page.
+ */
+function demoBody(siteUrl: string, topic: string, url: URL, h1: string): string {
+	const searches = demoSearches(siteUrl);
+	const pages = [...new Set(searches.flatMap((s) => s.pages))].map((p) => new URL(p).pathname).sort((a, b) => Number(a.split('-').pop()) - Number(b.split('-').pop()));
+	const slug = topic.replace(/\s+/g, '-');
+	const here = url.pathname;
+	const nav = `<header><nav><a href="/">Home</a> <a href="/guides/${slug}-1">Guides</a> <a href="/products/${slug}-4">Products</a> <a href="/blog/${slug}-9">Blog</a></nav></header>`;
+	const others = searches.filter((s) => !s.pages.some((p) => new URL(p).pathname === here));
+	const picked = others.map((s, i) => ({ s, k: h01(siteUrl, here, 'mention', i) })).sort((a, b) => a.k - b.k).slice(0, 7);
+	const sentences = picked.map(({ s }, i) => SENTENCES[Math.floor(h01(here, s.q, i) * SENTENCES.length)](s.q));
+	const paras = [`<p>This page is part of our ${topic} section, written for people who want to get the basics right.</p>`];
+	for (let i = 0; i < sentences.length; i += 3) paras.push(`<p>${sentences.slice(i, i + 3).join(' ')}</p>`);
+	const linkTo = pages.filter((p) => p !== here).map((p, i) => ({ p, k: h01(siteUrl, here, 'link', i) })).sort((a, b) => a.k - b.k).slice(0, 2).map((x) => x.p);
+	if (linkTo.length) paras.push(`<p>See also <a href="${linkTo[0]}">our ${topic} notes</a>${linkTo[1] ? ` and <a href="${linkTo[1]}">this related page</a>` : ''}.</p>`);
+	return `${nav}<main>${h1}${paras.join('')}</main><footer><a href="/about">About</a> <a href="/contact">Contact</a> <a href="mailto:hello@${hostKey(siteUrl)}">Email us</a></footer>`;
+}
+
 export function demoPageFetch(siteUrl: string): typeof fetch {
 	const host = hostKey(siteUrl);
 	const def = sites.find((s) => hostKey(s.siteUrl) === host) ?? sites[0];
@@ -256,7 +329,7 @@ export function demoPageFetch(siteUrl: string): typeof fetch {
 		// Tracking snippets, so the Clarity check has every case: Clarity in the page (greenleaf), Tag Manager only (the rest), nothing (northwind).
 		const gtmSnip = def.brand === 'northwind' ? '' : `<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s);j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId(def.brand)}');</script>`;
 		const claritySnip = def.brand === 'greenleaf' ? claritySnippet(DEMO_CLARITY_ID) : '';
-		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}">${gtmSnip}${claritySnip}</head><body>${h1}<p>demo</p></body></html>`;
+		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}">${gtmSnip}${claritySnip}</head><body>${demoBody(def.siteUrl, def.topic, url, h1)}</body></html>`;
 		return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
 	}) as typeof fetch;
 }

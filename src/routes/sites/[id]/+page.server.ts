@@ -8,7 +8,7 @@ import { detectAnomalies, relativeLift } from '$lib/analytics';
 import { db, audit } from '$lib/server/db';
 import { updatesBetween } from '$lib/server/gupdates';
 import { enqueueGa4Pages } from '$lib/server/jobs';
-import { createTest, evaluateTestCached, suggestControlMatched, testsByAnnotation } from '$lib/server/seotests';
+import { createTest, evaluateTestCached, mainResult, suggestControlMatched, testsByAnnotation } from '$lib/server/seotests';
 import { queueFor } from '$lib/server/actions';
 import { planFrom, positionBuckets } from '$lib/plan';
 
@@ -57,7 +57,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		[...linked].map(([aid, t]) => {
 			try {
 				const o = evaluateTestCached(site, t);
-				return [aid, { testId: t.id, verdict: o.clicks.verdict, lift: o.clicks.lift, p: o.clicks.p, detectable: o.clicks.calibration.detectable, postDays: o.postDays }];
+				const r = mainResult(o);
+				return [aid, { testId: t.id, verdict: r.verdict, lift: r.lift, p: r.p, detectable: r.calibration.detectable, postDays: o.postDays }];
 			} catch {
 				return [aid, { testId: t.id, verdict: 'too-little-data' as const, lift: null, p: null, detectable: null, postDays: 0 }];
 			}

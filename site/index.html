@@ -23,7 +23,7 @@
 <link rel="alternate icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/styles.css?v=20ddccd952">
+<link rel="stylesheet" href="/assets/styles.css?v=d385500d78">
 <script src="/assets/boot.js"></script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"SEOConsole","applicationCategory":"BusinessApplication","operatingSystem":"Linux, macOS, Docker","description":"Open-source SEO dashboard that finds hidden SEO opportunities across Google Search Console, GA4, Bing and Clarity, and manages all your websites in one place. Includes an MCP server for AI agents that reads by default.","license":"https://www.gnu.org/licenses/agpl-3.0.html","url":"https://seoconsole.app/","codeRepository":"https://github.com/Ubaidofficial/OpenSiteConsole","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
@@ -31,12 +31,12 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $9 a month is planned but not open yet."}},
-{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 40 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
+{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 41 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
 {"@type":"Question","name":"Where does my data live?","acceptedAnswer":{"@type":"Answer","text":"In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM."}},
 {"@type":"Question","name":"How far back does history go?","acceptedAnswer":{"@type":"Answer","text":"As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has."}},
 {"@type":"Question","name":"Which AI clients work?","acceptedAnswer":{"@type":"Answer","text":"Claude's custom connector works with one-click sign-in, and Claude Code works with a command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, though not every client has been tested."}},
 {"@type": "Question", "name": "How is it different from Google Search Console?", "acceptedAnswer": {"@type": "Answer", "text": "It reads from Search Console, so it does not replace it. It puts every property and Google account in one place, keeps history past 16 months, adds Bing, GA4 and Clarity, and turns the data into a ranked to-do list, SEO tests and a weekly digest. Search Console keeps tools SEOConsole does not copy, such as Removals, Manual actions, Security issues, the Links report and the Request Indexing button itself."}},
-{"@type": "Question", "name": "How does it compare with SEOTesting.com?", "acceptedAnswer": {"@type": "Answer", "text": "Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure. SEOTesting.com is hosted, has unlimited users, LLM tests and an internal-linking tool, and costs from $50 a month (its pricing page, read on 7 November 2026). SEOConsole is free to self-host for any number of sites, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server."}},
+{"@type": "Question", "name": "How does it compare with SEOTesting.com?", "acceptedAnswer": {"@type": "Answer", "text": "Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure; both have LLM tests on AI-assistant sessions from Google Analytics, an internal-linking tool and unlimited users. SEOTesting.com is hosted and costs from $50 a month (its pricing page, read on 7 November 2026), and its internal-linking reports use a monthly credit allowance. SEOConsole is free to self-host for any number of sites, with no credits, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server."}},
 {"@type":"Question","name":"How mature is it?","acceptedAnswer":{"@type":"Answer","text":"Early. It has more than 500 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed. Verification on real accounts is ongoing, so expect to find rough edges and report them."}}
 ]}
 </script>
@@ -69,7 +69,7 @@
     <div class="hero-copy">
       <p class="kicker mono"><span class="dot" aria-hidden="true"></span>Free · open source · self-hosted</p>
       <h1 id="h1" class="h-xl">
-        <span class="ln l1"><span class="w">Dig up the</span></span>
+        <span class="ln l1"><span class="w">Find the</span></span>
         <span class="ln l2"><span class="w">SEO <span class="hl">wins</span> hiding</span></span>
         <span class="ln l3"><span class="w">in your data.</span></span>
       </h1>
@@ -81,23 +81,37 @@
       <ul class="proof rv" aria-label="The short version">
         <li>No account, no trial clock</li>
         <li>Your data stays in a file on your server</li>
-        <li><b>60</b> MCP tools, read-only until you allow changes</li>
+        <li><b>61</b> MCP tools, read-only until you allow changes</li>
       </ul>
     </div>
 
-    <figure class="dig rv" role="img" aria-label="Pixel-art illustration: a scanner drone sweeps a beam over layered soil with glowing gems buried in it, each gem a hidden SEO opportunity.">
-      <div class="spr s4 dig-art" aria-hidden="true"></div>
-      <div class="dig-clouds" aria-hidden="true"></div>
-      <span class="dchip mono" aria-hidden="true"><i></i>Lost: <b>−46 clicks</b></span>
-      <span class="dchip mono d2" aria-hidden="true"><i></i>1 page, <b>8 searches</b></span>
-      <span class="dchip mono d3" aria-hidden="true"><i></i>Rising: <b>5× impr.</b></span>
-      <span class="dchip mono d4" aria-hidden="true"><i></i>Bing <b>#2</b> · Google <b>#15</b></span>
+    <figure class="hx rv" aria-labelledby="hx-cap">
+      <div class="hx-card">
+        <div class="hx-head">
+          <div><p class="hx-k mono"><span class="livedot" aria-hidden="true"></span>What to fix first</p><p class="hx-t">6 sites · 2 Google accounts</p></div>
+          <span class="hx-src" aria-label="Sources: Search Console, Bing, GA4, Clarity"><img src="/assets/logos/search-console.svg" width="18" height="18" alt=""><img src="/assets/logos/bing.svg" width="18" height="18" alt=""><img src="/assets/logos/ga4.svg" width="18" height="18" alt=""><img src="/assets/logos/clarity.png" width="18" height="18" alt=""></span>
+        </div>
+        <ol class="hx-list">
+          <li class="hx-row k-blk v-i0"><span class="hx-ic"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5 17.5 16.5h-15z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 8.5v3.6M10 14.2v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="hx-tx"><b>Tag Manager sends to a different GA4 property</b><small>pixelforge.example</small></span><span class="tag block">Blocking</span></li><li class="hx-row k-blk v-i1"><span class="hx-ic"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5 17.5 16.5h-15z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 8.5v3.6M10 14.2v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="hx-tx"><b>The container has no published version</b><small>trailmaps.example</small></span><span class="tag block">Blocking</span></li><li class="hx-row k-gem v-i2"><span class="hx-ic"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8l3 4-7 9-7-9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3 7.5h14M8 3.5l2 13 2-13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span><span class="hx-tx"><b>/guides/hiking-maps-3 converts well but ranks 10.7</b><small>trailmaps.example</small></span><span class="hx-gain"><b>+3,704</b><small>clicks / 28d</small><i class="v-w100p"></i></span></li><li class="hx-row k-up v-i3"><span class="hx-ic"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 14.5 8.5 9.5l3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 6.5h4v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="hx-tx"><b>“best hiking maps” at 6.5, within reach of the top 3</b><small>trailmaps.example</small></span><span class="hx-gain"><b>+1,684</b><small>clicks / 28d</small><i class="v-w45p"></i></span></li><li class="hx-row k-up v-i4"><span class="hx-ic"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 14.5 8.5 9.5l3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 6.5h4v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="hx-tx"><b>“best espresso machines” at 7.5</b><small>coffeelab.example</small></span><span class="hx-gain"><b>+822</b><small>clicks / 28d</small><i class="v-w22p"></i></span></li>
+        </ol>
+        <p class="hx-foot mono">Demo data · blocking first, then estimated clicks</p>
+      </div>
+      <div class="hx-float hf1" aria-hidden="true">
+        <p class="mono">Clicks · 6 sites · 28 days</p>
+        <p class="hf-n"><b data-count="89833">89,833</b><span class="chip dn">−1.1%</span></p>
+        <svg viewBox="0 0 160 44" preserveAspectRatio="none"><defs><linearGradient id="hfg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2f6b00" stop-opacity=".22"/><stop offset="1" stop-color="#2f6b00" stop-opacity="0"/></linearGradient></defs><path class="ar" d="M3.0 27.0 L8.7 25.2 L14.4 5.2 L20.1 4.8 L25.8 7.1 L31.5 4.6 L37.2 5.0 L42.9 25.7 L48.6 25.0 L54.3 6.1 L60.0 41.0 L65.7 6.8 L71.4 5.4 L77.1 4.9 L82.9 22.9 L88.6 24.5 L94.3 7.8 L100.0 6.6 L105.7 5.4 L111.4 6.6 L117.1 5.4 L122.8 25.7 L128.5 24.9 L134.2 6.0 L139.9 8.3 L145.6 3.0 L151.3 5.2 L157.0 6.0 L157.0 44 L3.0 44 Z" fill="url(#hfg)"/><path class="ln draw" pathLength="1" d="M3.0 27.0 L8.7 25.2 L14.4 5.2 L20.1 4.8 L25.8 7.1 L31.5 4.6 L37.2 5.0 L42.9 25.7 L48.6 25.0 L54.3 6.1 L60.0 41.0 L65.7 6.8 L71.4 5.4 L77.1 4.9 L82.9 22.9 L88.6 24.5 L94.3 7.8 L100.0 6.6 L105.7 5.4 L111.4 6.6 L117.1 5.4 L122.8 25.7 L128.5 24.9 L134.2 6.0 L139.9 8.3 L145.6 3.0 L151.3 5.2 L157.0 6.0"/></svg>
+      </div>
+      <div class="hx-float hf2" aria-hidden="true">
+        <p class="mono">“garden tools kit”</p>
+        <div class="db"><span class="db-l"></span><span class="db-b v-x5p"><img src="/assets/logos/bing.svg" width="14" height="14" alt=""><b>#2</b></span><span class="db-g v-x72p"><img src="/assets/logos/search-console.svg" width="14" height="14" alt=""><b>#15</b></span></div>
+      </div>
+      <figcaption id="hx-cap" class="sr">Example from the demo data: SEOConsole's ranked list of what to fix first across six sites, two blocking tracking problems first, then pages and searches ranked by estimated extra clicks.</figcaption>
     </figure>
   </div>
 
   <div class="wrap stage-wrap">
     <div class="stage" data-stage>
-      <div class="landscape" aria-hidden="true"><i class="ls-far"></i><i class="ls-near"></i></div>
+      <div class="stage-glow" aria-hidden="true"></div>
       <div class="stack">
       <div class="device" data-device>
         <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span class="url mono">Dashboard · demo data</span></div>
@@ -144,14 +158,42 @@
     <p class="sub rv">Search Console shows one report at a time. Some problems only appear when you compare two periods, Google with Bing, or rankings with what visitors do after they land. SEOConsole runs those comparisons for every site.</p>
 
     <div class="wins-grid">
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-lost" aria-hidden="true"></div></div><div class="wbody"><h3>Searches that stopped paying.</h3><p>Queries that earned clicks last period and have nearly stopped. It could be a lost ranking, the season, or data Google stopped sharing. You see the numbers and judge the cause.</p><p class="eg mono"><span>demo data</span>“garden tools storage ideas”: 46 → 0 clicks</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-rising" aria-hidden="true"></div></div><div class="wbody"><h3>Demand arriving early.</h3><p>Impressions at least doubled while you still rank below the top five. The extra clicks are estimated from your own click curve.</p><p class="eg mono"><span>demo data</span>“best electric garden tools”: 906 → 4,322 impressions</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-edge" aria-hidden="true"></div></div><div class="wbody"><h3>One page, many searches.</h3><p>A page sitting at positions 4 to 20 for several searches at once. One good update can lift them all.</p><p class="eg mono"><span>demo data</span>/products/garden-tools-7: 8 searches, ≈385 clicks at #5</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-bing" aria-hidden="true"></div></div><div class="wbody"><h3>Bing likes it. Google doesn’t.</h3><p>Bing ranks you in the top five where Google has you at 11 or lower. The content is probably fine. Google needs a stronger signal.</p><p class="eg mono"><span>demo data</span>“garden tools kit”: Bing 2.0, Google 14.6</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-gem" aria-hidden="true"></div></div><div class="wbody"><h3>Pages that convert, ranked too low.</h3><p>Visitors engage and convert above your average, but Google ranks the page 4 to 20. Right audience, not enough of it.</p><p class="eg mono"><span>demo data</span>/blog/garden-tools-10: 86% engaged, ranks 7.3</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-leak" aria-hidden="true"></div></div><div class="wbody"><h3>Clicks that don’t stay.</h3><p>Google landing pages where far fewer visitors engage than elsewhere on your site, or where nobody converts.</p><p class="eg mono"><span>demo data</span>/products/garden-tools-6: 24% of 488 visits engaged</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-friction" aria-hidden="true"></div></div><div class="wbody"><h3>Buttons that don’t work.</h3><p>Pages Google sends visitors to where Microsoft Clarity saw many sessions with rage clicks or dead clicks.</p><p class="eg mono"><span>demo data</span>/products/garden-tools-6: 19 of 140 sessions</p></div></article>
-      <article class="win rv"><div class="scene"><div class="spr s2 sc-phone" aria-hidden="true"></div></div><div class="wbody"><h3>Fine on desktop, lost on phones.</h3><p>The same search ranks three or more places worse on phones, where most of your visitors probably are.</p><p class="eg mono"><span>demo data</span>“garden tools set”: phone 14.0, desktop 6.0</p></div></article>
+      <article class="win rv w-lost v-span6">
+        <div class="viz" aria-hidden="true"><svg viewBox="0 0 320 132"><g class="ax"><line x1="70" y1="18" x2="70" y2="112"/><line x1="250" y1="18" x2="250" y2="112"/></g>
+<path class="slope draw" pathLength="1" d="M70 24 L250 108"/>
+<circle class="pt" cx="70" cy="24" r="6"/><circle class="pt bad pulse" cx="250" cy="108" r="6"/>
+<text x="56" y="28" text-anchor="end" class="big">46</text><text x="264" y="112" class="big bad">0</text>
+<text x="70" y="128" text-anchor="middle" class="lb">previous 28 days</text><text x="250" y="128" text-anchor="middle" class="lb">last 28 days</text></svg></div>
+        <div class="wbody"><p class="wk mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Lost queries</p><h3>Searches that stopped paying.</h3><p>Queries that earned clicks last period and have nearly stopped. A lost ranking, the season, or data Google stopped sharing: you see the numbers and judge the cause.</p><p class="eg mono"><span>Demo data</span>“garden tools storage ideas”</p></div>
+      </article>
+      <article class="win rv w-rising v-span3">
+        <div class="viz" aria-hidden="true"><div class="bars2"><div class="b2 v-h21p"><span>906</span><i></i><em>before</em></div><div class="b2 hot v-h100p"><span>4,322</span><i></i><em>now</em></div><b class="mult">×4.8</b></div></div>
+        <div class="wbody"><p class="wk mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Rising demand</p><h3>Demand arriving early.</h3><p>Impressions at least doubled while you still rank below the top five.</p><p class="eg mono"><span>Demo data</span>“best electric garden tools”</p></div>
+      </article>
+      <article class="win rv w-bing v-span3">
+        <div class="viz" aria-hidden="true"><p class="cap mono">position, 1 = top</p><div class="trk"><div class="rail"></div><span class="mk bing v-x5_3p"><b>Bing 2.0</b></span><span class="mk goog v-x71_6p"><b>Google 14.6</b></span><div class="tks"><span class="tk v-x0_0p">1</span><span class="tk v-x21_1p">5</span><span class="tk v-x47_4p">10</span><span class="tk v-x73_7p">15</span><span class="tk v-x100_0p">20</span></div></div></div>
+        <div class="wbody"><p class="wk mono"><span class="srcs" title="Reads Bing, Search Console"><span class="sr">Reads Bing, Search Console: </span><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Bing vs Google</p><h3>Bing likes it. Google doesn’t.</h3><p>Top five on Bing, 11 or lower on Google. The content is probably fine; Google needs a stronger signal.</p><p class="eg mono"><span>Demo data</span>“garden tools kit”</p></div>
+      </article>
+      <article class="win rv w-edge v-span4">
+        <div class="viz" aria-hidden="true"><div class="fan"><div class="qs"><span class="q v-b916023"></span><span class="q v-e582d5c"></span><span class="q v-b6e7387"></span><span class="q v-a1b6aa2"></span><span class="q v-5f8915f"></span><span class="q v-43e0996"></span><span class="q v-7111405"></span><span class="q v-b85df88"></span></div><svg class="fan-l" viewBox="0 0 60 120" preserveAspectRatio="none"><path class="draw v-i0" pathLength="1" d="M0 7 C30 7 30 60 60 60"/><path class="draw v-i1" pathLength="1" d="M0 22 C30 22 30 60 60 60"/><path class="draw v-i2" pathLength="1" d="M0 37 C30 37 30 60 60 60"/><path class="draw v-i3" pathLength="1" d="M0 52 C30 52 30 60 60 60"/><path class="draw v-i4" pathLength="1" d="M0 67 C30 67 30 60 60 60"/><path class="draw v-i5" pathLength="1" d="M0 82 C30 82 30 60 60 60"/><path class="draw v-i6" pathLength="1" d="M0 97 C30 97 30 60 60 60"/><path class="draw v-i7" pathLength="1" d="M0 112 C30 112 30 60 60 60"/></svg><div class="pg"><b>1 page</b><span>8 searches<br>at #5</span></div></div></div>
+        <div class="wbody"><p class="wk mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>One page, many searches</p><h3>Lift eight rankings at once.</h3><p>A page sitting at positions 4 to 20 for several searches. One good update can lift them all.</p><p class="eg mono"><span>Demo data</span>/products/garden-tools-7 · ≈385 clicks</p></div>
+      </article>
+      <article class="win rv w-gem v-span4">
+        <div class="viz" aria-hidden="true"><div class="gem"><div class="ring-w"><svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="48" class="rg-bg"/><circle cx="60" cy="60" r="48" class="rg draw v-v0_86" pathLength="1"/></svg><div class="gem-c"><b>86%</b><span>engaged</span></div></div><div class="gem-r"><span class="mono">ranks</span><b>7.3</b><small>page 1, bottom half</small></div></div></div>
+        <div class="wbody"><p class="wk mono"><span class="srcs" title="Reads GA4, Search Console"><span class="sr">Reads GA4, Search Console: </span><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Converts, ranks low</p><h3>Right audience, too little of it.</h3><p>Visitors engage and convert above your average, but Google ranks the page 4 to 20.</p><p class="eg mono"><span>Demo data</span>/blog/garden-tools-10</p></div>
+      </article>
+      <article class="win rv w-phone v-span4">
+        <div class="viz" aria-hidden="true"><p class="cap mono">position, 1 = top</p><div class="trk"><div class="rail"></div><span class="mk desk v-x26_3p"><b>Desktop 6.0</b></span><span class="mk phone v-x68_4p"><b>Phone 14.0</b></span><div class="tks"><span class="tk v-x0_0p">1</span><span class="tk v-x21_1p">5</span><span class="tk v-x47_4p">10</span><span class="tk v-x73_7p">15</span><span class="tk v-x100_0p">20</span></div></div></div>
+        <div class="wbody"><p class="wk mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Mobile gap</p><h3>Fine on desktop, lost on phones.</h3><p>The same search ranks three or more places worse on phones, where most visitors probably are.</p><p class="eg mono"><span>Demo data</span>“garden tools set”</p></div>
+      </article>
+      <article class="win rv w-leak v-span6">
+        <div class="viz" aria-hidden="true"><div class="leak"><div class="lk-bar"><i class="v-w24p"></i></div><div class="lk-lab"><span><b>24%</b> engaged</span><span><b>76%</b> left without engaging</span></div><p class="mono">488 visits from Google</p></div></div>
+        <div class="wbody"><p class="wk mono"><span class="srcs" title="Reads GA4, Search Console"><span class="sr">Reads GA4, Search Console: </span><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Engagement leak</p><h3>Clicks that don’t stay.</h3><p>Google landing pages where far fewer visitors engage than elsewhere on your site, or where nobody converts.</p><p class="eg mono"><span>Demo data</span>/products/garden-tools-6</p></div>
+      </article>
+      <article class="win rv w-fric v-span6">
+        <div class="viz" aria-hidden="true"><div class="fric"><div class="grid140"><i class="v-i0"></i><i class="v-i1"></i><i class="v-i2"></i><i class="hit v-i3"></i><i class="v-i4"></i><i class="v-i5"></i><i class="v-i6"></i><i class="v-i7"></i><i class="v-i8"></i><i class="hit v-i9"></i><i class="v-i10"></i><i class="v-i11"></i><i class="v-i12"></i><i class="v-i13"></i><i class="v-i14"></i><i class="v-i15"></i><i class="v-i16"></i><i class="hit v-i17"></i><i class="v-i18"></i><i class="v-i19"></i><i class="v-i20"></i><i class="v-i21"></i><i class="hit v-i22"></i><i class="v-i23"></i><i class="v-i24"></i><i class="v-i25"></i><i class="v-i26"></i><i class="v-i27"></i><i class="v-i28"></i><i class="v-i29"></i><i class="hit v-i30"></i><i class="v-i31"></i><i class="v-i32"></i><i class="v-i33"></i><i class="v-i34"></i><i class="v-i35"></i><i class="v-i36"></i><i class="v-i37"></i><i class="hit v-i38"></i><i class="v-i39"></i><i class="v-i40"></i><i class="hit v-i41"></i><i class="v-i42"></i><i class="v-i43"></i><i class="v-i44"></i><i class="v-i45"></i><i class="v-i46"></i><i class="v-i47"></i><i class="v-i48"></i><i class="hit v-i49"></i><i class="v-i50"></i><i class="v-i51"></i><i class="v-i52"></i><i class="v-i53"></i><i class="v-i54"></i><i class="v-i55"></i><i class="v-i56"></i><i class="hit v-i57"></i><i class="v-i58"></i><i class="v-i59"></i><i class="v-i60"></i><i class="v-i61"></i><i class="v-i62"></i><i class="v-i63"></i><i class="hit v-i64"></i><i class="v-i65"></i><i class="v-i66"></i><i class="v-i67"></i><i class="v-i68"></i><i class="v-i69"></i><i class="hit v-i70"></i><i class="v-i71"></i><i class="v-i72"></i><i class="v-i73"></i><i class="v-i74"></i><i class="v-i75"></i><i class="v-i76"></i><i class="v-i77"></i><i class="hit v-i78"></i><i class="v-i79"></i><i class="v-i80"></i><i class="v-i81"></i><i class="v-i82"></i><i class="v-i83"></i><i class="v-i84"></i><i class="hit v-i85"></i><i class="v-i86"></i><i class="v-i87"></i><i class="v-i88"></i><i class="v-i89"></i><i class="v-i90"></i><i class="v-i91"></i><i class="v-i92"></i><i class="hit v-i93"></i><i class="v-i94"></i><i class="v-i95"></i><i class="v-i96"></i><i class="v-i97"></i><i class="v-i98"></i><i class="v-i99"></i><i class="v-i100"></i><i class="hit v-i101"></i><i class="v-i102"></i><i class="v-i103"></i><i class="v-i104"></i><i class="v-i105"></i><i class="v-i106"></i><i class="v-i107"></i><i class="hit v-i108"></i><i class="v-i109"></i><i class="v-i110"></i><i class="v-i111"></i><i class="v-i112"></i><i class="v-i113"></i><i class="v-i114"></i><i class="v-i115"></i><i class="hit v-i116"></i><i class="v-i117"></i><i class="v-i118"></i><i class="v-i119"></i><i class="v-i120"></i><i class="v-i121"></i><i class="v-i122"></i><i class="v-i123"></i><i class="hit v-i124"></i><i class="v-i125"></i><i class="v-i126"></i><i class="v-i127"></i><i class="v-i128"></i><i class="v-i129"></i><i class="v-i130"></i><i class="v-i131"></i><i class="v-i132"></i><i class="hit v-i133"></i><i class="v-i134"></i><i class="v-i135"></i><i class="v-i136"></i><i class="v-i137"></i><i class="v-i138"></i><i class="v-i139"></i></div><p class="mono"><b>19</b> of 140 sessions had rage or dead clicks</p></div></div>
+        <div class="wbody"><p class="wk mono"><span class="srcs" title="Reads Clarity, Search Console"><span class="sr">Reads Clarity, Search Console: </span><img class="lg" src="/assets/logos/clarity.png" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Clarity friction</p><h3>Buttons that don’t work.</h3><p>Pages Google sends visitors to where Microsoft Clarity saw many sessions with rage clicks or dead clicks.</p><p class="eg mono"><span>Demo data</span>/products/garden-tools-6</p></div>
+      </article>
     </div>
 
     <figure class="shotwide rv wipe">
@@ -166,7 +208,18 @@
 <section class="sec sites" id="sites" aria-labelledby="h-sites">
   <div class="wrap">
     <div class="sites-grid">
-      <figure class="art-card rv"><div class="spr s4 sc-many" role="img" aria-label="Pixel illustration: five small websites send data along dotted lines into one dashboard."></div></figure>
+      <div class="pf rv" data-pf>
+        <div class="pf-head">
+          <div><p class="pf-t">All sites</p><p class="pf-s">6 properties · 2 Google accounts · last 28 days</p></div>
+          <button class="pf-sw" type="button" aria-pressed="false" data-privacy><span class="sw" aria-hidden="true"></span>Privacy mode</button>
+        </div>
+        <div class="pf-tot"><div><span>Clicks</span><b data-count="89833">89,833</b><em class="chip dn">−1.1%</em></div><div><span>Impressions</span><b data-count="889501">889,501</b></div><div><span>CTR</span><b>10.1%</b></div></div>
+        <div class="pf-tw" role="region" aria-label="Sites in the demo portfolio" tabindex="0"><table class="pf-tb">
+          <thead><tr><th scope="col">Site</th><th scope="col">Account</th><th scope="col"><span class="sr">Trend</span></th><th scope="col" class="num">Clicks</th><th scope="col" class="num">vs prev.</th></tr></thead>
+          <tbody><tr class="v-i0"><th scope="row"><span class="st"><span class="av v-7c30717">T</span><span class="nm">trailmaps.example</span></span></th><td><span class="acc mono">Agency</span></td><td class="sp"><svg viewBox="0 0 96 26" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M2.0 15.6 L5.4 16.2 L8.8 4.1 L12.2 4.7 L15.6 7.5 L19.0 4.9 L22.4 7.2 L25.9 13.9 L29.3 17.9 L32.7 8.2 L36.1 24.0 L39.5 6.5 L42.9 6.0 L46.3 8.1 L49.7 14.9 L53.1 17.3 L56.5 5.7 L59.9 8.4 L63.3 2.0 L66.7 4.7 L70.1 5.8 L73.6 17.9 L77.0 16.2 L80.4 5.7 L83.8 8.7 L87.2 5.2 L90.6 7.2 L94.0 6.1"/></svg></td><td class="num"><b data-count="25870">25,870</b></td><td class="num"><span class="chip dn">−0.3%</span></td></tr><tr class="v-i1"><th scope="row"><span class="st"><span class="av v-dde53c6">N</span><span class="nm">northwind-tools.example</span></span></th><td><span class="acc mono">Ventures</span></td><td class="sp"><svg viewBox="0 0 96 26" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M2.0 18.2 L5.4 16.1 L8.8 4.3 L12.2 6.9 L15.6 2.2 L19.0 2.0 L22.4 2.0 L25.9 16.9 L29.3 14.0 L32.7 2.1 L36.1 24.0 L39.5 5.6 L42.9 4.0 L46.3 3.2 L49.7 14.5 L53.1 13.5 L56.5 7.1 L59.9 3.2 L63.3 5.2 L66.7 6.8 L70.1 3.6 L73.6 16.4 L77.0 16.7 L80.4 5.8 L83.8 5.2 L87.2 2.3 L90.6 5.5 L94.0 6.6"/></svg></td><td class="num"><b data-count="19433">19,433</b></td><td class="num"><span class="chip up">+1.5%</span></td></tr><tr class="v-i2"><th scope="row"><span class="st"><span class="av v-cc9e8ad">G</span><span class="nm">greenleaf.example</span></span></th><td><span class="acc mono">Agency</span></td><td class="sp"><svg viewBox="0 0 96 26" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M2.0 16.7 L5.4 14.6 L8.8 8.5 L12.2 4.1 L15.6 5.9 L19.0 6.5 L22.4 4.7 L25.9 17.0 L29.3 13.4 L32.7 4.2 L36.1 24.0 L39.5 6.2 L42.9 7.7 L46.3 4.0 L49.7 14.6 L53.1 15.2 L56.5 8.2 L59.9 8.0 L63.3 7.2 L66.7 6.2 L70.1 6.5 L73.6 16.1 L77.0 13.7 L80.4 8.6 L83.8 8.6 L87.2 2.0 L90.6 7.1 L94.0 4.0"/></svg></td><td class="num"><b data-count="16051">16,051</b></td><td class="num"><span class="chip dn">−2.1%</span></td></tr><tr class="v-i3"><th scope="row"><span class="st"><span class="av v-1915df0">C</span><span class="nm">coffeelab.example</span></span></th><td><span class="acc mono">Ventures</span></td><td class="sp"><svg viewBox="0 0 96 26" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M2.0 17.0 L5.4 15.9 L8.8 5.8 L12.2 6.1 L15.6 7.3 L19.0 6.1 L22.4 8.8 L25.9 16.4 L29.3 16.1 L32.7 7.1 L36.1 24.0 L39.5 6.6 L42.9 9.1 L46.3 5.5 L49.7 13.8 L53.1 16.3 L56.5 6.0 L59.9 6.1 L63.3 8.4 L66.7 7.2 L70.1 6.0 L73.6 14.7 L77.0 16.5 L80.4 5.5 L83.8 5.1 L87.2 8.7 L90.6 2.0 L94.0 5.5"/></svg></td><td class="num"><b data-count="13906">13,906</b></td><td class="num"><span class="chip dn">−3.9%</span></td></tr><tr class="v-i4"><th scope="row"><span class="st"><span class="av v-6805d70">P</span><span class="nm">pixelforge.example</span></span></th><td><span class="acc mono">Agency</span></td><td class="sp"><svg viewBox="0 0 96 26" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M2.0 16.7 L5.4 16.4 L8.8 5.6 L12.2 4.9 L15.6 9.5 L19.0 5.9 L22.4 5.9 L25.9 17.6 L29.3 15.9 L32.7 9.6 L36.1 24.0 L39.5 8.7 L42.9 2.0 L46.3 4.4 L49.7 15.6 L53.1 13.6 L56.5 7.5 L59.9 7.3 L63.3 9.6 L66.7 9.0 L70.1 8.4 L73.6 13.1 L77.0 14.6 L80.4 5.0 L83.8 10.5 L87.2 5.9 L90.6 6.0 L94.0 9.4"/></svg></td><td class="num"><b data-count="8237">8,237</b></td><td class="num"><span class="chip dn">−1.5%</span></td></tr><tr class="v-i5"><th scope="row"><span class="st"><span class="av v-c47b4d6">L</span><span class="nm">ledgerly.example</span></span></th><td><span class="acc mono">Ventures</span></td><td class="sp"><svg viewBox="0 0 96 26" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M2.0 18.0 L5.4 16.7 L8.8 7.7 L12.2 7.2 L15.6 11.8 L19.0 10.6 L22.4 3.7 L25.9 17.9 L29.3 18.0 L32.7 6.4 L36.1 24.0 L39.5 6.2 L42.9 3.3 L46.3 7.4 L49.7 15.8 L53.1 15.9 L56.5 9.8 L59.9 2.0 L63.3 7.0 L66.7 6.2 L70.1 5.4 L73.6 16.8 L77.0 16.8 L80.4 4.2 L83.8 3.8 L87.2 3.9 L90.6 3.7 L94.0 5.9"/></svg></td><td class="num"><b data-count="6336">6,336</b></td><td class="num"><span class="chip dn">−2.3%</span></td></tr></tbody>
+        </table></div>
+        <p class="pf-foot mono">Demo data · the switch above blurs names the way the app does</p>
+      </div>
       <div>
         <p class="kicker mono rv">Many sites, many accounts</p>
         <h2 id="h-sites" class="h-lg rv">Every website. One dashboard.</h2>
@@ -260,9 +313,8 @@
       <div>
       <p class="kicker mono rv">MCP</p>
       <h2 id="h-agents" class="h-lg rv">Ask your agent about every site at once.</h2>
-      <p class="sub rv">SEOConsole includes a Model Context Protocol server. Your agent calls 40 tools that read your own stored data, so one question can cover every site, every source and all the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
+      <p class="sub rv">SEOConsole includes a Model Context Protocol server. Your agent calls 41 tools that read your own stored data, so one question can cover every site, every source and all the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
       </div>
-      <figure class="art-card rv"><div class="spr s4 sc-agent" role="img" aria-label="Pixel illustration: a chat window sends questions through glowing packets to your SEOConsole database, and a gem comes back."></div></figure>
     </div>
 
     <div class="agent-grid">
@@ -328,7 +380,7 @@
     </div>
 
     <ul class="stats rv" aria-label="MCP server facts">
-      <li><b data-count="40">40</b><span>tools that read</span></li>
+      <li><b data-count="41">41</b><span>tools that read</span></li>
       <li><b>20</b><span>that act, only if you allow it; deleting is a separate level</span></li>
       <li><b>OAuth</b><span>or API key, scoped per site</span></li>
       <li><b>Audit log</b><span>of every change, with rate limits per key</span></li>
@@ -344,63 +396,129 @@
 
     <div class="bento">
       <article class="card c-history rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console, Bing, GA4"><span class="sr">Reads Search Console, Bing, GA4: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>History</p>
         <h3>History past 16 months.</h3>
         <p>Search Console keeps 16 months. SEOConsole keeps everything it has synced, in a file you own, so last year is still there next year.</p>
         <svg class="tl-svg" viewBox="0 0 600 190" role="img" aria-label="Illustration: your archive reaches far back, while Search Console's own window covers only the last 16 months.">
-          <defs><clipPath id="gwin"><rect x="388" y="0" width="212" height="190"/></clipPath></defs>
-          <path class="area" d="M0 190 L0 128 C40 118 62 84 104 94 S166 52 208 72 S268 108 310 82 S366 40 408 60 S478 102 530 66 S578 44 600 54 L600 190 Z"/>
+          <defs><clipPath id="gwin"><rect x="388" y="0" width="212" height="190"/></clipPath><linearGradient id="tlg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2f6b00" stop-opacity=".16"/><stop offset="1" stop-color="#2f6b00" stop-opacity="0"/></linearGradient></defs>
+          <rect class="win16" x="388" y="0" width="212" height="190"/>
+          <path class="area" fill="url(#tlg)" d="M0 190 L0 128 C40 118 62 84 104 94 S166 52 208 72 S268 108 310 82 S366 40 408 60 S478 102 530 66 S578 44 600 54 L600 190 Z"/>
           <path class="line" pathLength="1200" d="M0 128 C40 118 62 84 104 94 S166 52 208 72 S268 108 310 82 S366 40 408 60 S478 102 530 66 S578 44 600 54"/>
           <path class="line hot" pathLength="1200" clip-path="url(#gwin)" d="M0 128 C40 118 62 84 104 94 S166 52 208 72 S268 108 310 82 S366 40 408 60 S478 102 530 66 S578 44 600 54"/>
           <line class="cut" x1="388" y1="8" x2="388" y2="190"/>
+          <circle class="now" cx="600" cy="54" r="6"/>
         </svg>
-        <ul class="legend mono" aria-hidden="true"><li><i class="k a"></i>your archive</li><li><i class="k g"></i>Search Console: last 16 months</li></ul>
+        <ul class="legend mono" aria-hidden="true"><li><i class="k a"></i>your archive, kept</li><li><i class="k g"></i>what Search Console still shows</li></ul>
         <p class="fine left">Illustration, not real data.</p>
       </article>
-      <article class="card c-privacy rv">
-        <h3>Privacy mode.</h3>
-        <p>One click blurs site names, accounts and URLs for screenshots and screen-shares. The numbers stay.</p>
-        <div class="crop"><img src="/assets/shots/privacy-1080.webp" width="1080" height="675" alt="Dashboard cards with every site name blurred and the numbers still visible." loading="lazy"></div>
-      </article>
-      <article class="card c-gtm rv">
-        <p class="logos"><img class="lg" src="/assets/logos/search-console.svg" width="22" height="22" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="22" height="22" alt=""><img class="lg" src="/assets/logos/tag-manager.svg" width="22" height="22" alt=""></p>
-        <h3>Tracking audit.</h3>
-        <p>Cross-checks Search Console, GA4 and Tag Manager. In the demo it catches a container sending to the wrong GA4 property, and one that was never published.</p>
-        <p class="chipline mono"><span class="tag block">BLOCKING</span> Tag Manager sends to a different GA4 property</p>
+      <article class="card c-audit rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console, GA4, Tag Manager, Clarity"><span class="sr">Reads Search Console, GA4, Tag Manager, Clarity: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/tag-manager.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/clarity.png" width="14" height="14" alt=""></span>Tracking audit</p>
+        <h3>Is your tracking telling the truth?</h3>
+        <p>Cross-checks Search Console, GA4, Tag Manager and Clarity, then says what is broken.</p>
+        <ul class="chk">
+          <li class="ok v-i0"><span class="ci"></span><img src="/assets/logos/search-console.svg" width="16" height="16" alt=""><span>Search Console connected</span></li>
+          <li class="ok v-i1"><span class="ci"></span><img src="/assets/logos/ga4.svg" width="16" height="16" alt=""><span>GA4 receiving organic sessions</span></li>
+          <li class="no v-i2"><span class="ci"></span><img src="/assets/logos/tag-manager.svg" width="16" height="16" alt=""><span>Tag Manager sends to <code>G-OLDSITE01</code>, another property</span></li>
+          <li class="no v-i3"><span class="ci"></span><img src="/assets/logos/clarity.png" width="16" height="16" alt=""><span>Clarity connected, but its script is not on the pages</span></li>
+        </ul>
+        <p class="fine left">Demo data · pixelforge.example. A missing Clarity script can be added through Tag Manager in one click, after a preview.</p>
       </article>
       <article class="card c-digest rv">
-        <h3>Weekly digest, urgent alerts.</h3>
-        <p>A Monday summary of what to do first, plus alerts for blocking problems, sent to Slack, Discord or any webhook.</p>
-        <ol class="alist" data-alist aria-label="What to do first, from the demo digest">
-          <li><div><span class="tag block">BLOCKING</span><b>2 pages with traffic are not in Google’s index</b><small>coffeelab.example · ≈930 clicks / 28d</small></div></li>
-          <li><div><span class="tag block">BLOCKING</span><b>Tag Manager sends to a different GA4 property</b><small>pixelforge.example</small></div></li>
-          <li><div><span class="tag block">BLOCKING</span><b>The container has no published version</b><small>trailmaps.example</small></div></li>
-          <li><div><span class="tag gain">≈1,634 clicks / 28d</span><b>“best hiking maps” is at position 6.4, within reach of the top 3</b><small>trailmaps.example</small></div></li>
-        </ol>
+        <p class="ck mono"><span class="srcs" title="Reads Search Console, Bing, GA4"><span class="sr">Reads Search Console, Bing, GA4: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>Digest and alerts</p>
+        <h3>Monday’s to-do list, in Slack.</h3>
+        <p>A weekly summary of what to do first, plus alerts for blocking problems, sent to Slack, Discord or any webhook.</p>
+        <div class="msg">
+          <div class="msg-h"><img src="/assets/brand/mark-dark.svg" width="28" height="28" alt=""><b>SEOConsole</b><span class="mono">Weekly digest · Mon</span></div>
+          <p class="msg-l">Clicks across 6 sites: <b>23,007</b> this week, flat on the week before.</p>
+          <ol class="alist" data-alist aria-label="What to do first, from the demo digest">
+            <li><div><span class="tag block">BLOCKING</span><b>Tag Manager sends to a different GA4 property</b><small>pixelforge.example</small></div></li>
+            <li><div><span class="tag block">BLOCKING</span><b>The container has no published version</b><small>trailmaps.example</small></div></li>
+            <li><div><span class="tag gain">≈3,704 clicks / 28d</span><b>/guides/hiking-maps-3 converts better than average but ranks 10.7</b><small>trailmaps.example</small></div></li>
+            <li><div><span class="tag gain">≈1,684 clicks / 28d</span><b>“best hiking maps” is at position 6.5, within reach of the top 3</b><small>trailmaps.example</small></div></li>
+          </ol>
+        </div>
         <p class="fine left">From the weekly digest on the demo data.</p>
       </article>
       <article class="card c-vitals rv">
-        <p class="logos"><img class="lg" src="/assets/logos/chrome.svg" width="22" height="22" alt=""></p>
-        <h3>Core Web Vitals.</h3>
-        <p>LCP, INP and CLS from real Chrome users, rated good, needs improvement or poor, with a snapshot stored every day.</p>
-        <div class="crop"><img src="/assets/shots/vitals-1080.webp" width="1080" height="675" alt="Core Web Vitals for phones: LCP, INP and CLS, each with its rating and the share of good page loads." loading="lazy"></div>
+        <p class="ck mono"><span class="srcs" title="Reads Chrome UX Report"><span class="sr">Reads Chrome UX Report: </span><img class="lg" src="/assets/logos/chrome.svg" width="14" height="14" alt=""></span>Core Web Vitals</p>
+        <h3>Speed, as real visitors felt it.</h3>
+        <p>LCP, INP and CLS from Chrome users on phones and desktops, stored every day.</p>
+        <ul class="meters"><li class="mt ni"><span class="mt-n">LCP</span><b>3.67 s</b><span class="mt-r">Needs improvement</span><span class="mt-bar"><i class="v-w62p"></i></span><small>62% of loads good</small></li><li class="mt ok"><span class="mt-n">INP</span><b>110 ms</b><span class="mt-r">Good</span><span class="mt-bar"><i class="v-w85p"></i></span><small>85% of loads good</small></li><li class="mt ni"><span class="mt-n">CLS</span><b>0.14</b><span class="mt-r">Needs improvement</span><span class="mt-bar"><i class="v-w46p"></i></span><small>46% of loads good</small></li></ul>
+        <p class="fine left">Demo data · greenleaf.example on phones.</p>
+      </article>
+      <article class="card c-decay rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Content decay</p>
+        <h3>Pages slowly losing clicks.</h3>
+        <p>Against the previous period, and against last year once you have a year of history. Bars show what is left.</p>
+        <ul class="hbars"><li class="v-i0"><span class="pth mono">/guides/garden-tools-2</span><span class="hb dec"><i class="v-w53p"></i></span><b class="bad">−47%</b></li><li class="v-i1"><span class="pth mono">/blog/garden-tools-12</span><span class="hb dec"><i class="v-w42p"></i></span><b class="bad">−58%</b></li><li class="v-i2"><span class="pth mono">/guides/garden-tools-1</span><span class="hb dec"><i class="v-w8p"></i></span><b class="bad">−92%</b></li></ul>
+        <p class="fine left">Demo data · greenleaf.example, clicks against the previous 28 days.</p>
+      </article>
+      <article class="card c-cannibal rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Cannibalization</p>
+        <h3>Two pages, one search.</h3>
+        <p>When your own pages split a query, neither ranks as well as one would. It names the winner and what is at stake.</p>
+        <div class="cn">
+          <p class="cn-q mono">“garden tools tutorial”</p>
+          <div class="cn-bar"><i class="a v-w61p"></i><i class="b v-w39p"></i></div>
+          <ul class="cn-l"><li><span class="cs a"></span><span class="mono">/products/garden-tools-6</span><b>#2.0</b><small>425 clicks · winner</small></li><li><span class="cs b"></span><span class="mono">/products/garden-tools-7</span><b>#4.5</b><small>67 clicks</small></li></ul>
+          <p class="cn-s"><b>≈241 clicks</b> at stake</p>
+        </div>
+        <p class="fine left">Demo data · bar shows each page's share of impressions.</p>
       </article>
       <article class="card c-sitemap rv">
-        <h3>Sitemap coverage.</h3>
-        <p>Which sitemap URLs Google has never shown, and which pages earn clicks but are missing from every sitemap.</p>
-        <div class="crop"><img src="/assets/shots/sitemaps-1080.webp" width="1080" height="675" alt="Sitemap coverage: URLs in sitemaps, how many were shown in search, how many never were, and the list of never-shown URLs." loading="lazy"></div>
+        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Sitemap coverage</p>
+        <h3>URLs Google never shows.</h3>
+        <ul class="fun"><li class="v-8f8c107"><b>21</b><span>in your sitemaps</span></li><li class="v-a60485c"><b>13</b><span>shown in search</span></li><li class="bad v-939a33f"><b>6</b><span>never shown</span></li></ul>
+        <p class="fine left">Demo data · coffeelab.example, 90 days. Never shown is not the same as not indexed.</p>
       </article>
-      <article class="card c-small rv">
-        <h3>AI assistant traffic.</h3>
-        <p>Visits GA4 credits to ChatGPT, Perplexity, Gemini, Claude and Copilot, per page. Assistants that send no referrer show up as Direct and can’t be counted.</p>
+      <article class="card c-ai rv">
+        <p class="ck mono"><span class="srcs" title="Reads GA4"><span class="sr">Reads GA4: </span><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>AI assistant traffic</p>
+        <h3>Visits from ChatGPT and co.</h3>
+        <ul class="hbars ai"><li class="v-i0"><span>ChatGPT</span><span class="hb"><i class="v-w100p"></i></span><b>1,074</b></li><li class="v-i1"><span>Perplexity</span><span class="hb"><i class="v-w32p"></i></span><b>349</b></li><li class="v-i2"><span>Gemini</span><span class="hb"><i class="v-w28p"></i></span><b>304</b></li><li class="v-i3"><span>Claude</span><span class="hb"><i class="v-w18p"></i></span><b>192</b></li><li class="v-i4"><span>Copilot</span><span class="hb"><i class="v-w9p"></i></span><b>98</b></li></ul>
+        <p class="fine left">Demo data · greenleaf.example, 28 days. Assistants that send no referrer count as Direct.</p>
       </article>
-      <article class="card c-small rv">
-        <p class="logos"><img class="lg" src="/assets/logos/bing.svg" width="22" height="22" alt=""></p>
+      <article class="card c-bing rv">
+        <p class="ck mono"><span class="srcs" title="Reads Bing, Search Console"><span class="sr">Reads Bing, Search Console: </span><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Bing beside Google</p>
+        <h3>The other search engine.</h3>
+        <ul class="hbars ai"><li class="v-i0"><span>Google</span><span class="hb"><i class="v-w100p"></i></span><b>16,051</b></li><li class="v-i1"><span>Bing</span><span class="hb bing"><i class="v-w16p"></i></span><b>2,503</b></li></ul>
+        <p>Bing clicks, queries and pages next to Google’s, plus where Bing already ranks you higher.</p>
+        <p class="fine left">Demo data · greenleaf.example, clicks in 28 days.</p>
+      </article>
+      <article class="card c-index rv">
+        <p class="ck mono"><span class="srcs" title="Reads Bing, Search Console"><span class="sr">Reads Bing, Search Console: </span><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Indexing</p>
         <h3>Indexing, the official routes.</h3>
         <p>Send URLs to IndexNow and Bing, queue the overflow, and re-check on day 1, 3 and 5. Google has no request call for ordinary pages, so the app prepares your Request Indexing list instead.</p>
+        <ol class="tl"><li><b>Sent</b><span>IndexNow · Bing</span></li><li><b>Day 1</b><span>re-check</span></li><li><b>Day 3</b><span>re-check</span></li><li><b>Day 5</b><span>verdict</span></li></ol>
       </article>
-      <article class="card c-small rv">
-        <h3>Google update markers.</h3>
+      <article class="card c-updates rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Google updates</p>
+        <h3>Was it you, or Google?</h3>
         <p>Ranking-update dates on your charts, your tests and your digest, so you can rule out an update before blaming your own change.</p>
+        <svg class="upd" viewBox="0 0 400 110" aria-hidden="true"><rect class="ub" x="170" y="6" width="70" height="94" rx="6"/><text x="205" y="22" text-anchor="middle" class="ut mono">core update</text><path class="line draw" pathLength="1" d="M0 70 C40 66 70 74 110 64 S160 58 180 62 S210 92 240 88 S300 70 330 76 S380 60 400 62"/></svg>
+        <p class="fine left">Illustration, not real data.</p>
+      </article>
+      <article class="card c-new rv">
+        <p class="ck mono"><span class="srcs" title="Reads GA4"><span class="sr">Reads GA4: </span><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>LLM tests</p>
+        <h3>Did that change win AI traffic?</h3>
+        <p>An SEO test measured on visits from ChatGPT, Perplexity, Gemini, Claude and Copilot, against control pages. It says when there is too little AI traffic to tell.</p>
+        <ul class="res">
+          <li><span class="mono">/blog/garden-tools-9</span><b class="up">+132%</b><small>Likely a real gain · 95% range +48% to +265%</small></li>
+          <li><span class="mono">/products/garden-tools-4</span><b>−23%</b><small>No clear effect · it could only detect about ±49%</small></li>
+        </ul>
+        <p class="fine left">Demo data · AI-assistant sessions against control pages.</p>
+      </article>
+      <article class="card c-new rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Internal links</p>
+        <h3>Which pages should link where.</h3>
+        <p>For pages close to the top, the pages that already mention their searches but don’t link to them, with the anchor text as written. No credits.</p>
+        <ul class="tiles4"><li><b data-count="15">15</b><span>pages crawled</span></li><li><b data-count="115">115</b><span>links found</span></li><li><b data-count="50">50</b><span>suggestions</span></li><li><b data-count="1">1</b><span>orphan page</span></li></ul>
+        <p class="fine left">Demo data · greenleaf.example.</p>
+      </article>
+      <article class="card c-new rv">
+        <p class="ck mono">Team</p>
+        <h3>Invite your whole team. Free.</h3>
+        <p>Unlimited people, each with a role and, if you like, only some sites. Invite links work once and expire after 7 days.</p>
+        <ul class="roles"><li><b>Owner</b><span>everything</span></li><li><b>Admin</b><span>team, keys, connections</span></li><li><b>Editor</b><span>sync, test, submit</span></li><li><b>Viewer</b><span>read only</span></li></ul>
       </article>
     </div>
 
@@ -420,33 +538,35 @@
 <section class="sec compare" id="compare" aria-labelledby="h-compare">
   <div class="wrap">
     <p class="kicker mono rv">Compare</p>
-    <h2 id="h-compare" class="h-lg rv">How it compares, honestly.</h2>
-    <p class="sub rv">Read from each tool’s own public pages on 7 November 2026. Where something isn’t on their pages it says “not stated”, not “no”, and the rows where they are ahead are kept in.</p>
-    <div class="ctable rv" tabindex="0" role="region" aria-label="Comparison table: SEOConsole, Google Search Console and SEOTesting.com">
+    <h2 id="h-compare" class="h-lg rv">More features. A fraction of the price.</h2>
+    <p class="sub rv">Everything the paid tools charge for, free to self-host. Read from each tool’s own public pages on 7 and 8 November 2026; where something isn’t on their pages it says “not stated”, not “no”.</p>
+    <div class="ctable rv" tabindex="0" role="region" aria-label="Comparison table: SEOConsole, Google Search Console, SEOTesting.com, GSC Wizard and SEO Stack">
       <table>
-        <thead><tr><td></td><th scope="col" class="us"><img class="lg" src="/assets/brand/mark-dark.svg" width="20" height="20" alt="">SEOConsole</th><th scope="col"><img class="lg" src="/assets/logos/search-console.svg" width="20" height="20" alt="">Google Search Console</th><th scope="col">SEOTesting.com</th></tr></thead>
+        <thead><tr><td></td><th scope="col" class="us"><img class="lg" src="/assets/brand/mark-dark.svg" width="20" height="20" alt="">SEOConsole</th><th scope="col"><img class="lg" src="/assets/logos/search-console.svg" width="20" height="20" alt="">Search Console</th><th scope="col">SEOTesting.com</th><th scope="col">GSC Wizard</th><th scope="col">SEO Stack</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Price</th><td><span class="v y">Yes</span><small>Free to self-host</small></td><td><span class="v y">Yes</span><small>Free</small></td><td><span class="v p">Partly</span><small>From $50 a month for 1 site, $125 for 5, $375 for 20</small></td></tr>
-          <tr><th scope="row">Every site and Google account in one place</th><td><span class="v y">Yes</span><small>No limit</small></td><td><span class="v n">No</span><small>One property at a time</small></td><td><span class="v p">Partly</span><small>Priced by number of sites</small></td></tr>
-          <tr><th scope="row">History past 16 months</th><td><span class="v y">Yes</span><small>Kept from your first sync</small></td><td><span class="v n">No</span><small>About 16 months</small></td><td><span class="v u">Not stated</span></td></tr>
-          <tr><th scope="row">Bing, Clarity and Tag Manager beside Search Console</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v u">Not stated</span><small>Its pages list Search Console and Google Analytics</small></td></tr>
-          <tr><th scope="row">SEO tests with a control group and significance</th><td><span class="v y">Yes</span><small>Before/after, split and redirect</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span><small>Before/after, split and switch</small></td></tr>
-          <tr><th scope="row">Decay, cannibalization and CTR gaps</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td></tr>
-          <tr><th scope="row">Indexing toolkit: IndexNow, Bing, request list, re-checks</th><td><span class="v y">Yes</span></td><td><span class="v p">Partly</span><small>Request Indexing button, by hand</small></td><td><span class="v u">Not stated</span></td></tr>
-          <tr><th scope="row">MCP server for AI agents</th><td><span class="v y">Yes</span></td><td><span class="v u">Not stated</span></td><td><span class="v u">Not stated</span></td></tr>
-          <tr><th scope="row">Your data stays on your server</th><td><span class="v y">Yes</span><small>When self-hosted</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v n">No</span><small>Hosted service</small></td></tr>
+          <tr><th scope="row">Every site and Google account in one place</th><td><span class="v y">Yes</span><small>No limit</small></td><td><span class="v n">No</span><small>One property at a time</small></td><td><span class="v p">Partly</span><small>Priced by number of sites</small></td><td><span class="v y">Yes</span><small>15 to 650 properties by plan</small></td><td><span class="v y">Yes</span><small>10, 30 or 200 websites by plan</small></td></tr>
+          <tr><th scope="row">History past 16 months</th><td><span class="v y">Yes</span><small>Kept from your first sync</small></td><td><span class="v n">No</span><small>About 16 months</small></td><td><span class="v u">Not stated</span></td><td><span class="v p">Partly</span><small>Up to 10 years, on storage plans only</small></td><td><span class="v y">Yes</span><small>60 or 120+ months by plan</small></td></tr>
+          <tr><th scope="row">Bing beside Google</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span><small>Plus Yandex</small></td><td><span class="v u">Not stated</span></td></tr>
+          <tr><th scope="row">GA4 beside Search Console</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
+          <tr><th scope="row">Clarity and Tag Manager, with a tracking audit</th><td><span class="v y">Yes</span><small>And one-click Clarity install</small></td><td><span class="v n">No</span></td><td><span class="v u">Not stated</span></td><td><span class="v u">Not stated</span></td><td><span class="v u">Not stated</span></td></tr>
+          <tr><th scope="row">SEO tests with a control group and significance</th><td><span class="v y">Yes</span><small>Before/after, split and redirect</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span><small>Before/after, split and switch</small></td><td><span class="v y">Yes</span><small>A/B with p-values</small></td><td><span class="v p">Partly</span><small>Before/after only</small></td></tr>
+          <tr><th scope="row">LLM tests: AI-assistant visits before and after a change</th><td><span class="v y">Yes</span><small>From GA4</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span><small>From GA4</small></td><td><span class="v u">Not stated</span></td><td><span class="v p">Partly</span><small>AI-visibility before/after</small></td></tr>
+          <tr><th scope="row">Internal-link suggestions</th><td><span class="v y">Yes</span><small>No credits</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span><small>Monthly credit allowance</small></td><td><span class="v u">Not stated</span></td><td><span class="v p">Partly</span><small>Within its recommendations</small></td></tr>
+          <tr><th scope="row">Decay, cannibalization, striking distance and CTR gaps</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
+          <tr><th scope="row">AI-assistant traffic by page</th><td><span class="v y">Yes</span><small>ChatGPT, Perplexity, Gemini, Claude, Copilot</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
+          <tr><th scope="row">Core Web Vitals from real users</th><td><span class="v y">Yes</span><small>Stored daily</small></td><td><span class="v y">Yes</span><small>Core Web Vitals report</small></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span><small>In its site audit</small></td></tr>
+          <tr><th scope="row">Indexing toolkit: IndexNow, Bing, request list, re-checks</th><td><span class="v y">Yes</span></td><td><span class="v p">Partly</span><small>Request Indexing button, by hand</small></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span><small>Bulk inspection, IndexNow, tracker</small></td><td><span class="v p">Partly</span><small>Indexing checks</small></td></tr>
+          <tr><th scope="row">Weekly digest and alerts to Slack, Discord or a webhook</th><td><span class="v y">Yes</span></td><td><span class="v p">Partly</span><small>Email messages about issues</small></td><td><span class="v y">Yes</span><small>Monthly report, daily email</small></td><td><span class="v y">Yes</span><small>Slack, Teams, webhooks</small></td><td><span class="v p">Partly</span><small>PDF reports by email</small></td></tr>
+          <tr><th scope="row">MCP server for AI agents</th><td><span class="v y">Yes</span><small>Reads by default; acts only if you allow</small></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
+          <tr><th scope="row">Team members</th><td><span class="v y">Yes</span><small>Unlimited, free, with roles</small></td><td><span class="v y">Yes</span><small>Per property</small></td><td><span class="v y">Yes</span><small>Unlimited</small></td><td><span class="v p">Partly</span><small>1 to 10 seats, then €9 each</small></td><td><span class="v p">Partly</span><small>5 to 15 by plan</small></td></tr>
+          <tr><th scope="row">Your data stays on your server</th><td><span class="v y">Yes</span><small>When self-hosted</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v n">No</span><small>Hosted</small></td><td><span class="v n">No</span><small>Hosted</small></td><td><span class="v n">No</span><small>Hosted</small></td></tr>
         </tbody>
-        <tbody class="ahead">
-          <tr class="grp"><th scope="rowgroup" colspan="4">Where they are ahead</th></tr>
-          <tr><th scope="row">Nothing to install or run</th><td><span class="v n">No</span><small>Self-host only, for now</small></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span><small>Hosted</small></td></tr>
-          <tr><th scope="row">More than one user</th><td><span class="v n">No</span><small>One admin password</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span><small>Unlimited users</small></td></tr>
-          <tr><th scope="row">LLM tests and an internal-linking tool</th><td><span class="v n">No</span><small>Not built</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span></td></tr>
-          <tr><th scope="row">Removals, Manual actions, Security issues, Links, Crawl stats</th><td><span class="v n">No</span><small>Not replicated</small></td><td><span class="v y">Yes</span></td><td><span class="v x" aria-label="Not compared">—</span></td></tr>
-          <tr><th scope="row">Track record</th><td><span class="v p">Partly</span><small>A young project</small></td><td><span class="v y">Yes</span><small>Google’s own</small></td><td><span class="v y">Yes</span><small>Established</small></td></tr>
-        </tbody>
+        <tfoot>
+          <tr class="price"><th scope="row">Price</th><td><b>Free to self-host</b><small>Every feature, unlimited sites and users. Hosted plan planned at $9 a month.</small></td><td><b>Free</b></td><td><b>$50 a month</b><small>1 site · $125 for 5 · $375 for 20</small></td><td><b>€17 a month</b><small>15 properties · €39 for 75 · €249 for 650, excl. VAT</small></td><td><b>$129.99 a month</b><small>10 sites · $349.99 for 30 · $679.99 for 200</small></td></tr>
+        </tfoot>
       </table>
     </div>
-    <p class="fine">Prices and features change, so check their sites. Every claim and its source is in <a href="https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/src/lib/compare.ts" rel="noopener">src/lib/compare.ts</a>. “—” means not compared.</p>
+    <p class="fine">Prices and features change, so check their sites. Every claim, its source, and the things each tool does that SEOConsole doesn’t are in <a href="https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/src/lib/compare.ts" rel="noopener">src/lib/compare.ts</a> and the app’s Compare pages. “—” means not compared.</p>
   </div>
 </section>
 
@@ -495,12 +615,12 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
     <h2 id="h-faq" class="h-lg rv">Common questions.</h2>
     <div class="qa rv">
       <details><summary>Is it really free?</summary><p>Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $9 a month is planned but not open yet.</p></details>
-      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 40 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
+      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 41 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
       <details><summary>Where does my data live?</summary><p>In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM. Whatever an agent reads is sent to that agent’s provider, so connect only agents you trust with that data.</p></details>
       <details><summary>How far back does history go?</summary><p>As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has.</p></details>
       <details><summary>Which AI clients work?</summary><p>Claude’s custom connector works with one-click sign-in, and Claude Code works with a single command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, but only Claude has been confirmed.</p></details>
       <details><summary>How is it different from Google Search Console?</summary><p>It reads from Search Console, so it does not replace it. It puts every property and Google account in one place, keeps history past 16 months, adds Bing, GA4 and Clarity, and turns the data into a ranked to-do list, SEO tests and a weekly digest. Search Console keeps tools SEOConsole does not copy, such as Removals, Manual actions, Security issues, the Links report and the Request Indexing button itself.</p></details>
-      <details><summary>How does it compare with SEOTesting.com?</summary><p>Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure. SEOTesting.com is hosted, has unlimited users, LLM tests and an internal-linking tool, and costs from $50 a month (its pricing page, read on 7 November 2026). SEOConsole is free to self-host for any number of sites, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server.</p></details>
+      <details><summary>How does it compare with SEOTesting.com?</summary><p>Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure; both have LLM tests on AI-assistant sessions from Google Analytics, an internal-linking tool and unlimited users. SEOTesting.com is hosted and costs from $50 a month (its pricing page, read on 7 November 2026), and its internal-linking reports use a monthly credit allowance. SEOConsole is free to self-host for any number of sites, with no credits, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server.</p></details>
       <details><summary>How mature is it?</summary><p>Early. It has more than 500 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed end to end. Verification on real accounts is ongoing, so expect rough edges and please report them.</p></details>
     </div>
   </div>
@@ -530,6 +650,6 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
   </div>
 </footer>
 
-<script src="/assets/main.js?v=3444ad902f" defer></script>
+<script src="/assets/main.js?v=590eeb3947" defer></script>
 </body>
 </html>

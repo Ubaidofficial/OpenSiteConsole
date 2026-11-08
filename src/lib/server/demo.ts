@@ -128,6 +128,11 @@ function profile(siteUrl: string, sites: DemoSite[]): Profile {
 	return p;
 }
 
+/** The demo site's non-brand searches and the pages that rank for them (for the demo page HTML, so body text mentions real demo queries). */
+export function demoSearches(siteUrl: string): { q: string; pages: string[] }[] {
+	return profile(siteUrl, DEMO_ACCOUNTS.flatMap((a) => a.sites)).queries.filter((q) => !q.brand).map((q) => ({ q: q.q, pages: q.pages }));
+}
+
 function ctrAt(pos: number): number {
 	return Math.min(0.35, 0.3 * Math.exp(-0.42 * (pos - 1)) + 0.004);
 }

@@ -67,6 +67,10 @@ export const config = {
 	get indexMonitorUrls() {
 		return Math.min(200, Math.max(1, Number(env('INDEX_MONITOR_URLS', '40')) || 40));
 	},
+	/** Pages the internal-link crawl fetches per site (the ones with the most impressions in 90 days). */
+	get linkCrawlPages() {
+		return Math.min(500, Math.max(1, Number(env('LINK_CRAWL_PAGES', '60')) || 60));
+	},
 	get syncConcurrency() {
 		return Math.max(1, Number(env('SYNC_CONCURRENCY', '2')));
 	},

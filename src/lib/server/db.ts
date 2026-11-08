@@ -302,10 +302,37 @@ CREATE TABLE IF NOT EXISTS seo_tests (
 );
 CREATE TABLE IF NOT EXISTS sessions (
 	id_hash TEXT PRIMARY KEY,           -- sha256 of the random session id; the id itself is only in the browser's cookie
-	pw_fp TEXT NOT NULL,                -- fingerprint of ADMIN_PASSWORD when it was created: a password change ends every session
+	pw_fp TEXT NOT NULL,                -- fingerprint of ADMIN_PASSWORD (and, for a team member, of their password) when it was created
 	created_at INTEGER NOT NULL,
-	expires_at INTEGER NOT NULL
+	expires_at INTEGER NOT NULL,
+	user_id INTEGER                     -- NULL = the owner (signed in with ADMIN_PASSWORD); otherwise users.id
 ) WITHOUT ROWID;
+-- Team members invited by the owner or an admin. The owner is not a row: it is whoever knows ADMIN_PASSWORD, so it can never be locked out.
+CREATE TABLE IF NOT EXISTS users (
+	id INTEGER PRIMARY KEY,
+	email TEXT NOT NULL UNIQUE,         -- lower-cased
+	name TEXT NOT NULL,
+	password_hash TEXT NOT NULL,        -- scrypt, the same scheme as ADMIN_PASSWORD_HASH (password.ts)
+	role TEXT NOT NULL,                 -- admin | editor | viewer
+	site_ids TEXT,                      -- JSON array, NULL = all sites (admins always NULL)
+	created_at INTEGER NOT NULL,
+	last_login_at INTEGER,
+	disabled INTEGER NOT NULL DEFAULT 0
+);
+-- Single-use invite links. Only a hash of the token is kept; the link itself is shown once to whoever made it.
+CREATE TABLE IF NOT EXISTS invites (
+	id INTEGER PRIMARY KEY,
+	token_hash TEXT NOT NULL UNIQUE,
+	email TEXT NOT NULL,
+	role TEXT NOT NULL,
+	site_ids TEXT,
+	created_at INTEGER NOT NULL,
+	expires_at INTEGER NOT NULL,
+	created_by TEXT,
+	accepted_at INTEGER,
+	accepted_user_id INTEGER,
+	revoked_at INTEGER
+);
 CREATE TABLE IF NOT EXISTS kv (
 	key TEXT PRIMARY KEY,
 	value TEXT NOT NULL
@@ -365,6 +392,23 @@ CREATE TABLE IF NOT EXISTS ga4_page_meta (
 	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
 	from_date TEXT,                     -- earliest day stored
 	through_date TEXT,                  -- latest day stored
+	pulled_at INTEGER NOT NULL,
+	error TEXT
+) WITHOUT ROWID;
+-- Daily AI-assistant sessions per landing page, only for sites with an LLM test (an SEO test judged on AI-assistant sessions).
+CREATE TABLE IF NOT EXISTS ga4_ai_daily (
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	date TEXT NOT NULL,
+	assistant TEXT NOT NULL,            -- ChatGPT | Perplexity | Gemini | Claude | Copilot
+	page TEXT NOT NULL,                 -- landing path, no query string
+	sessions INTEGER NOT NULL,
+	key_events REAL NOT NULL,
+	PRIMARY KEY (site_id, date, assistant, page)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ga4_ai_daily_meta (
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	from_date TEXT,
+	through_date TEXT,
 	pulled_at INTEGER NOT NULL,
 	error TEXT
 ) WITHOUT ROWID;
@@ -451,6 +495,35 @@ CREATE TABLE IF NOT EXISTS onpage_checks (
 	payload TEXT NOT NULL,              -- JSON {status, finalUrl, error?, parsed, queries, issues, score}
 	PRIMARY KEY (site_id, url)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS link_pages (             -- the internal-link crawl: one row per fetched page, newest crawl only
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	url TEXT NOT NULL,                  -- as Search Console lists it
+	final_url TEXT NOT NULL,            -- after redirects
+	status INTEGER NOT NULL,
+	error TEXT,
+	title TEXT,
+	h1 TEXT,
+	body TEXT NOT NULL DEFAULT '',      -- main content text, one paragraph per line
+	links TEXT NOT NULL DEFAULT '[]',   -- JSON PageLink[]: same-site links with anchor text
+	fetched_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, url)
+);
+CREATE TABLE IF NOT EXISTS link_crawls (            -- the last internal-link crawl per site
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	status TEXT NOT NULL DEFAULT 'idle', -- idle | running
+	started_at INTEGER,
+	finished_at INTEGER,
+	pages INTEGER NOT NULL DEFAULT 0,
+	ok INTEGER NOT NULL DEFAULT 0,
+	failed INTEGER NOT NULL DEFAULT 0,
+	error TEXT
+);
+CREATE TABLE IF NOT EXISTS link_done (              -- internal-link suggestions marked done (source>target, normalised)
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	key TEXT NOT NULL,
+	at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, key)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS clarity_scans (          -- is Clarity's script on the site's pages? (newest check only)
 	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
 	checked_at INTEGER NOT NULL,
@@ -514,6 +587,9 @@ function migrate(db: Database.Database) {
 	if (!cols('api_keys').includes('can_write')) db.exec('ALTER TABLE api_keys ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('oauth_codes').includes('can_write')) db.exec('ALTER TABLE oauth_codes ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
+	// Which team member a session belongs to (NULL = the owner). Earlier sessions were all the owner's, so they stay valid.
+	if (!cols('sessions').includes('user_id')) db.exec('ALTER TABLE sessions ADD COLUMN user_id INTEGER');
+	db.exec('CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id)');
 	// v1: earlier versions could mark a property "fully backfilled" after one empty stretch, or never start walking
 	// back at all. Re-open every backfill; it resumes from the stored cursor, so nothing already stored is re-downloaded.
 	const version = db.pragma('user_version', { simple: true }) as number;
