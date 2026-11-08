@@ -62,6 +62,10 @@ Every illustration on the page (the dig site in the hero, the eight "hidden win"
 | `bing.svg`, `chrome.svg` | Wikimedia Commons (`Bing_Fluent_Logo.svg`, `Google_Chrome_icon_(February_2022).svg`) |
 | `clarity.png` | Microsoft Clarity's own favicon (`claritystatic.azureedge.net/images/logo.ico`), resized to 64 px |
 | `mcp.svg`, `claude.svg`, `claude-code.svg` | [Simple Icons](https://simpleicons.org) (CC0 for the drawings; the marks remain their owners' trademarks), in the brand colour Simple Icons lists |
+| `openai.svg` (ChatGPT and Codex) | The 2025 OpenAI symbol (Wikimedia Commons, `OpenAI_logo_2025_(symbol).svg`) |
+| `cursor.svg`, `windsurf.svg` | Simple Icons, as above |
+
+The app shows the same AI-app marks on its MCP page from `static/logos/` (copies of these files). The black ones are inverted in dark mode.
 
 IndexNow has no logo other than a text favicon that is unreadable at this size, and OpenSEO has no public logo, so both are named in text only.
 

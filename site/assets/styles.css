@@ -138,6 +138,10 @@ html.js .alist.live li.show > div { opacity: 1; transform: none; margin-bottom: 
 .lg { display: inline-block; object-fit: contain; vertical-align: -0.2em; flex: none; }
 .fine.also .lg { margin: 0 5px 0 2px; vertical-align: -3px; }
 .tablist button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.tablist button .lg + .lg { margin-left: -4px; }
+.tablist button { white-space: nowrap; padding-inline: 8px; gap: 6px; font-size: 12.5px; }
+@media (max-width: 560px) { .tablist { overflow-x: auto; } .tablist button { flex: none; padding-inline: 12px; } }
+.note.apps .lg { margin: 0 4px 0 2px; vertical-align: -2px; }
 .win .eg span .lg { width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; }
 .card .logos { display: flex; gap: 10px; margin: 0 0 14px; position: relative; }
 .card .logos .lg { width: 22px; height: 22px; }

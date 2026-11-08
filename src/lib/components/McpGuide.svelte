@@ -5,13 +5,15 @@
 	 * window; Codex and other clients take a key. Menu names in other companies' apps change, so each tab says where to check.
 	 */
 	let { url, chatgptCallbacks = [], publicOrigin = true }: { url: string; chatgptCallbacks?: string[]; publicOrigin?: boolean } = $props();
+	// each app's own mark; the black ones (OpenAI, Cursor, Windsurf, MCP) are inverted in dark mode so they stay visible
 	const tabs = [
-		['claude', 'Claude'],
-		['chatgpt', 'ChatGPT'],
-		['code', 'Claude Code'],
-		['codex', 'Codex'],
-		['other', 'Cursor & others']
+		['claude', 'Claude', ['claude.svg']],
+		['chatgpt', 'ChatGPT', ['openai.svg']],
+		['code', 'Claude Code', ['claude-code.svg']],
+		['codex', 'Codex', ['openai.svg']],
+		['other', 'Cursor & others', ['cursor.svg', 'windsurf.svg']]
 	] as const;
+	const MONO = new Set(['openai.svg', 'cursor.svg', 'windsurf.svg', 'mcp.svg']);
 	let tab = $state<(typeof tabs)[number][0]>('claude');
 	let copied = $state<string | null>(null);
 	async function copy(text: string, id: string) {
@@ -36,14 +38,16 @@
 {/snippet}
 
 <section class="card mb-6 p-5" aria-labelledby="mcp-connect-h">
-	<h2 id="mcp-connect-h" class="text-base font-semibold">Connect an AI app</h2>
+	<h2 id="mcp-connect-h" class="flex items-center gap-2 text-base font-semibold"><img src="/logos/mcp.svg" alt="" width="18" height="18" class="size-[18px] dark:invert" />Connect an AI app</h2>
 	<p class="mb-3 text-sm text-muted-foreground">Your MCP server address. Paste it into the app; it signs in to this SEOConsole and reads your search data.</p>
 	{@render copyable(url, 'url')}
 	{#if !publicOrigin}<p class="mt-2 text-xs text-warn">This address is not a public https address, so Claude and ChatGPT (which connect from the internet) cannot reach it. Set <code>ORIGIN</code> to your public address, or use Claude Code or Codex on this computer.</p>{/if}
 
 	<div class="mt-5 flex flex-wrap gap-1 border-b" role="tablist" aria-label="Choose your app">
-		{#each tabs as [id, label]}
-			<button type="button" role="tab" aria-selected={tab === id} class="-mb-px border-b-2 px-3 py-2 text-sm {tab === id ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}" onclick={() => (tab = id)}>{label}</button>
+		{#each tabs as [id, label, logos]}
+			<button type="button" role="tab" aria-selected={tab === id} class="-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm {tab === id ? 'border-[color:var(--link)] font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}" onclick={() => (tab = id)}>
+				<span class="inline-flex gap-1" aria-hidden="true">{#each logos as l}<img src="/logos/{l}" alt="" width="16" height="16" class="size-4 object-contain {MONO.has(l) ? 'dark:invert' : ''}" />{/each}</span>{label}
+			</button>
 		{/each}
 	</div>
 
