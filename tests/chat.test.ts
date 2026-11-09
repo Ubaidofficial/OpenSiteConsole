@@ -89,7 +89,7 @@ describe('a turn', () => {
 		expect(ev[ev.length - 1]).toEqual({ type: 'done' });
 		expect(JSON.stringify(lastUser(s.seen[0]).content)).toMatch(/Today is 2026-11-09/);
 		const id = (ev[0] as { id: number }).id;
-		expect(displayItems(threadMessages(id))).toEqual([{ kind: 'user', text: 'How many sites?' }, { kind: 'text', text: 'Hello! **3** sites.' }]);
+		expect(displayItems(threadMessages(id), OWNER)).toEqual([{ kind: 'user', text: 'How many sites?' }, { kind: 'text', text: 'Hello! **3** sites.' }]);
 		expect(listThreads(OWNER).map((t) => t.id)).toEqual([id]);
 	});
 
@@ -136,7 +136,7 @@ describe('a turn', () => {
 		expect((db().prepare("SELECT COUNT(*) n FROM audit_log WHERE action = 'mcp.log_change'").get() as { n: number }).n).toBe(1);
 		const results = lastUser(s.seen[1]).content as Anthropic.Beta.BetaToolResultBlockParam[];
 		expect(results.map((r) => [r.tool_use_id, !!r.is_error])).toEqual([['w1', false], ['w2', true]]);
-		expect(displayItems(threadMessages(id)).filter((i) => i.kind === 'tool').map((i) => (i.kind === 'tool' ? i.tool.status : ''))).toEqual(['done', 'declined']);
+		expect(displayItems(threadMessages(id), OWNER).filter((i) => i.kind === 'tool').map((i) => (i.kind === 'tool' ? i.tool.status : ''))).toEqual(['done', 'declined']);
 	});
 
 	it('a viewer cannot change anything, even if the model asks', async () => {
@@ -167,7 +167,7 @@ describe('a turn', () => {
 		const results = lastUser(s.seen[1]).content as Anthropic.Beta.BetaToolResultBlockParam[];
 		expect(results[1]).toMatchObject({ is_error: true });
 		const id = (ev[0] as { id: number }).id;
-		expect(displayItems(threadMessages(id)).filter((i) => i.kind === 'chart')).toHaveLength(1);
+		expect(displayItems(threadMessages(id), OWNER).filter((i) => i.kind === 'chart')).toHaveLength(1);
 	});
 
 	it('answers dangling tool calls as stopped before the next message, so the API accepts the conversation', async () => {
@@ -230,7 +230,76 @@ describe('stopping', () => {
 		const events: ChatEvent[] = [];
 		await runTurn(OWNER, { threadId: null, text: 'q' }, (e) => events.push(e), { call, signal: ac.signal });
 		const id = (events[0] as { id: number }).id;
-		expect(displayItems(threadMessages(id)).at(-1)).toEqual({ kind: 'text', text: 'Half an ans …\n\n*(stopped)*' });
+		expect(displayItems(threadMessages(id), OWNER).at(-1)).toEqual({ kind: 'text', text: 'Half an ans …\n\n*(stopped)*' });
 		expect(events.some((e) => e.type === 'error')).toBe(false);
+	});
+});
+
+describe('review fixes', () => {
+	it('labels never name a site outside the person’s scope', async () => {
+		const u = member('viewer', [1]);
+		const s = script(msg([use('a', 'get_overview', { site: 6 })], 'tool_use'), msg([text('ok')]));
+		const ev = await turn(u, { threadId: null, text: 'site 6?' }, s.call);
+		const tools = ev.filter((e) => e.type === 'tool').map((e) => (e as { tool: { label: string; status: string } }).tool);
+		expect(tools.at(-1)!.status).toBe('error');
+		expect(tools.map((t) => t.label).join(' ')).not.toMatch(/example/);
+		const id = (ev[0] as { id: number }).id;
+		expect(JSON.stringify(displayItems(threadMessages(id), u))).not.toMatch(/northwind|ledgerly|coffeelab|trailmaps|pixelforge/);
+	});
+
+	it('deleting a conversation does not give the day’s messages back, and answering an approval counts as a turn', async () => {
+		process.env.CHAT_MESSAGES_PER_DAY = '2';
+		const u = member('editor');
+		const ev = await turn(u, { threadId: null, text: 'log it' }, script(msg([use('w', 'log_change', { site: 1, date: '2026-11-01', title: 'x' })], 'tool_use')).call);
+		const id = (ev[0] as { id: number }).id;
+		await turn(u, { threadId: id, decisions: { w: false } }, script(msg([text('ok')])).call);
+		const { deleteThread } = await import('../src/lib/server/chat');
+		expect(deleteThread(u, id)).toBe(true);
+		const again = await turn(u, { threadId: null, text: 'more' }, script(msg([text('x')])).call);
+		expect(again.find((e) => e.type === 'error')).toMatchObject({ message: expect.stringMatching(/daily limit/) });
+	});
+
+	it('a second turn on a conversation that is still answering is refused, so results never interleave', async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((r) => (release = r));
+		const slow: ModelCall = async () => { await gate; return msg([text('done')]); };
+		const first: ChatEvent[] = [];
+		const ev = await turn(OWNER, { threadId: null, text: 'start' }, script(msg([text('hi')])).call);
+		const id = (ev[0] as { id: number }).id;
+		const p1 = runTurn(OWNER, { threadId: id, text: 'slow one' }, (e) => first.push(e), { call: slow });
+		const second = await turn(OWNER, { threadId: id, text: 'impatient' }, script(msg([text('no')])).call);
+		expect(second.find((e) => e.type === 'error')).toMatchObject({ message: expect.stringMatching(/still finishing/) });
+		release();
+		await p1;
+		expect(first.some((e) => e.type === 'error')).toBe(false);
+		expect((await turn(OWNER, { threadId: id, text: 'now' }, script(msg([text('fine')])).call)).some((e) => e.type === 'error')).toBe(false);
+	});
+
+	it('a viewer gets no live-quota reads: no URL inspection, no sitemap check, no fresh Bing allowance', async () => {
+		const v = member('viewer');
+		const names = chatTools(v).map((t) => t.name);
+		expect(names).not.toContain('inspect_url');
+		expect(names).not.toContain('check_sitemap');
+		expect(chatTools(member('editor')).map((t) => t.name)).toContain('inspect_url');
+		const s = script(msg([use('q', 'get_indexing_quotas', { site: 1, refresh_bing: true })], 'tool_use'), msg([text('ok')]));
+		await turn(v, { threadId: null, text: 'quota' }, s.call);
+		const r = (lastUser(s.seen[1]).content as Anthropic.Beta.BetaToolResultBlockParam[])[0];
+		expect(r).toMatchObject({ is_error: true, content: expect.stringMatching(/editor action/) });
+	});
+
+	it('an empty answer is not stored, so the conversation stays valid', async () => {
+		const ev = await turn(OWNER, { threadId: null, text: 'q' }, script(msg([], 'end_turn')).call);
+		expect(ev.find((e) => e.type === 'error')).toMatchObject({ message: expect.stringMatching(/empty answer/) });
+		const id = (ev[0] as { id: number }).id;
+		expect(threadMessages(id).every((m) => m.role === 'user')).toBe(true);
+	});
+
+	it('removing a member removes their conversations, so a new member who gets the same id sees nothing', async () => {
+		const u = member('admin');
+		await turn(u, { threadId: null, text: 'secret' }, script(msg([text('hi')])).call);
+		expect(listThreads(u)).toHaveLength(1);
+		const { removeUser } = await import('../src/lib/server/users');
+		removeUser(u.id!, OWNER);
+		expect(listThreads(u)).toHaveLength(0);
 	});
 });

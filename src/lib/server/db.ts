@@ -569,6 +569,12 @@ CREATE TABLE IF NOT EXISTS chat_messages (          -- the conversation exactly 
 	created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS chat_messages_thread ON chat_messages(thread_id, id);
+CREATE TABLE IF NOT EXISTS chat_usage (             -- turns started per person per UTC day, for CHAT_MESSAGES_PER_DAY (kept when a conversation is deleted)
+	owner TEXT NOT NULL,
+	day TEXT NOT NULL,                   -- YYYY-MM-DD, UTC
+	n INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (owner, day)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS ai_prompts (             -- AI visibility: the questions asked of AI assistants, per site
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
@@ -697,6 +703,22 @@ function migrate(db: Database.Database) {
 	}
 }
 
+let regexDeadline = 0;
+/**
+ * Run a query that uses REGEXP with a time budget: safeRegex keeps each match small, and this stops a query that would still take too
+ * long over millions of rows (SQLite calls the function synchronously, so a slow query would hold up every other request).
+ */
+export function withRegexBudget<T>(ms: number, fn: () => T): T {
+	regexDeadline = Date.now() + ms;
+	try {
+		return fn();
+	} finally {
+		regexDeadline = 0;
+	}
+}
+/** At most this much of each value is matched: queries and URLs are shorter, and it bounds the work per row. */
+const REGEX_VALUE_CAP = 500;
+
 /** `x REGEXP p` in SQL: case-insensitive, compiled once per pattern, and only for patterns safeRegex accepts (no runaway backtracking). */
 function registerRegexp(d: Database.Database) {
 	const cache = new Map<string, RegExp>();
@@ -709,7 +731,8 @@ function registerRegexp(d: Database.Database) {
 			if (cache.size > 200) cache.clear();
 			cache.set(p, (re = r.re));
 		}
-		return value != null && re.test(String(value)) ? 1 : 0;
+		if (regexDeadline && Date.now() > regexDeadline) throw new Error('This regular expression takes too long on this much data. Simplify it, or shorten the date range.');
+		return value != null && re.test(String(value).slice(0, REGEX_VALUE_CAP)) ? 1 : 0;
 	});
 }
 

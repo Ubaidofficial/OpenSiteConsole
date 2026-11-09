@@ -235,17 +235,67 @@ export function classifyIntent(query: string, brandTerms: string[] = []): Intent
 
 // ── Regular-expression filters ───────────────────────────────────────────────
 export const MAX_REGEX_LENGTH = 200;
+/** At most this many repeating quantifiers (*, +, {m,n} with n > 1 or open) in one pattern: backtracking then stays polynomial and small. */
+export const MAX_REPEATS = 2;
 /**
- * A user's filter pattern, checked before it is run against every stored row: at most 200 characters, valid JavaScript syntax, and
- * none of the shapes that make a backtracking engine take exponential time (a quantified group that itself contains a quantifier,
- * such as (a+)+ or (.*)*, and back-references). Matching is case-insensitive. Returns the compiled pattern or the reason it was refused.
+ * A user's filter pattern, checked before it is run against every stored row. Instead of guessing which shapes are slow, only a small,
+ * safe grammar is accepted: literals, character classes, anchors, alternation and groups; no quantifier on a group (where catastrophic
+ * backtracking comes from: (a+)+, (a|a?)+, ((a+))+), no lookarounds, no back-references, at most two repeating quantifiers and eight
+ * quantifiers in all. Without a quantified group the work per value is polynomial with a degree of at most two, and the values tested are
+ * capped at 500 characters (see registerRegexp), with a time budget per query on top. Matching is case-insensitive.
  */
 export function safeRegex(pattern: string): { re: RegExp } | { error: string } {
 	const p = pattern.trim();
 	if (!p) return { error: 'The pattern is empty.' };
 	if (p.length > MAX_REGEX_LENGTH) return { error: `The pattern is longer than ${MAX_REGEX_LENGTH} characters.` };
-	if (/\\[1-9]|\\k</.test(p)) return { error: 'Back-references are not supported in filters.' };
-	if (/\((?:[^()\\]|\\.)*[+*}](?:[^()\\]|\\.)*\)\s*(?:[+*]|\{\d*,?\d*\})/.test(p)) return { error: 'Nested repetition such as (a+)+ is not allowed: it can make the search run for minutes. Simplify the pattern.' };
+	let repeats = 0, quants = 0, prev: 'none' | 'atom' | 'group' | 'quant' = 'none';
+	const open: number[] = [];
+	for (let i = 0; i < p.length; i++) {
+		const ch = p[i];
+		if (ch === '\\') {
+			const n = p[i + 1] ?? '';
+			if (/[1-9]/.test(n) || n === 'k') return { error: 'Back-references are not supported in filters.' };
+			i++;
+			prev = 'atom';
+		} else if (ch === '[') {
+			let j = i + 1;
+			if (p[j] === '^') j++;
+			if (p[j] === ']') j++;
+			for (; j < p.length && p[j] !== ']'; j++) if (p[j] === '\\') j++;
+			if (j >= p.length) return { error: 'Not a valid regular expression: a [ is not closed.' };
+			i = j;
+			prev = 'atom';
+		} else if (ch === '(') {
+			if (p[i + 1] === '?') {
+				const kind = p.slice(i + 2, i + 4);
+				if (kind[0] === '=' || kind[0] === '!' || kind === '<=' || kind === '<!') return { error: 'Lookahead and lookbehind are not supported in filters.' };
+				// (?:...) and (?<name>...) are plain groups: step over the prefix so its ? is not read as a quantifier
+				if (kind[0] === ':') i += 2;
+				else if (kind[0] === '<') { const end = p.indexOf('>', i); if (end < 0) return { error: 'Not a valid regular expression: a group name is not closed.' }; i = end; }
+				else return { error: 'Not a valid regular expression: unknown group (?' + (kind[0] ?? '') + '.' };
+			}
+			open.push(i);
+			prev = 'none';
+		} else if (ch === ')') {
+			open.pop(); // an unbalanced ) is reported by the RegExp constructor below
+			prev = 'group';
+		} else if (ch === '*' || ch === '+' || ch === '?' || (ch === '{' && /^\{\d+(,\d*)?\}/.test(p.slice(i)))) {
+			if (ch === '?' && prev === 'quant') { prev = 'quant'; continue; } // lazy modifier, as in .*?
+			if (prev === 'group') return { error: 'A quantifier on a group, such as (ab)+ or (a|b)*, is not allowed in filters: it can make the search run for minutes. Repeat single characters or classes instead.' };
+			if (prev !== 'atom') return { error: 'Not a valid regular expression: a quantifier has nothing to repeat.' };
+			let max = Infinity;
+			if (ch === '{') {
+				const m = /^\{(\d+)(,(\d*))?\}/.exec(p.slice(i))!;
+				max = m[2] === undefined ? Number(m[1]) : m[3] === '' ? Infinity : Number(m[3]);
+				i += m[0].length - 1;
+			} else if (ch === '?') max = 1;
+			if (max > 1) repeats++;
+			quants++;
+			prev = 'quant';
+		} else prev = ch === '|' || ch === '^' || ch === '$' ? 'none' : 'atom';
+	}
+	if (repeats > MAX_REPEATS) return { error: `At most ${MAX_REPEATS} repeating quantifiers (*, + or {m,n}) in a filter. A filter matches anywhere in the text, so a leading or trailing .* is not needed.` };
+	if (quants > 8) return { error: 'At most 8 quantifiers in a filter.' };
 	try {
 		return { re: new RegExp(p, 'i') };
 	} catch (e) {

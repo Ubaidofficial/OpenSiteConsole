@@ -146,6 +146,7 @@
 		if (!threadId || busy) return;
 		const decisions = Object.fromEntries(approvals.map((a) => [a.id, approve === 'each' ? !!each[a.id] : approve]));
 		approvals = [];
+		sent++; // an answer to an approval counts as a turn, like a message
 		await stream({ threadId, decisions });
 	}
 	let picks = $state<Record<string, boolean>>({});
@@ -225,6 +226,7 @@
 				<div class="mx-auto mb-6 w-full max-w-xl rounded-xl border border-dashed bg-card p-5 text-sm">
 					<p class="flex items-center gap-2 font-medium"><KeyRound class="size-4" />One step to switch it on</p>
 					<p class="mt-1.5 text-muted-foreground">Chat runs on Claude with your own Anthropic API key. Add it to <code>.env</code> and restart:</p>
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable block must be reachable by keyboard to scroll it) -->
 					<pre tabindex="0" class="mt-3 overflow-x-auto rounded-lg bg-muted px-3 py-2 text-xs">ANTHROPIC_API_KEY=sk-ant-…</pre>
 					<p class="mt-2 text-xs text-muted-foreground">The same key also powers AI answers. Usage is billed to your Anthropic account; each person can send {data.usage.limit} messages a day (CHAT_MESSAGES_PER_DAY).</p>
 				</div>
@@ -269,6 +271,7 @@
 											{#if approvals.length > 1}<input type="checkbox" class="size-3.5" bind:checked={picks[a.id]} onclick={(e) => e.stopPropagation()} aria-label="Approve {a.label}" />{/if}
 											<span class="flex-1 font-medium">{a.label}</span><ChevronRight class="size-3.5 text-muted-foreground" />
 										</summary>
+										<!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable block must be reachable by keyboard to scroll it) -->
 										<pre tabindex="0" class="overflow-x-auto border-t px-3 py-2 text-[11px] text-muted-foreground">{a.name} {pretty(a.input)}</pre>
 									</details>
 								</li>

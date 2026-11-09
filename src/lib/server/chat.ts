@@ -51,6 +51,14 @@ export const chatReady = () => chatKey() !== '';
 // ── who is asking ────────────────────────────────────────────────────────────
 /** Tools the app keeps for admins (in the app, these need the admin role), so an editor's chat cannot do them either. */
 export const ADMIN_ONLY_TOOLS = new Set(['set_brand_terms', 'verify_site_ownership', 'get_site_verification_token']);
+/**
+ * Tools that only read but ask Google or Bing live and spend a quota: in the app these are editor actions (Inspect, Check sitemap,
+ * Refresh quota), so a viewer's chat does not get them. A viewer still reads the stored results (get_indexing_status and the like).
+ */
+export const EDITOR_READS = new Set(['inspect_url', 'check_sitemap']);
+/** Arguments that turn a stored read into a live one; refused for viewers for the same reason. */
+const viewerArgRefusal = (u: CurrentUser, name: string, input: Record<string, unknown>) =>
+	u.role === 'viewer' && name === 'get_indexing_quotas' && input.refresh_bing === true ? 'Asking Bing for a fresh allowance is an editor action; this person is a viewer. The stored allowance is available without refresh_bing.' : null;
 export const ownerKey = (u: CurrentUser) => (u.id == null ? 'owner' : `user:${u.id}`);
 
 /** The person, as the tool layer sees a caller: a permission from their role, their site scope, and an id of their own for the limits. */
@@ -64,7 +72,8 @@ const needsOf = (name: string): Permission => {
 	return toolNeeds.get(name) ?? 'read';
 };
 /** Whether this person may use a tool at all: tools they cannot use are not offered, so the model does not plan around them. */
-export const mayUse = (u: CurrentUser, name: string) => permits(chatAuth(u).permission, needsOf(name)) && !(ADMIN_ONLY_TOOLS.has(name) && u.role !== 'admin' && u.role !== 'owner');
+export const mayUse = (u: CurrentUser, name: string) =>
+	permits(chatAuth(u).permission, needsOf(name)) && !(ADMIN_ONLY_TOOLS.has(name) && u.role !== 'admin' && u.role !== 'owner') && !(EDITOR_READS.has(name) && u.role === 'viewer');
 
 // ── the request ──────────────────────────────────────────────────────────────
 const SYSTEM = `You are the analyst inside SEOConsole, a self-hosted dashboard for Google Search Console, Bing Webmaster Tools, GA4, Google Tag Manager and Microsoft Clarity. People ask you about their own websites instead of reading dashboards.
@@ -177,17 +186,27 @@ function append(threadId: number, m: Msg) {
 const setPending = (threadId: number, p: Pending | null) => db().prepare('UPDATE chat_threads SET pending = ? WHERE id = ?').run(p ? JSON.stringify(p) : null, threadId);
 export const pendingOf = (t: ThreadRow): Pending | null => (t.pending ? (JSON.parse(t.pending) as Pending) : null);
 
-/** Messages sent today by this person (UTC day), for the daily limit. */
+/**
+ * Turns started today by this person (UTC day): messages and answers to an approval alike, since each can run up to MAX_ROUNDS model
+ * calls. Kept in its own table, so deleting a conversation does not give the day's allowance back.
+ */
+const utcDay = (now: number) => new Date(now).toISOString().slice(0, 10);
 export function sentToday(u: CurrentUser, now = Date.now()): number {
-	const dayStart = Math.floor(now / 86_400_000) * 86_400_000;
-	return (db().prepare(`SELECT COUNT(*) n FROM chat_messages m JOIN chat_threads t ON t.id = m.thread_id WHERE t.owner = ? AND m.role = 'user' AND m.created_at >= ? AND m.content LIKE '%"type":"text"%'`).get(ownerKey(u), dayStart) as { n: number }).n;
+	return (db().prepare('SELECT n FROM chat_usage WHERE owner = ? AND day = ?').get(ownerKey(u), utcDay(now)) as { n: number } | undefined)?.n ?? 0;
 }
+function countTurn(u: CurrentUser, now = Date.now()) {
+	db().prepare('INSERT INTO chat_usage (owner, day, n) VALUES (?, ?, 1) ON CONFLICT(owner, day) DO UPDATE SET n = n + 1').run(ownerKey(u), utcDay(now));
+}
+const limitText = (limit: number) => `You have used today's ${limit} messages, the daily limit set on this server (CHAT_MESSAGES_PER_DAY). It resets at midnight UTC.`;
+
+/** Conversations with a turn running in this process: a second turn on the same one would interleave tool results and break it. */
+const running = new Set<number>();
 
 // ── the loop ─────────────────────────────────────────────────────────────────
 type Emit = (e: ChatEvent) => void;
 
-const siteNamer = () => {
-	const sites = allSites();
+const siteNamer = (u: CurrentUser) => {
+	const sites = sitesFor(u); // a site outside the person's scope is not named, not even in a label
 	return (ref: unknown) => {
 		const s = String(ref ?? '').trim();
 		const hit = sites.find((x) => String(x.id) === s || hostKey(x.site_url) === hostKey(s));
@@ -212,7 +231,8 @@ async function runTool(u: CurrentUser, b: Anthropic.Beta.BetaToolUseBlock, emit:
 		return { type: 'tool_result', tool_use_id: b.id, content: 'The chart is shown to the person.' };
 	}
 	emit({ type: 'tool', tool: act });
-	const r = mayUse(u, b.name) ? await callTool(chatAuth(u), b.name, input, sitesFor(u)) : { kind: 'refused' as const, error: `${b.name} is not available to this person (role ${u.role}).` };
+	const argRefusal = viewerArgRefusal(u, b.name, input);
+	const r = !mayUse(u, b.name) ? { kind: 'refused' as const, error: `${b.name} is not available to this person (role ${u.role}).` } : argRefusal ? { kind: 'refused' as const, error: argRefusal } : await callTool(chatAuth(u), b.name, input, sitesFor(u));
 	if (r.kind === 'ok') {
 		emit({ type: 'tool', tool: { ...act, status: 'done' } });
 		return { type: 'tool_result', tool_use_id: b.id, content: capResult(r.data) };
@@ -239,7 +259,7 @@ function repairDangling(threadId: number, messages: Msg[]): Msg[] {
 }
 
 async function loop(u: CurrentUser, thread: ThreadRow, messages: Msg[], emit: Emit, signal: AbortSignal, call: ModelCall) {
-	const name = siteNamer();
+	const name = siteNamer(u);
 	for (let round = 0; round < MAX_ROUNDS; round++) {
 		let res: Anthropic.Beta.BetaMessage;
 		let partial = '';
@@ -253,6 +273,11 @@ async function loop(u: CurrentUser, thread: ThreadRow, messages: Msg[], emit: Em
 			}
 			emit({ type: 'error', message: apiErrorText(e) });
 			return;
+		}
+		const said = res.content.some((b) => (b.type === 'text' && b.text.trim() !== '') || b.type === 'tool_use');
+		if (!said) {
+			// Nothing to show and nothing to run: storing it would leave an empty assistant turn the API refuses on the next request.
+			return emit({ type: 'error', message: res.stop_reason === 'refusal' ? 'The model declined to answer this. Try rephrasing the question.' : 'The model returned an empty answer. Ask again.' });
 		}
 		const assistant = { role: 'assistant', content: res.content } as Msg;
 		messages.push(assistant);
@@ -295,15 +320,29 @@ export type TurnInput = { threadId: number | null; text: string } | { threadId: 
  */
 export async function runTurn(u: CurrentUser, input: TurnInput, emit: Emit, o: { signal?: AbortSignal; call?: ModelCall; now?: string } = {}) {
 	const signal = o.signal ?? new AbortController().signal;
+	let locked: number | null = null;
+	const lock = (id: number) => {
+		if (running.has(id)) return false;
+		running.add(id);
+		locked = id;
+		return true;
+	};
+	const busyText = 'This conversation is still finishing its last answer. Wait a moment, then send again.';
 	try {
 		if (!chatReady()) return emit({ type: 'error', message: 'Chat needs an Anthropic API key: add ANTHROPIC_API_KEY to .env and restart.' });
 		let thread: ThreadRow | null = input.threadId == null ? null : getThread(u, input.threadId);
 		if (input.threadId != null && !thread) return emit({ type: 'error', message: 'That conversation was not found.' });
+		const limit = chatDailyLimit();
 		if ('decisions' in input) {
-			const pending = thread ? pendingOf(thread) : null;
-			if (!thread || !pending) return emit({ type: 'error', message: 'Nothing is waiting for approval in this conversation.' });
+			if (!thread) return emit({ type: 'error', message: 'That conversation was not found.' });
+			if (!lock(thread.id)) return emit({ type: 'error', message: busyText });
+			thread = getThread(u, thread.id)!; // read again under the lock
+			const pending = pendingOf(thread);
+			if (!pending) return emit({ type: 'error', message: 'Nothing is waiting for approval in this conversation.' });
+			if (sentToday(u) >= limit) return emit({ type: 'error', message: limitText(limit) });
+			countTurn(u);
 			setPending(thread.id, null);
-			const name = siteNamer();
+			const name = siteNamer(u);
 			const results = [...pending.results];
 			for (const a of pending.awaiting) {
 				if (input.decisions[a.id] === true) {
@@ -324,12 +363,15 @@ export async function runTurn(u: CurrentUser, input: TurnInput, emit: Emit, o: {
 		const text = input.text.trim();
 		if (!text) return emit({ type: 'error', message: 'Type a question first.' });
 		if (text.length > MAX_MESSAGE_CHARS) return emit({ type: 'error', message: `Messages are limited to ${MAX_MESSAGE_CHARS.toLocaleString('en-US')} characters.` });
-		const limit = chatDailyLimit();
-		if (sentToday(u) >= limit) return emit({ type: 'error', message: `You have sent ${limit} messages today, the daily limit set on this server (CHAT_MESSAGES_PER_DAY). It resets at midnight UTC.` });
+		if (sentToday(u) >= limit) return emit({ type: 'error', message: limitText(limit) });
+		if (thread && !lock(thread.id)) return emit({ type: 'error', message: busyText });
+		if (thread) thread = getThread(u, thread.id)!; // read again under the lock
 		if (!thread) {
 			thread = createThread(u, text);
+			lock(thread.id);
 			emit({ type: 'thread', id: thread.id, title: thread.title });
 		}
+		countTurn(u);
 		const pending = pendingOf(thread);
 		// Calls waiting for approval are answered below; any other unanswered call is answered as stopped.
 		let messages = pending ? threadMessages(thread.id) : repairDangling(thread.id, threadMessages(thread.id));
@@ -351,14 +393,15 @@ export async function runTurn(u: CurrentUser, input: TurnInput, emit: Emit, o: {
 	} catch (e) {
 		emit({ type: 'error', message: e instanceof Error ? e.message : 'Something went wrong.' });
 	} finally {
+		if (locked !== null) running.delete(locked);
 		emit({ type: 'done' });
 	}
 }
 
 // ── display ──────────────────────────────────────────────────────────────────
 /** A stored conversation as the page shows it: the person's words, the answers, each tool call with how it ended, and the charts. */
-export function displayItems(messages: Msg[]): ChatItem[] {
-	const name = siteNamer();
+export function displayItems(messages: Msg[], u: CurrentUser): ChatItem[] {
+	const name = siteNamer(u);
 	const outcome = new Map<string, ToolResult>();
 	for (const m of messages) if (m.role === 'user' && Array.isArray(m.content)) for (const b of m.content) if (b.type === 'tool_result') outcome.set(b.tool_use_id, b);
 	const items: ChatItem[] = [];

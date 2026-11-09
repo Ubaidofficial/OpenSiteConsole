@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db, withRegexBudget } from './db';
 import { addDays, daysBetween, eachDay, makePeriod, pacificToday, type Period } from './dates';
 import { fitCtrCurve, isBranded, parseTerms, sumMetrics, type CtrCurve, type Metrics, type PRow, type QPRow, type QRow } from '../analytics';
 import type { SiteRow } from './clients';
@@ -129,9 +129,10 @@ export function performanceBy(siteId: number, start: string, end: string, dim: P
 	if (f.queryRegex) (parts.push('query REGEXP ?'), args.push(f.queryRegex));
 	if (f.pageRegex) (parts.push('page REGEXP ?'), args.push(f.pageRegex));
 	const extra = parts.length ? ' AND ' + parts.join(' AND ') : '';
-	return db()
+	const run = () => db()
 		.prepare(`SELECT ${dim} AS key, SUM(clicks) clicks, SUM(impressions) impressions, ${WPOS} position FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ?${extra} GROUP BY ${dim} ORDER BY clicks DESC, impressions DESC LIMIT ?`)
 		.all(siteId, start, end, ...args, limit) as (Metrics & { key: string })[];
+	return f.queryRegex || f.pageRegex ? withRegexBudget(3000, run) : run();
 }
 
 export function queryPageRows(siteId: number, start: string, end: string, minImpressions = 3, limit = 150_000): QPRow[] {

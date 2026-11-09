@@ -16,7 +16,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		threads: listThreads(user),
 		thread: thread ? { id: thread.id, title: thread.title } : null,
 		// tool calls waiting for approval are shown as the approval card, not as a running step
-		items: thread ? displayItems(threadMessages(thread.id)).filter((i) => !(i.kind === 'tool' && waiting.has(i.tool.id))) : [],
+		items: thread ? displayItems(threadMessages(thread.id), user).filter((i) => !(i.kind === 'tool' && waiting.has(i.tool.id))) : [],
 		approvals: pending?.awaiting ?? [],
 		starters: STARTERS,
 		q: url.searchParams.get('q')?.slice(0, 2000) ?? '',

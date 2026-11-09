@@ -169,6 +169,9 @@ export function setUserDisabled(id: number, disabled: boolean, actor?: CurrentUs
 export function removeUser(id: number, actor?: CurrentUser | null) {
 	const u = target(id, actor);
 	endUserSessions(id);
+	// Their chat conversations go with them: SQLite can give the next new member the same id, and with it this person's history.
+	db().prepare('DELETE FROM chat_threads WHERE owner = ?').run(`user:${id}`);
+	db().prepare('DELETE FROM chat_usage WHERE owner = ?').run(`user:${id}`);
 	db().prepare('DELETE FROM users WHERE id = ?').run(id);
 	audit('user.removed', { detail: `${u.email} by ${who(actor)}` });
 }

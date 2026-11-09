@@ -47,8 +47,20 @@ describe('regex filters', () => {
 		const r = safeRegex('^how (to|do)');
 		expect('re' in r && r.re.test('How to water')).toBe(true);
 	});
-	it('refuses patterns that can run away, back-references, bad syntax and long input', () => {
-		for (const p of ['(a+)+$', '(.*)*x', '(\\w+\\s?){2,}$', '(a|b)\\1', '([a-z', '', 'x'.repeat(201)]) expect('error' in safeRegex(p), p).toBe(true);
+	it('refuses patterns that can run away, back-references, lookarounds, bad syntax and long input', () => {
+		const bad = ['(a+)+$', '(.*)*x', '(\\w+\\s?){2,}$', '((a+))+$', '(a|a?)+$', '.*.*.*.*.*.*x', 'a*b*c*', '(?=a)b', '(?<!x)y', '(a|b)\\1', '([a-z', '[a-z', '', 'x'.repeat(201), 'a?'.repeat(9)];
+		for (const p of bad) expect('error' in safeRegex(p), p).toBe(true);
+	});
+	it('still accepts the patterns people write', () => {
+		const good = ['^how (to|do) ', 'garden\\s+tools?', '^/blog/', '(best|top) [a-z]+ tools$', 'shoe.*?size', '^https://[^/]+/products/', 'colou?r', '\\d{4}', '(?:red|blue) shoes', '[(]draft[)]'];
+		for (const p of good) expect('re' in safeRegex(p), p).toBe(true);
+	});
+	it('a pattern that is accepted stays fast on long text', () => {
+		const r = safeRegex('.*x.*y');
+		expect('re' in r).toBe(true);
+		const t = Date.now();
+		if ('re' in r) for (let i = 0; i < 200; i++) r.re.test('a'.repeat(500));
+		expect(Date.now() - t).toBeLessThan(2000);
 	});
 });
 
@@ -97,6 +109,6 @@ describe('MCP parity: get_trends and get_performance', () => {
 		for (const r of ex) expect(r.query.toLowerCase()).not.toContain(word.toLowerCase());
 		const bad = await call('get_performance', 'site=1&query_regex=' + encodeURIComponent('(a+)+'));
 		expect(bad.status).toBe(400);
-		expect(bad.body.error.message).toMatch(/query_regex.*Nested repetition/);
+		expect(bad.body.error.message).toMatch(/query_regex.*quantifier on a group/);
 	});
 });
