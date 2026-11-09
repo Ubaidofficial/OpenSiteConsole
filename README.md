@@ -5,7 +5,7 @@
 A self-hosted SEO dashboard for **all your Google Search Console properties across many Google accounts**.
 It syncs your data into a local SQLite warehouse (so history is kept beyond Google's 16 months), joins it with GA4, Tag Manager,
 Bing and Clarity, and turns it into a **ranked to-do list** (what to fix first and why), a weekly digest, calibrated SEO tests,
-an indexing monitor, sitemap coverage and IndexNow submission. It also does the day-to-day Search Console chores (sitemaps,
+an indexing monitor, sitemap coverage, IndexNow submission and a daily Request Indexing list (Google has no API for that button, so you still press it, one page at a time). It also does the day-to-day Search Console chores (sitemaps,
 URL inspection, property management) from one place, and exposes everything to AI agents over MCP: reading by default, and changes (submit URLs and sitemaps, mark a finding done, log a change, start a test...) only on keys and connections you explicitly allow, at one of three levels (read, submit, delete).
 
 > **Status.** Everything is verified against demo data, unit tests and a headless-browser pass, but **nothing has been run against live Google data or on a real Cloudflare account**. Expect to debug first contact with the real APIs. Details are under *Known limits*.
