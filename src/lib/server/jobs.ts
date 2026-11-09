@@ -9,7 +9,8 @@ import { syncBing, syncClarity, syncGa4, syncGtm } from './channels';
 import type { LinkKind } from './links';
 import { cruxIntegration, syncCrux } from './crux';
 import { monitorSite } from './indexmon';
-import { runSubmissionWork, submissionWorkDue } from './submission';
+import { autoResubmitSitemaps, runSubmissionWork, submissionWorkDue } from './submission';
+import { autoBuildDue, runAutoBuild } from './requestindex';
 import { listTests, warmTests } from './seotests';
 import { ensureGa4TestData } from './ga4tests';
 import { runMonthlyReport, runUrgentAlerts, runWeeklyDigest } from './digest';
@@ -141,6 +142,8 @@ export function enqueueSitemapSync(siteId: number): boolean {
 		// New and changed URLs go to IndexNow if the site has switched that on (a no-op otherwise).
 		const site = getSite(siteId);
 		if (site) await autoSubmit(site, r.changes).catch(() => {});
+		// And the sitemaps go to Search Console again if the site asked for that and something new or changed turned up.
+		if (site) await autoResubmitSitemaps(site, r.changes).catch(() => {});
 		return r;
 	});
 }
@@ -199,6 +202,8 @@ export function schedulerTick() {
 		// `n` is a back-off set after a refusal or a total failure, so a broken connection is not hammered every tick.
 		if (monitorDue(row, today)) enqueueIndexMonitor(s.id);
 		if (submissionWorkDue(s.id)) enqueueSubmissionWork(s.id);
+		// The Request tab's list, built each morning for sites that asked for it (inspection quota is spent, so it is opt-in). It only prepares the list; pressing Request indexing stays a click.
+		if (!process.env.VITEST && autoBuildDue(s.id, today)) enqueue(`reqauto:${s.id}`, async () => { const site = getSite(s.id); if (site) await runAutoBuild(site); });
 		// The Clarity check fetches the site's own pages, so it stays out of the test run.
 		if (!process.env.VITEST) {
 			const cs = d.prepare('SELECT checked_at FROM clarity_scans WHERE site_id = ?').get(s.id) as { checked_at: number } | undefined;

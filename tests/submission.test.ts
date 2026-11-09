@@ -8,7 +8,7 @@ import { handleMcp, resetRateLimits } from '../src/lib/server/mcp';
 import { queueDepth } from '../src/lib/server/jobs';
 import { BING_MAX_URLS_PER_CALL, BingApiError, RealBingClient, type BingClient } from '../src/lib/server/bing';
 import { eligibilityFromHtml, jsonLdTypes, publishUrls } from '../src/lib/server/indexingapi';
-import { CHANNELS, SubmitRefused, cleanUrls, deleteSitemapFrom, resubmitSitemaps, submissionStatus, submitForIndexing, submitSitemapTo } from '../src/lib/server/submission';
+import { CHANNELS, SubmitRefused, autoResubmitSitemaps, cleanUrls, deleteSitemapFrom, resubmitSitemaps, submissionStatus, submitForIndexing, submitSitemapTo } from '../src/lib/server/submission';
 import { watchList } from '../src/lib/server/indexmon';
 import { scopes } from '../src/lib/server/google';
 import { listAccounts } from '../src/lib/server/accounts';
@@ -266,6 +266,43 @@ describe('sitemaps from the tool', () => {
 		expect(await deleteSitemapFrom(site(), U('/new-sitemap.xml'), 'mcp')).toBe(U('/new-sitemap.xml'));
 		const actions = (db().prepare("SELECT action, detail FROM audit_log WHERE action LIKE 'sitemap.%' ORDER BY id").all() as { action: string; detail: string }[]).map((a) => a.action);
 		expect(actions).toEqual(expect.arrayContaining(['sitemap.submitted', 'sitemap.resubmitted', 'sitemap.deleted']));
+	});
+});
+
+describe('automatic sitemap resubmission', () => {
+	const changed = { added: [U('/new')], updated: [] as string[] };
+	const audits = () => (db().prepare("SELECT detail FROM audit_log WHERE action = 'sitemap.resubmitted' AND detail LIKE '%(auto)'").all() as { detail: string }[]).length;
+	beforeEach(() => {
+		db().prepare("DELETE FROM kv WHERE key LIKE 'sitemapauto:%'").run();
+		db().prepare("DELETE FROM audit_log WHERE action = 'sitemap.resubmitted'").run();
+		db().prepare('UPDATE sites SET sitemap_auto = 0 WHERE id = 1').run();
+	});
+	afterEach(() => void db().prepare('UPDATE sites SET sitemap_auto = 0 WHERE id = 1').run());
+
+	it('does nothing while switched off', async () => {
+		expect(await autoResubmitSitemaps(site(), changed)).toBeNull();
+		expect(audits()).toBe(0);
+	});
+	it('resubmits once after a read that found new or changed pages, then not again the same day', async () => {
+		db().prepare('UPDATE sites SET sitemap_auto = 1 WHERE id = 1').run();
+		const r = await autoResubmitSitemaps(site(), changed);
+		expect(r?.submitted.length).toBeGreaterThan(0);
+		expect(audits()).toBe(1);
+		expect(await autoResubmitSitemaps(site(), { added: [], updated: [U('/changed')] })).toBeNull(); // already done today
+		expect(await autoResubmitSitemaps(site(), changed, Date.now() + 2 * 86_400_000)).not.toBeNull(); // two days on it is allowed again
+	});
+	it('stays quiet when the read found nothing new or changed, or was the first read', async () => {
+		db().prepare('UPDATE sites SET sitemap_auto = 1 WHERE id = 1').run();
+		expect(await autoResubmitSitemaps(site(), null)).toBeNull();
+		expect(await autoResubmitSitemaps(site(), { added: [], updated: [] })).toBeNull();
+		expect(audits()).toBe(0);
+		expect(await autoResubmitSitemaps(site(), changed)).not.toBeNull(); // an empty read did not use up the day
+	});
+	it('swallows a refusal (READ_ONLY=1) instead of failing the sitemap read', async () => {
+		db().prepare('UPDATE sites SET sitemap_auto = 1 WHERE id = 1').run();
+		process.env.READ_ONLY = '1';
+		expect(await autoResubmitSitemaps(site(), changed)).toBeNull();
+		expect(audits()).toBe(0);
 	});
 });
 

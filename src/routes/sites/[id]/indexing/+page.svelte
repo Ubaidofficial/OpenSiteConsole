@@ -91,6 +91,12 @@
 		<span class="text-xs text-muted-foreground">{data.coverage.fetchedAt ? 'sitemaps read ' + ago(data.coverage.fetchedAt) : 'not read yet'}</span>
 		<form method="POST" action="?/sitemapRefresh" use:enhance class="ml-auto"><button class="btn">Read sitemaps now</button></form>
 	</div>
+	<form method="POST" action="?/sitemapAuto" use:enhance class="mb-2 flex flex-wrap items-center gap-2 text-sm">
+		<input type="hidden" name="on" value={data.sitemapAuto ? '0' : '1'} />
+		<span class="chip {data.sitemapAuto ? 'chip-on' : ''}">Auto resubmit: {data.sitemapAuto ? 'on' : 'off'}</span>
+		<button class="btn !h-8 text-xs {data.sitemapAuto ? '' : 'btn-primary'}">{data.sitemapAuto ? 'Switch off' : 'Resubmit when pages change'}</button>
+		<span class="text-xs text-muted-foreground">After a sitemap read finds new or changed pages, submit the sitemaps to Search Console again (once a day at most). Google decides when it reads them, so this is a nudge, not a guarantee.</span>
+	</form>
 	<Explainer lead="Sitemap URLs that never got an impression are where indexing problems hide.">
 	<p>Compares the URLs in your submitted sitemaps with the pages Search Console has shown in the last {data.coverage.window.days} days. A sitemap URL that never got a single impression is where indexing problems hide: Google may not have indexed it, or indexed it and found it useless. The first group is checked first by the indexing monitor.</p>
 </Explainer>

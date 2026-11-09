@@ -71,9 +71,9 @@ describe('brand files', () => {
 		expect(readFileSync('src/routes/login/+page.svelte', 'utf8')).toMatch(/src="\/brand\/logo-light\.svg"/);
 		for (const f of ['static/brand/mark-glyph.svg', 'static/brand/logo-light.svg']) expect(existsSync(f), f).toBe(true);
 	});
-	it('the README shows the banner and documents every brand file', () => {
-		const md = readFileSync('README.md', 'utf8');
-		expect(md).toMatch(/<img src="static\/brand\/banner\.png" alt="SEOConsole"/);
+	it('the README shows the banner and docs/brand.md documents every brand file', () => {
+		expect(readFileSync('README.md', 'utf8')).toMatch(/<img src="static\/brand\/banner\.png" alt="SEOConsole"/);
+		const md = readFileSync('docs/brand.md', 'utf8');
 		for (const f of ['logo-light.svg', 'logo-dark.svg', 'mark-light.svg', 'mark-dark.svg', 'mark-glyph.svg', 'banner.png']) expect(md, f).toContain('`' + f);
 	});
 });
