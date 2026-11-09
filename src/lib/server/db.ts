@@ -1,3 +1,4 @@
+import { safeRegex } from '../trends';
 import Database from 'better-sqlite3';
 import { chmodSync, closeSync, mkdirSync, openSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -551,6 +552,23 @@ CREATE TABLE IF NOT EXISTS oseo_audits (            -- OpenSEO's latest site aud
 	fetched_at INTEGER NOT NULL,
 	payload TEXT NOT NULL                -- JSON AuditSnapshot (src/lib/server/openseolink.ts)
 );
+CREATE TABLE IF NOT EXISTS chat_threads (           -- "Ask your data": one conversation, private to the person who started it
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	owner TEXT NOT NULL,                 -- 'owner', or 'user:<users.id>'
+	title TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	pending TEXT                         -- JSON: changes the model asked for, waiting for Approve or Decline
+);
+CREATE INDEX IF NOT EXISTS chat_threads_owner ON chat_threads(owner, updated_at);
+CREATE TABLE IF NOT EXISTS chat_messages (          -- the conversation exactly as sent to and received from the API (append-only)
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	thread_id INTEGER NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
+	role TEXT NOT NULL,                  -- user | assistant
+	content TEXT NOT NULL,               -- JSON content blocks; tool results hold third-party text, shown as data
+	created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS chat_messages_thread ON chat_messages(thread_id, id);
 CREATE TABLE IF NOT EXISTS ai_prompts (             -- AI visibility: the questions asked of AI assistants, per site
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
@@ -679,6 +697,22 @@ function migrate(db: Database.Database) {
 	}
 }
 
+/** `x REGEXP p` in SQL: case-insensitive, compiled once per pattern, and only for patterns safeRegex accepts (no runaway backtracking). */
+function registerRegexp(d: Database.Database) {
+	const cache = new Map<string, RegExp>();
+	d.function('regexp', { deterministic: true }, (pattern: unknown, value: unknown) => {
+		const p = String(pattern ?? '');
+		let re = cache.get(p);
+		if (!re) {
+			const r = safeRegex(p);
+			if ('error' in r) throw new Error(r.error);
+			if (cache.size > 200) cache.clear();
+			cache.set(p, (re = r.re));
+		}
+		return value != null && re.test(String(value)) ? 1 : 0;
+	});
+}
+
 export function openDb(path: string): Database.Database {
 	if (path !== ':memory:') {
 		mkdirSync(dirname(path), { recursive: true });
@@ -697,6 +731,7 @@ export function openDb(path: string): Database.Database {
 	db.pragma('synchronous = NORMAL');
 	db.exec(SCHEMA);
 	migrate(db);
+	registerRegexp(db);
 	return db;
 }
 

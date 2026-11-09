@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { Toaster, toast } from 'svelte-sonner';
-	import { Bot, LayoutDashboard, Layers, ListChecks, Map as MapIcon, Plug, RefreshCw, UserCog, Users } from '@lucide/svelte';
+	import { Bot, LayoutDashboard, Sparkles, Layers, ListChecks, Map as MapIcon, Plug, RefreshCw, UserCog, Users } from '@lucide/svelte';
 	import PrivacyToggle from '$lib/components/privacy-toggle.svelte';
 	import { pageTitle } from '$lib/titles';
 	import { privacy } from '$lib/privacy.svelte';
@@ -13,6 +13,7 @@
 	let { data, children } = $props();
 	const links = [
 		['/', 'Dashboard', LayoutDashboard],
+		['/chat', 'Ask', Sparkles],
 		['/actions', 'Actions', ListChecks],
 		['/portfolio', 'Portfolio', Layers],
 		['/sitemaps', 'Sitemaps', MapIcon],
@@ -22,7 +23,7 @@
 		['/team', 'Team', UserCog]
 	] as const;
 	// Someone limited to some sites gets only the pages that show nothing from other sites (the server refuses the rest).
-	const SCOPED_LINKS = new Set(['/', '/team']);
+	const SCOPED_LINKS = new Set(['/', '/chat', '/team']);
 	const shown = $derived(data.user?.scoped ? links.filter(([href]) => SCOPED_LINKS.has(href)) : links);
 	const active = (href: string) => (href === '/' ? page.url.pathname === '/' || page.url.pathname.startsWith('/sites') : page.url.pathname.startsWith(href));
 

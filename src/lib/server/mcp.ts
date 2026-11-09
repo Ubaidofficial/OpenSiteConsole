@@ -1,5 +1,5 @@
 import { db } from './db';
-import { allSites, brandTerms, fittedCurve, historyCoversPrevious, performanceBy, periodFor, queryPageRows, siteEnd, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
+import { type PerfFilters, allSites, brandTerms, fittedCurve, historyCoversPrevious, performanceBy, periodFor, queryPageRows, siteEnd, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
 import { ALL_TYPES } from '../searchTypes';
 import { cruxIntegration, cruxLatest } from './crux';
 import { rate, VITALS } from '../vitals';
@@ -20,7 +20,7 @@ import { coverageMap } from '../property';
 import { gtmSnapshot, trackingHealth } from './tracking';
 import { tagTypeLabel } from './gtm';
 import { allLinks } from './links';
-import { aiTrafficReport, countryCannibalReport, forecastReport, groupsReport, heatmapReport, localesReport, trajectories, trendsReport, urlClassesReport } from './insights';
+import { aiTrafficReport, countryCannibalReport, forecastReport, groupsReport, heatmapReport, intentReport, localesReport, monthlyReport, queryCountReport, trajectories, trendsReport, urlClassesReport } from './insights';
 import { evaluateTestCached, listTests } from './seotests';
 import { indexHistory, indexSummary, recentEvents, watchList } from './indexmon';
 import { storedChecks } from './onpage';
@@ -43,7 +43,7 @@ import { listAccounts } from './accounts';
 import { VERIFY_METHODS, getVerificationToken, verifyAndAdd, type VerifyMethod } from './siteverify';
 import { scoreOf } from '../actions';
 import { listUpdates } from './gupdates';
-import { isQuestionQuery } from '../trends';
+import { isQuestionQuery, safeRegex } from '../trends';
 import { EVENT_SEVERITY } from '../indexing';
 
 /**
@@ -269,8 +269,8 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_opportunities',
-		description: 'SEO findings computed from stored history. Google-only: striking (positions 4-20 ranked by estimated extra clicks, on the site\'s own fitted CTR curve), ctr_gaps (pages under-performing their position), cannibalization (queries split across competing pages), decay (statistically significant page declines, labelled page-specific vs site-wide; `compare: year_ago` makes it year on year and needs 12+ months of history), anomalies (unusual days). Hidden opportunities that join several sources or periods: lost_queries (searches that used to bring clicks), rising_queries (fast-growing searches not yet won), pages_on_the_edge (one page just below the top for many searches), question_gaps (question searches ranked low), bing_gaps (Bing ranks you top 5, Google does not), not_in_bing (pages with Google clicks and no Bing impressions), hidden_gems (pages that convert better than average but rank 4-20, from GA4), engagement_leaks and conversion_leaks (Google landing pages that lose visitors or produce no key events, from GA4), friction (rage and dead clicks on landing pages, from Clarity), mobile_gaps (rank much worse on phones). hidden_overview counts every one of them and says which sources are missing. Estimates use the site\'s own click curve; null means there is no honest figure.',
-		schema: { ...siteArg, ...daysArg, compare: { type: 'string', enum: ['previous_period', 'year_ago'], description: 'decay only: previous_period (default) or year_ago (needs 12+ months of history)' }, type: { type: 'string', enum: ['striking', 'ctr_gaps', 'cannibalization', 'decay', 'anomalies', 'hidden_overview', 'lost_queries', 'rising_queries', 'pages_on_the_edge', 'question_gaps', 'bing_gaps', 'not_in_bing', 'hidden_gems', 'engagement_leaks', 'conversion_leaks', 'friction', 'mobile_gaps'] }, limit: { type: 'integer' } },
+		description: 'Findings from stored history. Google: striking (positions 4-20 by est. extra clicks on the site\'s fitted CTR curve), ctr_gaps (pages below their position\'s CTR), cannibalization (queries split across pages), decay (significant page declines, page-specific vs site-wide; compare year_ago needs 12+ months), anomalies (unusual days). Hidden, joining sources or periods: lost_queries, rising_queries (growing, not yet won), pages_on_the_edge (just below the top for many searches), question_gaps, bing_gaps (Bing top 5, Google not), not_in_bing, hidden_gems (convert well, rank 4-20; GA4), engagement_leaks and conversion_leaks (GA4), friction (rage/dead clicks; Clarity), mobile_gaps. hidden_overview counts them all and names missing sources. null = no honest estimate.',
+		schema: { ...siteArg, ...daysArg, compare: { type: 'string', enum: ['previous_period', 'year_ago'], description: 'decay only' }, type: { type: 'string', enum: ['striking', 'ctr_gaps', 'cannibalization', 'decay', 'anomalies', 'hidden_overview', 'lost_queries', 'rising_queries', 'pages_on_the_edge', 'question_gaps', 'bing_gaps', 'not_in_bing', 'hidden_gems', 'engagement_leaks', 'conversion_leaks', 'friction', 'mobile_gaps'] }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			const n = days(a);
@@ -428,13 +428,22 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_trends',
-		description: `Movement from stored history. view: movers (queries and pages that moved beyond noise), new_lost (appeared or vanished queries), bands (non-branded queries in positions 1-3, 4-10, 11-20, 21-50, 51+, now vs previous), questions (question-style queries), trajectories (top queries over 12 weeks), forecast (8-week click projection, not seasonality-aware).`,
-		schema: { ...siteArg, ...daysArg, view: { type: 'string', enum: ['movers', 'new_lost', 'bands', 'questions', 'trajectories', 'forecast'] }, limit: { type: 'integer' } },
+		description: `Movement from stored history. view: movers (queries and pages that moved beyond noise), new_lost (appeared or vanished queries), bands (non-branded queries in positions 1-3, 4-10, 11-20, 21-50, 51+, now vs previous), questions (question-style queries), trajectories (top queries over 12 weeks), forecast (8-week click projection, not seasonality-aware), monthly (complete months: clicks, change, page and query winners and losers each month), query_count (distinct queries per week: all, with clicks, top 10), intent (clicks by search intent; English, rule-based).`,
+		schema: { ...siteArg, ...daysArg, view: { type: 'string', enum: ['movers', 'new_lost', 'bands', 'questions', 'trajectories', 'forecast', 'monthly', 'query_count', 'intent'] }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			const lim = limit(a);
 			const view = String(a.view ?? 'movers');
 			if (view === 'trajectories') return { site: displayName(site.site_url), trajectories: trajectories(site, lim) };
+			if (view === 'monthly') {
+				const m = monthlyReport(site, a.limit == null ? 6 : Math.min(24, lim), 5);
+				return { site: displayName(site.site_url), months: m.months, note: m.note ?? undefined };
+			}
+			if (view === 'query_count') return { site: displayName(site.site_url), ...queryCountReport(site, a.limit == null ? 12 : lim) };
+			if (view === 'intent') {
+				const r = intentReport(site, days(a), 5);
+				return { site: displayName(site.site_url), period: r.period, intents: r.intents, caution: `Rule-based on the wording of each search, English only${r.brandTermsSet ? '' : '; no brand terms are set, so branded searches are not recognised as navigational'}.` };
+			}
 			if (view === 'forecast') {
 				const f = forecastReport(site);
 				return f.projection ? { site: displayName(site.site_url), method: f.projection.method, weeklyTrendPct: r2(f.projection.weeklyTrendPct * 100), basedOnWeeks: f.projection.basedOnWeeks, history: f.weekly.slice(-12).map((w) => ({ weekEnding: w.weekEnd, clicks: w.clicks })), projection: f.projection.points, sameWeeksLastYear: f.lastYear, caution: 'A projection of recent behaviour, not a prediction. It ignores seasonality and Google updates.' } : { site: displayName(site.site_url), note: 'Needs at least 8 complete weeks of stored history.' };
@@ -451,7 +460,7 @@ const TOOLS: Tool[] = [
 				case 'questions':
 					return { period: t.period, count: t.questions.count, clickShare: r2(t.questions.clickShare * 100) + '%', impressionShare: r2(t.questions.impressionShare * 100) + '%', rows: t.questions.rows };
 				default:
-					throw new Error('`view` must be one of movers, new_lost, bands, questions, trajectories, forecast');
+					throw new Error('`view` must be one of movers, new_lost, bands, questions, trajectories, forecast, monthly, query_count, intent');
 			}
 		}
 	},
@@ -639,7 +648,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_performance',
-		description: `Search performance for one site by ONE dimension (query, page, country, device or date), over any date range, optionally compared with another and filtered by country, device or text. Dates YYYY-MM-DD; compare "previous" = the equally long window before, "custom" = compare_start/compare_end. Countries are ISO alpha-3 lower case (usa, gbr). Rows leave out anonymised queries, so they do not sum to \`totals\`.`,
+		description: `Search performance for one site by ONE dimension (query, page, country, device or date), over any date range, optionally compared with another and filtered by country, device, text, regex or exclusion. Dates YYYY-MM-DD; compare "previous" = the equally long window before, "custom" = compare_start/compare_end. Rows leave out anonymised queries, so they do not sum to \`totals\`.`,
 		schema: {
 			...siteArg,
 			dimension: { type: 'string', enum: ['query', 'page', 'country', 'device', 'date'], description: 'default query' },
@@ -653,6 +662,10 @@ const TOOLS: Tool[] = [
 			device: { type: 'string', enum: ['mobile', 'desktop', 'tablet'] },
 			query_contains: { type: 'string' },
 			page_contains: { type: 'string' },
+			query_regex: { type: 'string' },
+			page_regex: { type: 'string' },
+			exclude_query: { type: 'string' },
+			exclude_page: { type: 'string' },
 			sort: { type: 'string', enum: ['clicks', 'impressions', 'ctr', 'position', 'clicks_change'], description: 'default clicks (dates: chronological)' },
 			limit: { type: 'integer' }
 		},
@@ -662,7 +675,7 @@ const TOOLS: Tool[] = [
 			if (!['query', 'page', 'country', 'device', 'date'].includes(dim)) throw new Error('`dimension` must be query, page, country, device or date.');
 			const w = resolveWindows({ start: a.start, end: a.end, days: a.days, compare: a.compare, compareStart: a.compare_start, compareEnd: a.compare_end }, siteEnd(site));
 			if ('error' in w) throw new Error(w.error);
-			const f: { country?: string; device?: string; queryContains?: string; pageContains?: string } = {};
+			const f: PerfFilters = {};
 			if (a.country != null && a.country !== '') {
 				const c = String(a.country).trim().toLowerCase();
 				if (!/^[a-z]{3}$/.test(c)) throw new Error('`country` is a 3-letter ISO code such as usa, gbr or deu.');
@@ -675,6 +688,14 @@ const TOOLS: Tool[] = [
 			}
 			if (a.query_contains) f.queryContains = String(a.query_contains).slice(0, 200);
 			if (a.page_contains) f.pageContains = String(a.page_contains).slice(0, 500);
+			for (const [arg, key] of [['query_regex', 'queryRegex'], ['page_regex', 'pageRegex']] as const) {
+				if (a[arg] == null || a[arg] === '') continue;
+				const r = safeRegex(String(a[arg]));
+				if ('error' in r) throw new Error(`\`${arg}\`: ${r.error}`);
+				f[key] = String(a[arg]).trim();
+			}
+			if (a.exclude_query) f.queryExcludes = String(a.exclude_query).slice(0, 200);
+			if (a.exclude_page) f.pageExcludes = String(a.exclude_page).slice(0, 500);
 			const filtered = Object.keys(f).length > 0;
 			const notes = [...w.notes];
 			if (!site.backfill_done && site.backfilled_to && w.main.start < site.backfilled_to) notes.push(`History before ${site.backfilled_to} is still downloading, so the start of this window is incomplete.`);

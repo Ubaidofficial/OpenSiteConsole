@@ -70,6 +70,7 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/accounts': { refresh: E, verifyToken: A, verifyNow: A, relabel: A, remove: A, addSite: A },
 	'/agents': { create: A, permission: A, changes: A, remove: A },
 	'/connect': { resync: E, bingKey: A, bingRemove: A, ga4Auto: A, gtmAuto: A, clarity: A, manual: A, unlink: A, openseo: A, crux: A, cruxRemove: A, openseoRemove: A },
+	'/chat': { delete: 'viewer' },
 	'/digest': { generate: E, send: E, monthly: E, sendMonthly: E, check: E },
 	'/updates': { import: E, add: E, remove: E },
 	'/sitemaps': { resubmitAll: E },
@@ -96,6 +97,8 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 /** +server endpoints, and the GET endpoints that change something (starting or finishing an account connection). */
 export const ENDPOINTS: Record<string, Role> = {
 	'POST /logout': 'viewer',
+	// Chat acts as the person, with their role and sites (src/lib/server/chat.ts), so anyone signed in may use it.
+	'POST /chat/stream': 'viewer',
 	'POST /sites/[id]/sync': E,
 	'GET /auth/connect': A,
 	'GET /auth/callback': A,
@@ -123,6 +126,8 @@ export function requiredRole(method: string, url: URL): Role {
 
 /** Pages a person limited to some sites may still open: they show nothing from other sites. Everything else covers every site. */
 const SCOPED_READABLE = new Set(['/', '/team', '/updates']);
+/** Routes a person limited to some sites may also post to: the chat, whose tools only ever see that person's sites. */
+const SCOPED_USABLE = new Set(['/chat', '/chat/stream']);
 
 /**
  * Why a request is refused, or null. `not-found` for a site outside the person's scope (it is not even confirmed to exist),
@@ -134,7 +139,7 @@ export function accessRefusal(user: CurrentUser, method: string, url: URL): { ki
 		const route = routeOf(url.pathname);
 		if (site) {
 			if (!user.siteIds.includes(Number(site[1]))) return { kind: 'not-found' };
-		} else if (route !== '/logout' && !(isRead(method) && SCOPED_READABLE.has(route))) return { kind: 'cross-site' };
+		} else if (route !== '/logout' && !SCOPED_USABLE.has(route) && !(isRead(method) && SCOPED_READABLE.has(route))) return { kind: 'cross-site' };
 	}
 	const need = requiredRole(method, url);
 	return hasRole(user.role, need) ? null : { kind: 'role', need };

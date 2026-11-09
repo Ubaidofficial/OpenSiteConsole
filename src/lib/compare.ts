@@ -235,10 +235,12 @@ export const COMPETITORS: Competitor[] = [
 			'Free to self-host, with no limit on websites or team members.',
 			'Bing, Clarity and Tag Manager next to Search Console and GA4.',
 			'Split and redirect tests with a control group and significance, not only before/after.',
-			'An indexing toolkit with IndexNow and Bing submission, and your data on your own server.'
+			'An indexing toolkit with IndexNow and Bing submission, and your data on your own server.',
+			'A chat that can also act on what it finds (submit URLs, log changes, start tests), with every change waiting for your approval.'
 		],
 		theyWin: [
-			'Deeper AI visibility tracking and an in-app AI assistant; SEOConsole’s prompt tracking is basic.',
+			'Deeper AI visibility tracking; SEOConsole’s prompt tracking is basic.',
+			'Its AI assistant comes with the plan; SEOConsole’s chat needs your own Anthropic API key, billed to you.',
 			'AI content writing, briefs and a site audit: SEOConsole does not write content.',
 			'Hosted, with white-label client reports on its Agency plan (its pages are not consistent on this).'
 		],
@@ -257,7 +259,8 @@ export const COMPETITORS: Competitor[] = [
 			{ group: 'Access', feature: 'Your data stays on your own server', ours: y('When self-hosted.'), theirs: n('Hosted, with exports to Sheets, CSV and PDF.') },
 			{ group: 'Access', feature: 'Nothing to install or run', ours: n('Self-host only, for now.'), theirs: y('Hosted.') },
 			{ group: 'More', feature: 'AI visibility tracking', ours: p('Basic prompt tracking: mentions, citations and share of voice in ChatGPT, Gemini, Claude and Perplexity answers, through your own API keys or DataForSEO.'), theirs: y() },
-				{ group: 'More', feature: 'In-app AI assistant and AI content writing', ours: n('Not built.'), theirs: y('Token and content allowances by plan.') },
+			{ group: 'More', feature: 'Chat with your data (in-app AI assistant)', ours: y('Claude, with your own Anthropic key, on the same tools as the MCP server; it can act, but every change waits for your approval.'), theirs: y('“Ask your GSC and GA4 data anything”, its platform page says; whether it can act is not stated.') },
+			{ group: 'More', feature: 'AI content writing', ours: n('Not built.'), theirs: y('Token and content allowances by plan.') },
 			{ group: 'Price and maturity', feature: 'Price', ours: y('Free to self-host.'), theirs: p('From $129.99 a month for 10 websites.') },
 			MATURITY(y('Established; it says it is trusted by over 5,000 users (its own claim).'))
 		],
@@ -269,7 +272,8 @@ export const COMPETITORS: Competitor[] = [
 			{ label: 'SEO Stack pricing', url: 'https://www.seo-stack.io/pricing' },
 			{ label: 'SEO Stack vs Google Search Console', url: 'https://www.seo-stack.io/compare/vs-google-search-console' },
 			{ label: 'SEO Stack for agencies', url: 'https://www.seo-stack.io/solutions/agencies' },
-			{ label: 'SEO Stack AI experiments', url: 'https://www.seo-stack.io/platform/ai-experiments' }
+			{ label: 'SEO Stack AI experiments', url: 'https://www.seo-stack.io/platform/ai-experiments' },
+			{ label: 'SEO Stack platform (read 2026-11-09)', url: 'https://www.seo-stack.io/platform' }
 		]
 	},
 	{

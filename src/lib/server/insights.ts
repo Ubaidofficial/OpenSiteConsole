@@ -5,7 +5,7 @@ import { brandTerms, dailySeries, fittedCurve, historyCoversPrevious, pageTotals
 import { ctrOf, isBranded, pctChange } from '../analytics';
 import { buildHeatmap, completeMonths, countryCannibalization, groupPages, localeReport, spansHosts, topicClusters, urlSection } from '../groups';
 import { classifyUrl, indexState, type UrlClass } from '../indexing';
-import { computeMovers, isQuestionQuery, newAndLost, positionBands, projectClicks, trajectoryOf, weeklyTotals, type Keyed } from '../trends';
+import { classifyIntent, computeMovers, INTENTS, isQuestionQuery, newAndLost, positionBands, projectClicks, trajectoryOf, weeklyTotals, type Intent, type Keyed } from '../trends';
 import { AI_ASSISTANTS } from '../ai';
 import { linksFor } from './links';
 
@@ -97,6 +97,83 @@ export function trajectories(site: Site, n = 15) {
 		const t = trajectoryOf(w.map((x) => x.clicks));
 		return { query: q.query, clicks: q.clicks, direction: t.direction, weeklyChangePct: t.weeklyChangePct == null ? null : r2(t.weeklyChangePct * 100), weekly: w.map((x) => x.clicks) };
 	});
+}
+
+// ── Month by month, query counts, intent ─────────────────────────────────────
+const lastDayOf = (month: string) => { const [y, m] = month.split('-').map(Number); return `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`; };
+
+/**
+ * Complete calendar months, newest last: the site's clicks and impressions each month, the change on the month before, and the pages
+ * (and queries) that grew and fell most that month, beyond noise (the same test as the movers view).
+ */
+export function monthlyReport(site: Site, months = 6, perMonth = 5) {
+	const end = site.synced_through;
+	const first = firstStored(site.id);
+	if (!end || !first) return { months: [] as ReturnType<typeof monthRow>[], note: 'No stored history yet.' };
+	const all = completeMonths(first, end);
+	if (all.length < 2) return { months: [], note: 'Needs two complete months of stored history.' };
+	const keep = all.slice(-(Math.min(Math.max(months, 1), 24) + 1));
+	const data = keep.map((m) => {
+		const lo = `${m}-01`, hi = lastDayOf(m);
+		return { month: m, totals: summary(site.id, lo, hi), pages: topPages(site.id, lo, hi, {}, 50_000), queries: topQueries(site.id, lo, hi, {}, 100_000) };
+	});
+	function monthRow(i: number) {
+		const cur = data[i], prev = data[i - 1];
+		const pm = computeMovers(keyedP(cur.pages), keyedP(prev.pages), { limit: perMonth });
+		const qm = computeMovers(keyedQ(cur.queries), keyedQ(prev.queries), { limit: perMonth });
+		const mv = (m: { key: string; clicks: number; prevClicks: number; change: number }) => ({ key: m.key, clicks: m.clicks, previous: m.prevClicks, change: m.change });
+		return {
+			month: cur.month, clicks: cur.totals.clicks, impressions: cur.totals.impressions, position: r2(cur.totals.position ?? 0),
+			clicksChangePct: prev.totals.clicks ? r2(((cur.totals.clicks - prev.totals.clicks) / prev.totals.clicks) * 100) : null,
+			pageWinners: pm.winners.map(mv), pageLosers: pm.losers.map(mv), queryWinners: qm.winners.map(mv), queryLosers: qm.losers.map(mv)
+		};
+	}
+	return { months: data.slice(1).map((_, i) => monthRow(i + 1)), note: null as string | null };
+}
+
+/**
+ * How many different searches the site was shown for, week by week (complete weeks ending on the newest stored day): all of them,
+ * those that brought a click, and those with an average position in the top 10. A growing count with flat clicks usually means
+ * new, still low rankings; a shrinking one is lost reach.
+ */
+export function queryCountReport(site: Site, weeks = 12) {
+	const end = site.synced_through;
+	if (!end) return { weeks: [] as { weekEnding: string; queries: number; withClicks: number; top10: number; complete: boolean }[] };
+	const n = Math.min(Math.max(weeks, 2), 52);
+	const start = addDays(end, -(7 * n) + 1);
+	const first = firstStored(site.id);
+	const rows = db().prepare(`SELECT wk, COUNT(*) queries, SUM(c > 0) withClicks, SUM(pos <= 10) top10 FROM (
+			SELECT CAST((julianday(?) - julianday(date)) / 7 AS INTEGER) wk, query, SUM(clicks) c, SUM(position * impressions) * 1.0 / NULLIF(SUM(impressions), 0) pos
+			FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ? GROUP BY wk, query HAVING SUM(impressions) > 0
+		) GROUP BY wk`).all(end, site.id, start, end) as { wk: number; queries: number; withClicks: number; top10: number }[];
+	const byWk = new Map(rows.map((r) => [r.wk, r]));
+	const out = [];
+	for (let wk = n - 1; wk >= 0; wk--) {
+		const weekEnding = addDays(end, -7 * wk);
+		const r = byWk.get(wk);
+		out.push({ weekEnding, queries: r?.queries ?? 0, withClicks: r?.withClicks ?? 0, top10: r?.top10 ?? 0, complete: !first || addDays(weekEnding, -6) >= first });
+	}
+	return { weeks: out };
+}
+
+/** Clicks and impressions by likely search intent (classifyIntent: English, rule-based), with the biggest searches of each. */
+export function intentReport(site: Site, days: number, perIntent = 5) {
+	const p = periodFor(site, days);
+	const terms = brandTerms(site);
+	const rows = topQueries(site.id, p.start, p.end, {}, 100_000);
+	const groups = new Map<Intent, typeof rows>(INTENTS.map((i) => [i, []]));
+	for (const r of rows) groups.get(classifyIntent(r.query, terms))!.push(r);
+	const tc = rows.reduce((a, r) => a + r.clicks, 0) || 1, ti = rows.reduce((a, r) => a + r.impressions, 0) || 1;
+	return {
+		period: p,
+		brandTermsSet: terms.length > 0,
+		intents: INTENTS.map((intent) => {
+			const g = groups.get(intent)!;
+			const c = g.reduce((a, r) => a + r.clicks, 0), i = g.reduce((a, r) => a + r.impressions, 0);
+			const pos = i ? g.reduce((a, r) => a + r.position * r.impressions, 0) / i : null;
+			return { intent, queries: g.length, clicks: c, impressions: i, clickShare: r2((c / tc) * 100), impressionShare: r2((i / ti) * 100), ctr: i ? r2((c / i) * 100) : null, position: pos == null ? null : r2(pos), top: g.slice(0, perIntent).map((r) => ({ query: r.query, clicks: r.clicks, impressions: r.impressions, position: r2(r.position) })) };
+		})
+	};
 }
 
 // ── Groups, topics, heatmap, locales ─────────────────────────────────────────

@@ -207,3 +207,48 @@ export function projectClicks(weekly: WeekPoint[], horizon = 8): Projection | nu
 	}
 	return { method: 'Level of the last 4 weeks plus a damped robust trend over the last 12. No seasonality or Google-update effects.', points, weeklyTrendPct: level ? slope / level : 0, basedOnWeeks: recent.length };
 }
+
+// ── Search intent ────────────────────────────────────────────────────────────
+export type Intent = 'navigational' | 'transactional' | 'commercial' | 'informational' | 'unclassified';
+export const INTENTS: Intent[] = ['navigational', 'transactional', 'commercial', 'informational', 'unclassified'];
+const TRANSACTIONAL = /\b(buy|order|price|prices|pricing|cost|costs|cheap|cheapest|deal|deals|discount|coupon|promo|sale|for sale|shop|store|near me|delivery|subscribe|subscription|download|book|booking|hire|quote|free trial|sign up|signup)\b/i;
+const COMMERCIAL = /\b(best|top|vs|versus|review|reviews|compare|comparison|alternative|alternatives|recommended|rating|ratings|cheaper than|which is better|pros and cons)\b/i;
+const INFORMATIONAL = /\b(guide|tutorial|meaning|definition|define|examples?|ideas|tips|steps|learn|explained|history|benefits|causes|symptoms|difference between|what is|how to|why)\b/i;
+const NAV_WORDS = /\b(login|log in|sign in|account|website|official|app|contact|customer service|support|phone number|address|careers|jobs at)\b/i;
+
+/**
+ * The likely intent behind a search, from its wording. English only and rule-based: brand terms (or words such as "login") make it
+ * navigational, buying words transactional, comparing words commercial, and questions or learning words informational. Anything
+ * else is left unclassified rather than guessed. A heuristic, not a classifier: OpenSEO's keyword data has a measured intent.
+ */
+export function classifyIntent(query: string, brandTerms: string[] = []): Intent {
+	const q = query.trim().toLowerCase();
+	if (!q) return 'unclassified';
+	const branded = brandTerms.some((t) => t && q.includes(t.toLowerCase()));
+	if (branded && (NAV_WORDS.test(q) || q.split(/\s+/).length <= 2)) return 'navigational';
+	if (NAV_WORDS.test(q)) return 'navigational';
+	if (TRANSACTIONAL.test(q)) return 'transactional';
+	if (COMMERCIAL.test(q)) return 'commercial';
+	if (isQuestionQuery(q) || INFORMATIONAL.test(q)) return 'informational';
+	return branded ? 'navigational' : 'unclassified';
+}
+
+// ── Regular-expression filters ───────────────────────────────────────────────
+export const MAX_REGEX_LENGTH = 200;
+/**
+ * A user's filter pattern, checked before it is run against every stored row: at most 200 characters, valid JavaScript syntax, and
+ * none of the shapes that make a backtracking engine take exponential time (a quantified group that itself contains a quantifier,
+ * such as (a+)+ or (.*)*, and back-references). Matching is case-insensitive. Returns the compiled pattern or the reason it was refused.
+ */
+export function safeRegex(pattern: string): { re: RegExp } | { error: string } {
+	const p = pattern.trim();
+	if (!p) return { error: 'The pattern is empty.' };
+	if (p.length > MAX_REGEX_LENGTH) return { error: `The pattern is longer than ${MAX_REGEX_LENGTH} characters.` };
+	if (/\\[1-9]|\\k</.test(p)) return { error: 'Back-references are not supported in filters.' };
+	if (/\((?:[^()\\]|\\.)*[+*}](?:[^()\\]|\\.)*\)\s*(?:[+*]|\{\d*,?\d*\})/.test(p)) return { error: 'Nested repetition such as (a+)+ is not allowed: it can make the search run for minutes. Simplify the pattern.' };
+	try {
+		return { re: new RegExp(p, 'i') };
+	} catch (e) {
+		return { error: `Not a valid regular expression: ${e instanceof Error ? e.message : String(e)}` };
+	}
+}

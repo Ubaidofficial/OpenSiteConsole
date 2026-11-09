@@ -650,6 +650,14 @@ html.js .c-sitemap:not(.in) .fun li::before { width: 0; }
 .roles li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 10px; background: #fcfcfb; border: 1px solid var(--line); font-size: 13px; } .roles span { color: var(--mut); }
 .snip { margin: 16px 0 0; padding: 12px 14px; background: #fcfcfb; border: 1px solid var(--line); border-radius: 12px; font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre; color: var(--fg); }
 .snip code { background: none; padding: 0; font-size: inherit; }
+.c-wide { grid-column: span 12; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 48px; align-items: center; }
+.ask { display: grid; gap: 10px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); }
+.ask p { margin: 0; }
+.ask .ask-q { justify-self: end; max-width: 88%; background: var(--fg); color: #fff; border-radius: 14px 14px 4px 14px; padding: 9px 13px; font-size: 14px; line-height: 1.45; }
+.ask .ask-st { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--mut); }
+.ask .ask-st span { border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; background: var(--card); }
+.ask .ask-a { color: var(--fg); font-size: 14px; line-height: 1.55; padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+@media (max-width: 980px) { .c-wide { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 980px) { .c-new { grid-column: span 12; } }
 
 /* which product each finding reads from: the real logos, small */

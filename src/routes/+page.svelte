@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { Eye, EyeOff, ExternalLink, RefreshCw, Search, Trash2 } from '@lucide/svelte';
+	import { Eye, EyeOff, ExternalLink, RefreshCw, Search, Trash2, Sparkles } from '@lucide/svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import AreaSpark from '$lib/components/AreaSpark.svelte';
@@ -96,6 +96,13 @@
 		<form method="POST" action="?/syncAll" use:enhance><button class="btn" disabled={syncing > 0}><RefreshCw class="size-3.5 {syncing > 0 ? 'animate-spin' : ''}" />{syncing > 0 ? `Syncing ${syncing}…` : 'Sync all'}</button></form>
 	</div>
 </div>
+
+<form method="GET" action="/chat" class="group mb-6 flex items-center gap-2 rounded-2xl border bg-card py-1.5 pr-1.5 pl-4 shadow-xs transition-shadow focus-within:shadow-sm focus-within:ring-2 focus-within:ring-ring/30">
+	<Sparkles class="size-4 shrink-0 text-muted-foreground" />
+	<label for="ask-data" class="sr-only">Ask your data</label>
+	<input id="ask-data" name="q" maxlength="2000" autocomplete="off" class="h-9 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted-foreground" placeholder="Ask your data: “Why did clicks drop last week?” or “What should I fix first?”" />
+	<button class="btn btn-primary h-8 rounded-xl">Ask</button>
+</form>
 
 {#if data.onboarding && !data.onboarding.hidden}<GetStarted steps={data.onboarding.steps} progress={data.onboarding.progress} running={data.onboarding.running} />{/if}
 

@@ -39,7 +39,7 @@ describe('the comparison pages are fair', () => {
 		const mustBeNo: [RegExp, string][] = [
 
 			[/Check any URL, such as backlinks/, 'indexchex'], [/Get third-party or backlink URLs crawled/, 'indexchex'], [/Instant/i, 'indexchex'],
-			[/AI crawler logs/, 'promptwatch'], [/In-app AI assistant and AI content writing/, 'seo-stack'], [/Email delivery/, 'seo-gets'], [/Client portal/, 'seo-gets'], [/Custom email reports/, 'powersearchconsole'],
+			[/AI crawler logs/, 'promptwatch'], [/^AI content writing/, 'seo-stack'], [/Email delivery/, 'seo-gets'], [/Client portal/, 'seo-gets'], [/Custom email reports/, 'powersearchconsole'],
 			[/Removals, Manual actions/, 'google-search-console'], [/Yandex Webmaster and Google Merchant Center/, 'gsc-wizard']
 		];
 		for (const [re, slug] of mustBeNo) {
