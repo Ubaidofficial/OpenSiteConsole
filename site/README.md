@@ -70,6 +70,7 @@ Motion: charts draw, bars grow and counters count up once, when they scroll into
 | `mcp.svg`, `claude.svg`, `claude-code.svg` | [Simple Icons](https://simpleicons.org) (CC0 for the drawings; the marks remain their owners' trademarks), in the brand colour Simple Icons lists |
 | `openai.svg` (ChatGPT and Codex) | The 2025 OpenAI symbol (Wikimedia Commons, `OpenAI_logo_2025_(symbol).svg`) |
 | `cursor.svg`, `windsurf.svg` | Simple Icons, as above |
+| `perplexity.svg`, `gemini.svg`, `copilot.svg` (Microsoft Copilot), `google.svg` | [LobeHub Icons](https://github.com/lobehub/lobe-icons) (`@lobehub/icons-static-svg` 1.102.0, MIT for the drawings; the marks remain their owners' trademarks), the `-color` variants, with the inline `style` attribute removed so they pass the strict style policy |
 
 The app shows the same AI-app marks on its MCP page from `static/logos/` (copies of these files). The black ones are inverted in dark mode.
 

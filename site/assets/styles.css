@@ -539,7 +539,8 @@ html.js .c-vitals:not(.in) .mt-bar i { width: 0; }
 /* horizontal bars: decay, AI assistants, Bing */
 .hbars { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
 .hbars li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; align-items: center; gap: 12px; font-size: 13px; }
-.hbars.ai li { grid-template-columns: 76px minmax(0, 1fr) 52px; } .hbars b { text-align: right; font-variant-numeric: tabular-nums; } .hbars b.bad { color: var(--bad); }
+.hbars.ai li { grid-template-columns: 108px minmax(0, 1fr) 52px; }
+.hbars .nm { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; } .hbars b { text-align: right; font-variant-numeric: tabular-nums; } .hbars b.bad { color: var(--bad); }
 .pth { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink2); }
 .hb { height: 10px; border-radius: 6px; background: rgba(13, 13, 15, 0.07); overflow: hidden; }
 .hb i { display: block; height: 100%; width: var(--w); border-radius: 6px; background: var(--acc-ink); transition: width 1.2s var(--ease); transition-delay: calc(0.3s + var(--i, 0) * 0.1s); }
@@ -647,6 +648,8 @@ html.js .c-sitemap:not(.in) .fun li::before { width: 0; }
 .tiles4 li { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fcfcfb; display: grid; } .tiles4 b { font-size: 22px; letter-spacing: -0.04em; } .tiles4 span { font-size: 11.5px; color: var(--mut); }
 .roles { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 6px; }
 .roles li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 10px; background: #fcfcfb; border: 1px solid var(--line); font-size: 13px; } .roles span { color: var(--mut); }
+.snip { margin: 16px 0 0; padding: 12px 14px; background: #fcfcfb; border: 1px solid var(--line); border-radius: 12px; font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre; color: var(--fg); }
+.snip code { background: none; padding: 0; font-size: inherit; }
 @media (max-width: 980px) { .c-new { grid-column: span 12; } }
 
 /* which product each finding reads from: the real logos, small */
