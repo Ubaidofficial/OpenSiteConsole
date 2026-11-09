@@ -4,7 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { ChevronDown, RefreshCw } from '@lucide/svelte';
+	import { ChevronDown, RefreshCw, Sparkles } from '@lucide/svelte';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import { SITE_PRIMARY_TABS, SITE_TABS, SITE_TAB_GROUPS } from '$lib/explain';
 	const tabOf = (t: string) => SITE_TABS.find(([p]) => p === t)!;
@@ -60,6 +60,7 @@
 	<div class="ml-auto flex flex-wrap items-center gap-3">
 		<PeriodPicker days={data.days} />
 		{#if data.openseo?.url}<a class="btn" href={data.openseo.url} target="_blank" rel="noreferrer noopener" title={privacy.on ? undefined : `OpenSEO project: ${data.openseo.name}`}>OpenSEO ↗</a>{/if}
+		<a class="btn" href="/chat?draft={encodeURIComponent(`About ${data.site.name}: `)}" title="Open the chat with this site named in the question"><Sparkles class="size-3.5" />Ask about this site</a>
 		<form method="POST" action="{base}/sync" use:enhance><button class="btn" disabled={syncing}><RefreshCw class="size-3.5 {syncing ? 'animate-spin' : ''}" />{syncing ? 'Syncing…' : 'Sync'}</button></form>
 	</div>
 </div>

@@ -112,3 +112,115 @@ export function renderUrgent(items: { site: string; title: string; why: string; 
 	if (more) lines.push(`…and ${more} more, to follow.`);
 	return lines.join('\n');
 }
+
+// ── the monthly report ───────────────────────────────────────────────────────
+/**
+ * A calendar month in plain English, meant to be forwarded as it is. Months differ in length, so every comparison is per day:
+ * October's clicks per day against September's, and against October last year once that is stored. A change is only called
+ * real when it passes the same noise test as the weekly digest; otherwise it is "about the same".
+ */
+export interface MonthSite {
+	siteId: number;
+	name: string;
+	/** false when Search Console data does not yet reach the last day of the month: the figures are partial and nothing is claimed */
+	complete: boolean;
+	days: number;
+	clicks: number;
+	impressions: number;
+	position: number;
+	/** the month before, when its history is stored (null otherwise) */
+	prev: { days: number; clicks: number; impressions: number; position: number } | null;
+	/** the same month a year earlier, when its history is stored */
+	yearAgo: { days: number; clicks: number } | null;
+	pageWinners: MoverLite[];
+	pageLosers: MoverLite[];
+	queryWinners: MoverLite[];
+	queryLosers: MoverLite[];
+	droppedPages: number;
+	decidedTests: { name: string; verdict: 'positive' | 'negative'; lift: number | null }[];
+	updates: { name: string; begin: string; end: string | null }[];
+	openActions: number;
+	blockingActions: number;
+}
+export interface MonthlyReport {
+	createdAt: number;
+	/** YYYY-MM */
+	month: string;
+	label: string;
+	headline: string[];
+	sites: MonthSite[];
+	top: Digest['top'];
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export const monthLabel = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
+const monthName = (ym: string) => MONTHS[Number(ym.slice(5, 7)) - 1];
+const prevMonthOf = (ym: string) => { const y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)); return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`; };
+
+/** Per-day change between two totals over periods of different lengths, and whether it is more than noise. */
+export function perDayChange(now: number, nowDays: number, prev: number, prevDays: number): { change: number | null; significant: boolean } {
+	if (prev <= 0 || nowDays <= 0 || prevDays <= 0) return { change: null, significant: false };
+	const scaledPrev = (prev * nowDays) / prevDays; // what the earlier period would have earned over this many days
+	return { change: now / scaledPrev - 1, significant: clicksSignificant(now, scaledPrev) };
+}
+
+/** One sentence per site, in plain words. */
+export function monthSentence(s: MonthSite, ym: string): string {
+	const name = monthName(ym), before = monthName(prevMonthOf(ym));
+	if (!s.complete) return `${s.name}: ${n0(s.clicks)} clicks so far; Search Console data does not reach the end of ${name} yet, so no comparison is made.`;
+	let out = `${s.name}: ${n0(s.clicks)} clicks from Google in ${name}`;
+	if (s.prev) {
+		const c = perDayChange(s.clicks, s.days, s.prev.clicks, s.prev.days);
+		out += c.change == null ? '' : c.significant ? `, ${c.change > 0 ? 'up' : 'down'} ${Math.abs(Math.round(c.change * 100))}% a day on ${before}` : `, about the same as ${before} (within normal variation)`;
+	} else out += ` (${before} is not stored, so there is no comparison)`;
+	if (s.yearAgo) {
+		const y = perDayChange(s.clicks, s.days, s.yearAgo.clicks, s.yearAgo.days);
+		if (y.change != null) out += y.significant ? ` and ${Math.abs(Math.round(y.change * 100))}% ${y.change > 0 ? 'above' : 'below'} ${name} last year` : `, level with ${name} last year`;
+	}
+	out += '.';
+	if (s.prev && s.prev.position > 0 && s.position > 0 && Math.abs(s.position - s.prev.position) >= 0.5) out += ` Average position ${s.position < s.prev.position ? 'improved' : 'slipped'} from ${s.prev.position.toFixed(1)} to ${s.position.toFixed(1)}.`;
+	const up = s.pageWinners[0], down = s.pageLosers[0];
+	if (up) out += ` Biggest gain: ${up.key} (+${n0(up.change)} clicks).`;
+	if (down) out += ` Biggest loss: ${down.key} (${n0(down.change)} clicks).`;
+	return out;
+}
+
+/** The opening lines: the whole portfolio, then what needs doing, then what Google did. Facts only. */
+export function monthlyHeadline(sites: MonthSite[], top: Digest['top'], ym: string): string[] {
+	const out: string[] = [];
+	const name = monthName(ym), before = monthName(prevMonthOf(ym));
+	const cmp = sites.filter((s) => s.complete && s.prev);
+	if (cmp.length) {
+		const now = cmp.reduce((a, s) => a + s.clicks, 0);
+		const c = perDayChange(now, cmp[0].days, cmp.reduce((a, s) => a + s.prev!.clicks, 0), cmp[0].prev!.days);
+		out.push(`Across ${cmp.length} site${cmp.length === 1 ? '' : 's'}, Google sent ${n0(now)} clicks in ${name}${c.change == null ? '' : c.significant ? `, ${Math.abs(Math.round(c.change * 100))}% ${c.change > 0 ? 'more' : 'fewer'} a day than in ${before}` : `, about the same a day as in ${before}`}.`);
+	}
+	const blocking = sites.reduce((a, s) => a + s.blockingActions, 0);
+	if (blocking) out.push(`${blocking} blocking issue${blocking === 1 ? ' needs' : 's need'} fixing first${top.filter((t) => t.blocking).length ? `: ${top.filter((t) => t.blocking).slice(0, 2).map((t) => `${t.site}: ${t.title}`).join('; ')}` : ''}.`);
+	const gone = sites.reduce((a, s) => a + s.droppedPages, 0);
+	if (gone) out.push(`${gone} page${gone === 1 ? ' was' : 's were'} dropped from Google's index during ${name}.`);
+	const tests = sites.flatMap((s) => s.decidedTests.map((t) => ({ ...t, site: s.name })));
+	for (const t of tests.slice(0, 3)) out.push(`Test “${t.name}” (${t.site}) likely ${t.verdict === 'positive' ? 'worked' : 'hurt'}${t.lift != null ? ` (${pct(t.lift)} against its control pages)` : ''}.`);
+	const upd = new Map<string, MonthSite['updates'][number]>();
+	for (const s of sites) for (const u of s.updates) upd.set(u.name, u);
+	if (upd.size) out.push(`Google's ${[...upd.keys()].join(' and ')} overlapped ${name}; some movement may come from ${upd.size === 1 ? 'it' : 'them'}.`);
+	const partial = sites.filter((s) => !s.complete).length;
+	if (partial) out.push(`${partial} site${partial === 1 ? ' is' : 's are'} not complete for ${name} yet, so ${partial === 1 ? 'it is' : 'they are'} shown without comparisons.`);
+	return out;
+}
+
+/** The report as a chat message (Slack-style *bold*). */
+export function renderMonthly(r: MonthlyReport, base = ''): string {
+	const lines: string[] = [`*SEO report for ${r.label}*`, ''];
+	for (const h of r.headline) lines.push(`• ${chatSafe(h)}`);
+	if (r.sites.length) {
+		lines.push('', '*By site*');
+		for (const s of r.sites) lines.push(`• ${chatSafe(monthSentence(s, r.month))}`);
+	}
+	if (r.top.length) {
+		lines.push('', '*Do this next*');
+		r.top.slice(0, 5).forEach((t, i) => lines.push(`${i + 1}. ${t.blocking ? '🛑 ' : ''}${chatSafe(t.site)}: ${chatSafe(t.title)}${base ? `\n    ${base}${t.href}` : ''}`));
+	}
+	lines.push('', `Changes are per day, because months differ in length, and are called real only when they are bigger than normal variation.${base ? ` Full list: ${base}/actions` : ''}`);
+	return lines.join('\n');
+}

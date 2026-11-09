@@ -12,13 +12,17 @@ import { monitorSite } from './indexmon';
 import { runSubmissionWork, submissionWorkDue } from './submission';
 import { listTests, warmTests } from './seotests';
 import { ensureGa4TestData } from './ga4tests';
-import { runUrgentAlerts, runWeeklyDigest } from './digest';
+import { runMonthlyReport, runUrgentAlerts, runWeeklyDigest } from './digest';
 import { actionsFor } from './actions';
 import { getSite } from './clients';
 import { importGoogleUpdates, lastUpdatesCheck } from './gupdates';
 import { syncSitemapUrls } from './sitemapcov';
 import { autoSubmit } from './indexnow';
 import { crawlLinks, RECRAWL_MS } from './internallinks';
+import { robotsCheckDue, runRobotsCheck } from './robotswatch';
+import { aiVisDue, runDue as runAiVis } from './aivis';
+import { auditDue, syncAudit } from './openseolink';
+import { linksFor as siteLinks } from './links';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -45,6 +49,13 @@ export function enqueue(key: string, fn: () => Promise<unknown>): boolean {
 	pump();
 	return true;
 }
+
+/** Whether a job with this key is queued or running. */
+export const jobPending = (key: string) => active.has(key) || waiting.some((j) => j.key === key);
+
+/** AI visibility for one site now (the Run now button): everything not asked in the last hour, within today's cap. */
+export const enqueueAiVis = (siteId: number) => enqueue(`aivis:${siteId}`, () => runAiVis({ siteId, force: true }));
+export const aiVisRunning = (siteId: number) => jobPending(`aivis:${siteId}`) || jobPending('aivis');
 
 export function queueDepth() {
 	return { waiting: waiting.length, active: active.size };
@@ -154,6 +165,7 @@ export function schedulerTick() {
 	if (!process.env.VITEST) {
 		enqueue('digest', async () => {
 			await runWeeklyDigest();
+			await runMonthlyReport();
 			const last = Number((d.prepare("SELECT value FROM kv WHERE key = 'urgent_checked'").get() as { value: string } | undefined)?.value ?? 0);
 			if (Date.now() - last > 3 * 3600_000) {
 				await runUrgentAlerts();
@@ -161,6 +173,8 @@ export function schedulerTick() {
 			}
 		});
 	}
+	// AI visibility: prompts due for another answer, one at a time, within the daily cap (they cost money on the owner's API accounts).
+	if (!process.env.VITEST && aiVisDue()) enqueue('aivis', () => runAiVis());
 	// Google's list of ranking updates changes a few times a year: a daily look is plenty, and a failure just waits for tomorrow.
 	if (!process.env.VITEST && Date.now() - (lastUpdatesCheck() ?? 0) > 20 * 3600_000) void importGoogleUpdates();
 	const sites = d
@@ -189,6 +203,10 @@ export function schedulerTick() {
 		if (!process.env.VITEST) {
 			const cs = d.prepare('SELECT checked_at FROM clarity_scans WHERE site_id = ?').get(s.id) as { checked_at: number } | undefined;
 			if (!cs || Date.now() - cs.checked_at > 24 * 3600_000) enqueueClarityScan(s.id);
+			// OpenSEO's latest site audit, read once a day for a linked site (free: it reads OpenSEO's stored results, it runs no audit).
+			if (siteLinks(s.id).openseo && auditDue(s.id)) enqueue(`oseo-audit:${s.id}`, () => syncAudit(s.id));
+			// robots.txt once a day per host: a rule that blocks pages with clicks is then caught the next day.
+			if (robotsCheckDue(s.id)) enqueue(`robots:${s.id}`, () => runRobotsCheck(s.id));
 			// The internal-link crawl fetches up to LINK_CRAWL_PAGES of the site's pages: once a week (a site with no data yet is retried).
 			const lc = d.prepare('SELECT finished_at f, pages n FROM link_crawls WHERE site_id = ?').get(s.id) as { f: number | null; n: number } | undefined;
 			if (!lc || !lc.n || Date.now() - (lc.f ?? 0) > RECRAWL_MS) enqueueLinkCrawl(s.id);

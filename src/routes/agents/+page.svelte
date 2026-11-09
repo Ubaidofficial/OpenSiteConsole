@@ -31,7 +31,7 @@
 	<section class="card p-4">
 		<h2 class="mb-2 font-medium">Create a key</h2>
 		<form method="POST" action="?/create" use:enhance class="space-y-3 text-sm">
-			<input class="input w-full" name="name" placeholder="Name, e.g. Claude Code (laptop)" required />
+			<input class="input w-full" name="name" aria-label="Name" placeholder="Name, e.g. Claude Code (laptop)" required />
 			<fieldset>
 				<legend class="mb-1 text-xs text-muted-foreground">Limit to sites (none ticked = all sites). Out-of-scope sites are invisible to the key.</legend>
 				<div class="grid max-h-40 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
@@ -52,6 +52,7 @@
 	<section class="card p-4 text-sm">
 		<h2 class="mb-2 font-medium">Using a key</h2>
 		<p class="mt-2 text-xs text-muted-foreground">Send the key as <code>Authorization: Bearer osc_…</code> or <code>x-api-key</code>. Set <code>ORIGIN</code> to your public URL so this shows the right address.</p>
+		<p class="mt-2 text-xs text-muted-foreground"><b>REST API</b> with the same keys: <code class="pii">{data.mcpUrl.replace(/\/mcp$/, '/v1')}</code> lists the endpoints. Read with <code>GET /api/v1/&lt;tool&gt;?site=1</code>; tools that change things take <code>POST</code> with a JSON body.</p>
 		<p class="mt-2 text-xs text-muted-foreground"><b>{data.tools.length} tools</b> ({data.tools.length - data.changeTools.length} only read; {data.writeTools.submit.length} need submit, {data.writeTools.delete.length} need delete): <span class="font-mono">{data.tools.join(', ')}</span>.</p>
 	</section>
 </div>

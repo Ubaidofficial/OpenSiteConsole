@@ -1,3 +1,4 @@
+import { safeRegex } from '../trends';
 import Database from 'better-sqlite3';
 import { chmodSync, closeSync, mkdirSync, openSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -414,8 +415,8 @@ CREATE TABLE IF NOT EXISTS ga4_ai_daily_meta (
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS digests (
 	id INTEGER PRIMARY KEY,
-	kind TEXT NOT NULL,                 -- weekly | urgent
-	week_key TEXT,                      -- the digest day this weekly digest is for; NULL for one made by hand or an urgent alert
+	kind TEXT NOT NULL,                 -- weekly | monthly | urgent
+	week_key TEXT,                      -- the digest day this weekly digest is for, or YYYY-MM for a monthly report; NULL for one made by hand or an urgent alert
 	created_at INTEGER NOT NULL,
 	payload TEXT NOT NULL,              -- JSON Digest (weekly) or {items} (urgent)
 	delivery TEXT NOT NULL DEFAULT 'none',   -- none (no webhook configured) | sent | failed
@@ -529,6 +530,107 @@ CREATE TABLE IF NOT EXISTS clarity_scans (          -- is Clarity's script on th
 	checked_at INTEGER NOT NULL,
 	payload TEXT NOT NULL               -- JSON ScannedPage[]
 );
+CREATE TABLE IF NOT EXISTS oseo_volumes (           -- search volume from OpenSEO for the site's own queries (lower-cased)
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	keyword TEXT NOT NULL,
+	volume INTEGER,                      -- monthly searches; NULL = OpenSEO had no data (usually too low to measure)
+	kd INTEGER,                          -- keyword difficulty 0-100
+	cpc REAL,
+	intent TEXT,
+	fetched_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, keyword)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS oseo_tracked (           -- searches sent to an OpenSEO rank tracker from here
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	keyword TEXT NOT NULL,
+	tracker_id TEXT NOT NULL,
+	added_at INTEGER NOT NULL,
+	PRIMARY KEY (site_id, keyword)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS oseo_audits (            -- OpenSEO's latest site audit for the linked project (newest read only)
+	site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+	fetched_at INTEGER NOT NULL,
+	payload TEXT NOT NULL                -- JSON AuditSnapshot (src/lib/server/openseolink.ts)
+);
+CREATE TABLE IF NOT EXISTS chat_threads (           -- "Ask your data": one conversation, private to the person who started it
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	owner TEXT NOT NULL,                 -- 'owner', or 'user:<users.id>'
+	title TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	pending TEXT                         -- JSON: changes the model asked for, waiting for Approve or Decline
+);
+CREATE INDEX IF NOT EXISTS chat_threads_owner ON chat_threads(owner, updated_at);
+CREATE TABLE IF NOT EXISTS chat_messages (          -- the conversation exactly as sent to and received from the API (append-only)
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	thread_id INTEGER NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
+	role TEXT NOT NULL,                  -- user | assistant
+	content TEXT NOT NULL,               -- JSON content blocks; tool results hold third-party text, shown as data
+	created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS chat_messages_thread ON chat_messages(thread_id, id);
+CREATE TABLE IF NOT EXISTS chat_usage (             -- turns started per person per UTC day, for CHAT_MESSAGES_PER_DAY (kept when a conversation is deleted)
+	owner TEXT NOT NULL,
+	day TEXT NOT NULL,                   -- YYYY-MM-DD, UTC
+	n INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (owner, day)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ai_prompts (             -- AI visibility: the questions asked of AI assistants, per site
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	prompt TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS ai_competitors (         -- domains to compare against in AI answers
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	domain TEXT NOT NULL,
+	PRIMARY KEY (site_id, domain)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS ai_runs (                -- one answer from one assistant to one prompt
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	prompt_id INTEGER NOT NULL REFERENCES ai_prompts(id) ON DELETE CASCADE,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	engine TEXT NOT NULL,                -- claude | chatgpt | perplexity
+	model TEXT,
+	ran_at INTEGER NOT NULL,
+	status TEXT NOT NULL,                -- ok | error
+	error TEXT,
+	answer TEXT,                         -- third-party text: shown as data, never followed
+	citations TEXT,                      -- JSON {url,title}[]
+	sources TEXT,                        -- JSON {url,title}[]
+	verdict TEXT,                        -- JSON AnswerVerdict (from src/lib/aivis.ts), as judged when it ran
+	searches INTEGER NOT NULL DEFAULT 0,
+	via TEXT,                            -- direct | dataforseo-scraper | dataforseo-responses | demo
+	cost REAL                            -- USD, when the provider reports it (DataForSEO does)
+);
+CREATE INDEX IF NOT EXISTS ai_runs_site ON ai_runs (site_id, ran_at);
+CREATE INDEX IF NOT EXISTS ai_runs_prompt ON ai_runs (prompt_id, engine, ran_at);
+CREATE TABLE IF NOT EXISTS robots_checks (          -- the newest robots.txt read per host of a site
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	origin TEXT NOT NULL,                -- https://www.example.com
+	checked_at INTEGER NOT NULL,
+	status INTEGER NOT NULL,             -- HTTP status; 0 = no answer
+	state TEXT NOT NULL,                 -- ok | missing | error (see src/lib/robots.ts)
+	body TEXT,                           -- the file as read (500 KiB cap), when state = ok
+	fingerprint TEXT NOT NULL,           -- what the rules mean, not how they are written
+	changed_at INTEGER,                  -- when the fingerprint last changed (NULL until a second read differs)
+	fail_streak INTEGER NOT NULL DEFAULT 0, -- consecutive reads in the error state
+	error TEXT,
+	PRIMARY KEY (site_id, origin)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS robots_changes (         -- every change in what a site's robots.txt means
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+	origin TEXT NOT NULL,
+	at INTEGER NOT NULL,
+	before_state TEXT NOT NULL,
+	after_state TEXT NOT NULL,
+	added TEXT NOT NULL,                 -- JSON string[] of rule lines
+	removed TEXT NOT NULL,               -- JSON string[]
+	before_body TEXT                     -- the previous file, so a bad change can be rolled back by hand
+);
+CREATE INDEX IF NOT EXISTS robots_changes_site ON robots_changes (site_id, at);
 CREATE TABLE IF NOT EXISTS api_keys (
 	id INTEGER PRIMARY KEY,
 	name TEXT NOT NULL, prefix TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,
@@ -587,6 +689,8 @@ function migrate(db: Database.Database) {
 	if (!cols('api_keys').includes('can_write')) db.exec('ALTER TABLE api_keys ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('oauth_codes').includes('can_write')) db.exec('ALTER TABLE oauth_codes ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
+	if (!cols('ai_runs').includes('via')) db.exec('ALTER TABLE ai_runs ADD COLUMN via TEXT');
+	if (!cols('ai_runs').includes('cost')) db.exec('ALTER TABLE ai_runs ADD COLUMN cost REAL');
 	// Which team member a session belongs to (NULL = the owner). Earlier sessions were all the owner's, so they stay valid.
 	if (!cols('sessions').includes('user_id')) db.exec('ALTER TABLE sessions ADD COLUMN user_id INTEGER');
 	db.exec('CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id)');
@@ -597,6 +701,39 @@ function migrate(db: Database.Database) {
 		db.exec('UPDATE sites SET backfill_done = 0');
 		db.pragma('user_version = 1');
 	}
+}
+
+let regexDeadline = 0;
+/**
+ * Run a query that uses REGEXP with a time budget: safeRegex keeps each match small, and this stops a query that would still take too
+ * long over millions of rows (SQLite calls the function synchronously, so a slow query would hold up every other request).
+ */
+export function withRegexBudget<T>(ms: number, fn: () => T): T {
+	regexDeadline = Date.now() + ms;
+	try {
+		return fn();
+	} finally {
+		regexDeadline = 0;
+	}
+}
+/** At most this much of each value is matched: queries and URLs are shorter, and it bounds the work per row. */
+const REGEX_VALUE_CAP = 500;
+
+/** `x REGEXP p` in SQL: case-insensitive, compiled once per pattern, and only for patterns safeRegex accepts (no runaway backtracking). */
+function registerRegexp(d: Database.Database) {
+	const cache = new Map<string, RegExp>();
+	d.function('regexp', { deterministic: true }, (pattern: unknown, value: unknown) => {
+		const p = String(pattern ?? '');
+		let re = cache.get(p);
+		if (!re) {
+			const r = safeRegex(p);
+			if ('error' in r) throw new Error(r.error);
+			if (cache.size > 200) cache.clear();
+			cache.set(p, (re = r.re));
+		}
+		if (regexDeadline && Date.now() > regexDeadline) throw new Error('This regular expression takes too long on this much data. Simplify it, or shorten the date range.');
+		return value != null && re.test(String(value).slice(0, REGEX_VALUE_CAP)) ? 1 : 0;
+	});
 }
 
 export function openDb(path: string): Database.Database {
@@ -617,6 +754,7 @@ export function openDb(path: string): Database.Database {
 	db.pragma('synchronous = NORMAL');
 	db.exec(SCHEMA);
 	migrate(db);
+	registerRegexp(db);
 	return db;
 }
 

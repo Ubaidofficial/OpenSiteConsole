@@ -66,7 +66,7 @@
 	<section class="card p-4">
 		<h2 class="mb-1 font-medium">Watch list</h2>
 		<p class="mb-2 text-xs text-muted-foreground">Money pages, key templates, a page you just changed: they are always checked first, even if they get few clicks.</p>
-		<form method="POST" action="?/watchAdd" use:enhance class="mb-2 flex gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" placeholder="Full URLs, one per line"></textarea><button class="btn">Add</button></form>
+		<form method="POST" action="?/watchAdd" use:enhance class="mb-2 flex gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" aria-label="Full URLs" placeholder="Full URLs, one per line"></textarea><button class="btn">Add</button></form>
 		<ul class="space-y-1 text-xs">{#each data.watch as u}<li class="flex items-center gap-2"><span class="pii min-w-0 flex-1 truncate">{u.replace(/^https?:\/\/(www\.)?/, '')}</span><form method="POST" action="?/watchRemove" use:enhance><input type="hidden" name="url" value={u} /><button class="text-muted-foreground hover:text-[color:var(--bad)]" aria-label="Remove">✕</button></form></li>{:else}<li class="text-muted-foreground">Nothing pinned yet.</li>{/each}</ul>
 	</section>
 </div>

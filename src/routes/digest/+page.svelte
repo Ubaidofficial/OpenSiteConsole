@@ -3,6 +3,7 @@
 	import { enhance } from '$app/forms';
 	import { ago, fmtInt, fmtSigned } from '$lib/format';
 	import { NAMES_TARGETS, type ActionType } from '$lib/actions';
+	import { monthSentence } from '$lib/digest';
 	let { data, form } = $props();
 	const d = $derived(data.shown?.digest ?? null);
 	const label = (k: string) => ({ deindexed: 'dropped from index', indexed: 'now indexed', canonical_changed: 'canonical changed', blocked: 'blocked by robots.txt', unblocked: 'unblocked', fetch_error: 'fetch problem' })[k] ?? k;
@@ -63,6 +64,28 @@
 		{/each}
 	</div>
 {/if}
+
+<section id="monthly" class="mt-8 scroll-mt-20">
+	<div class="mb-1 flex flex-wrap items-center gap-3">
+		<h2 class="text-base font-semibold">Monthly report</h2>
+		<form method="POST" action="?/monthly" use:enhance class="ml-auto"><button class="btn !h-8 text-xs">Make last month's report</button></form>
+	</div>
+	<Explainer lead="Last calendar month in plain sentences, ready to forward.">
+		<p>Made on the 4th of each month (Search Console data lags by about two days), stored here and sent to the same webhook as the digest; <code>DIGEST_MONTHLY=0</code> turns it off. Months differ in length, so changes are compared per day, against the month before and the same month last year once that is stored, and are called real only when they are bigger than normal variation.</p>
+	</Explainer>
+	{#if data.monthly.shown?.monthly}
+		{@const m = data.monthly.shown.monthly}
+		<p class="mb-2 text-xs text-muted-foreground">{m.label} · made {ago(data.monthly.shown.createdAt)}{data.monthly.shown.delivery === 'sent' ? ' · sent to the webhook' : data.monthly.shown.delivery === 'failed' ? ` · sending failed: ${data.monthly.shown.message}` : ''}</p>
+		<div class="card p-4 text-sm">
+			<ul class="pii space-y-1.5">{#each m.headline as h}<li>• {h}</li>{/each}</ul>
+			{#if m.sites.length}<ul class="pii mt-3 space-y-1.5 border-t pt-3 text-xs" style="border-color:var(--border)">{#each m.sites as s (s.siteId)}<li>{monthSentence(s, m.month)}</li>{/each}</ul>{/if}
+			{#if data.webhook.configured}<form method="POST" action="?/sendMonthly" use:enhance class="mt-3"><input type="hidden" name="id" value={data.monthly.shown.id} /><button class="btn !h-8 text-xs">Send this report to the webhook</button></form>{/if}
+		</div>
+		{#if data.monthly.history.length > 1}<p class="mt-2 text-xs text-muted-foreground">Earlier: {#each data.monthly.history.slice(1) as h (h.id)}<a class="mr-3 hover:underline" href="?month={h.id}#monthly">{h.label}</a>{/each}</p>{/if}
+	{:else}
+		<div class="card p-4 text-sm text-muted-foreground">No monthly report yet. The first is made on the 4th of next month, or now with “Make last month's report”.</div>
+	{/if}
+</section>
 
 <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<section>

@@ -1,4 +1,7 @@
-import type { PageServerLoad } from './$types';
+import { fail } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import { config } from '$lib/server/config';
+import { fetchVolumes, openSeoFor, volumeCandidates, volumeOf, volumesFetchedAt, volumesFor, VOLUME_BATCH } from '$lib/server/openseolink';
 import { getSite } from '$lib/server/clients';
 import { breakdown, brandTerms, periodFor, topQueries } from '$lib/server/queries';
 import { ctrOf, isBranded, pctChange } from '$lib/analytics';
@@ -32,6 +35,7 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 	const inc = regexOf(url.searchParams.get('re'));
 	const exc = regexOf(url.searchParams.get('nre'));
 	const terms = brandTerms(site);
+	const vol = volumesFor(site.id);
 	const prev = new Map(topQueries(site.id, p.prevStart, p.prevEnd, f, 20_000).map((r) => [r.query, r]));
 	const rows = topQueries(site.id, p.start, p.end, f, 5000)
 		.map((r) => ({
@@ -42,7 +46,9 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 			position: r.position,
 			clicksDelta: pctChange(r.clicks, prev.get(r.query)?.clicks ?? 0),
 			posChange: prev.has(r.query) ? r.position - prev.get(r.query)!.position : null,
-			branded: isBranded(r.query, terms)
+			branded: isBranded(r.query, terms),
+			volume: volumeOf(vol, r.query)?.volume ?? null,
+			kd: volumeOf(vol, r.query)?.kd ?? null
 		}))
 		.filter((r) => (b === 'brand' ? r.branded : b === 'nonbrand' ? !r.branded : true))
 		.filter((r) => (onlyQuestions ? isQuestionQuery(r.query) : true))
@@ -59,6 +65,20 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 		filters: f,
 		countries: breakdown(site.id, p.start, p.end, 'country').map((c) => c.key),
 		devices: breakdown(site.id, p.start, p.end, 'device').map((c) => c.key),
-		brandTerms: terms
+		brandTerms: terms,
+		openseo: openSeoFor(site.id) ? { fetchedAt: volumesFetchedAt(site.id), known: vol.size, pending: Math.min(VOLUME_BATCH, volumeCandidates(site).length), batch: VOLUME_BATCH } : null
 	};
+};
+
+export const actions: Actions = {
+	/** Ask OpenSEO for the search volume of up to 700 queries not asked in the last 30 days. Spends OpenSEO credits. */
+	oseoVolumes: async ({ params }) => {
+		if (config.readOnly) return fail(403, { error: 'READ_ONLY=1: fetching search volume is disabled (it spends OpenSEO credits).' });
+		try {
+			const r = await fetchVolumes(Number(params.id));
+			return { ok: r.asked ? `OpenSEO returned a search volume for ${r.withVolume} of ${r.asked} searches (the rest are too small to measure).` : 'Every search already has a volume from the last 30 days.' };
+		} catch (e) {
+			return fail(502, { error: e instanceof Error ? e.message : 'OpenSEO failed.' });
+		}
+	}
 };

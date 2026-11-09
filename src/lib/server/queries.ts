@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db, withRegexBudget } from './db';
 import { addDays, daysBetween, eachDay, makePeriod, pacificToday, type Period } from './dates';
 import { fitCtrCurve, isBranded, parseTerms, sumMetrics, type CtrCurve, type Metrics, type PRow, type QPRow, type QRow } from '../analytics';
 import type { SiteRow } from './clients';
@@ -110,7 +110,7 @@ export function topPages(siteId: number, start: string, end: string, f: Filters 
 }
 
 export type PerfDim = 'query' | 'page' | 'country' | 'device' | 'date';
-export interface PerfFilters { country?: string; device?: string; queryContains?: string; pageContains?: string }
+export interface PerfFilters { country?: string; device?: string; queryContains?: string; pageContains?: string; queryRegex?: string; pageRegex?: string; queryExcludes?: string; pageExcludes?: string }
 const PERF_DIMS: readonly string[] = ['query', 'page', 'country', 'device', 'date'];
 const like = likeOf;
 
@@ -123,10 +123,16 @@ export function performanceBy(siteId: number, start: string, end: string, dim: P
 	if (f.device) (parts.push('device = ?'), args.push(f.device));
 	if (f.queryContains) (parts.push("query LIKE ? ESCAPE '\\'"), args.push(like(f.queryContains)));
 	if (f.pageContains) (parts.push("page LIKE ? ESCAPE '\\'"), args.push(like(f.pageContains)));
+	if (f.queryExcludes) (parts.push("query NOT LIKE ? ESCAPE '\\'"), args.push(like(f.queryExcludes)));
+	if (f.pageExcludes) (parts.push("page NOT LIKE ? ESCAPE '\\'"), args.push(like(f.pageExcludes)));
+	// REGEXP calls the regexp() function registered in openDb, which refuses patterns that could run away (safeRegex).
+	if (f.queryRegex) (parts.push('query REGEXP ?'), args.push(f.queryRegex));
+	if (f.pageRegex) (parts.push('page REGEXP ?'), args.push(f.pageRegex));
 	const extra = parts.length ? ' AND ' + parts.join(' AND ') : '';
-	return db()
+	const run = () => db()
 		.prepare(`SELECT ${dim} AS key, SUM(clicks) clicks, SUM(impressions) impressions, ${WPOS} position FROM sa_rows WHERE site_id = ? AND date BETWEEN ? AND ?${extra} GROUP BY ${dim} ORDER BY clicks DESC, impressions DESC LIMIT ?`)
 		.all(siteId, start, end, ...args, limit) as (Metrics & { key: string })[];
+	return f.queryRegex || f.pageRegex ? withRegexBudget(3000, run) : run();
 }
 
 export function queryPageRows(siteId: number, start: string, end: string, minImpressions = 3, limit = 150_000): QPRow[] {

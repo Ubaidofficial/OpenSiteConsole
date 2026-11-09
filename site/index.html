@@ -23,23 +23,12 @@
 <link rel="alternate icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/styles.css?v=817bc7b3a2">
+<link rel="stylesheet" href="/assets/styles.css?v=7854adaa2c">
 <script src="/assets/boot.js"></script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"SEOConsole","applicationCategory":"BusinessApplication","operatingSystem":"Linux, macOS, Docker","description":"Open-source SEO dashboard that finds hidden SEO opportunities across Google Search Console, GA4, Bing and Clarity, and manages all your websites in one place. Includes an MCP server for AI agents that reads by default.","license":"https://www.gnu.org/licenses/agpl-3.0.html","url":"https://seoconsole.app/","codeRepository":"https://github.com/Ubaidofficial/OpenSiteConsole","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
 </script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $9 a month is planned but not open yet."}},
-{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 41 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log."}},
-{"@type":"Question","name":"Where does my data live?","acceptedAnswer":{"@type":"Answer","text":"In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM."}},
-{"@type":"Question","name":"How far back does history go?","acceptedAnswer":{"@type":"Answer","text":"As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has."}},
-{"@type":"Question","name":"Which AI clients work?","acceptedAnswer":{"@type":"Answer","text":"Claude's custom connector works with one-click sign-in, and Claude Code works with a command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, though not every client has been tested."}},
-{"@type": "Question", "name": "How is it different from Google Search Console?", "acceptedAnswer": {"@type": "Answer", "text": "It reads from Search Console, so it does not replace it. It puts every property and Google account in one place, keeps history past 16 months, adds Bing, GA4 and Clarity, and turns the data into a ranked to-do list, SEO tests and a weekly digest. Search Console keeps tools SEOConsole does not copy, such as Removals, Manual actions, Security issues, the Links report and the Request Indexing button itself."}},
-{"@type": "Question", "name": "How does it compare with SEOTesting.com?", "acceptedAnswer": {"@type": "Answer", "text": "Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure; both have LLM tests on AI-assistant sessions from Google Analytics, an internal-linking tool and unlimited users. SEOTesting.com is hosted and costs from $50 a month (its pricing page, read on 7 November 2026), and its internal-linking reports use a monthly credit allowance. SEOConsole is free to self-host for any number of sites, with no credits, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server."}},
-{"@type":"Question","name":"How mature is it?","acceptedAnswer":{"@type":"Answer","text":"Early. It has more than 900 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed. Verification on real accounts is ongoing, so expect to find rough edges and report them."}}
-]}
-</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is it really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $9 a month is planned but not open yet."}},{"@type":"Question","name":"What can an AI agent do with it?","acceptedAnswer":{"@type":"Answer","text":"Read first. The MCP server has 42 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key. The same tools are also a plain REST API, with the same keys and permissions."}},{"@type":"Question","name":"Where does my data live?","acceptedAnswer":{"@type":"Answer","text":"In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM. Whatever an agent reads is sent to that agent’s provider, so connect only agents you trust with that data."}},{"@type":"Question","name":"How far back does history go?","acceptedAnswer":{"@type":"Answer","text":"As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has."}},{"@type":"Question","name":"Which AI clients work?","acceptedAnswer":{"@type":"Answer","text":"Claude’s custom connector works with one-click sign-in, and Claude Code works with a single command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, but only Claude has been confirmed."}},{"@type":"Question","name":"How is it different from Google Search Console?","acceptedAnswer":{"@type":"Answer","text":"It reads from Search Console, so it does not replace it. It puts every property and Google account in one place, keeps history past 16 months, adds Bing, GA4 and Clarity, and turns the data into a ranked to-do list, SEO tests and a weekly digest. Search Console keeps tools SEOConsole does not copy, such as Removals, Manual actions, Security issues, the Links report and the Request Indexing button itself."}},{"@type":"Question","name":"How does it compare with SEOTesting.com?","acceptedAnswer":{"@type":"Answer","text":"Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure; both have LLM tests on AI-assistant sessions from Google Analytics, an internal-linking tool and unlimited users. SEOTesting.com is hosted and costs from $50 a month (its pricing page, read on 7 November 2026), and its internal-linking reports use a monthly credit allowance. SEOConsole is free to self-host for any number of sites, with no credits, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server."}},{"@type":"Question","name":"Can I just ask it questions instead of reading reports?","acceptedAnswer":{"@type":"Answer","text":"Yes. The Ask page in your dashboard is a chat: ask “why did clicks drop?” or “which titles should I rewrite?” and it answers from your own data, with tables and charts, using the same tools as the MCP server. It runs on Claude with your own Anthropic API key, so messages are billed to your account and capped per person per day. It acts as you: a viewer’s chat only reads, and for everyone else each change is shown with Approve and Decline before it runs. It is new and has been tested against a stand-in for the API, not yet on a live key."}},{"@type":"Question","name":"Can it track what AI assistants say about my brand?","acceptedAnswer":{"@type":"Answer","text":"Yes. The AI answers tab puts the questions you choose to ChatGPT, Gemini, Claude and Perplexity every week, with web search on, and records whether your brand is mentioned, whether your pages are cited, and which competitors appear. It covers the essentials; dedicated tools such as Promptwatch go deeper. It uses your own API keys, or one DataForSEO login that also reads ChatGPT and Gemini as people see them in the apps. Every run is billed to your account, so runs are capped per day. It is new and has been tested against each provider’s documented responses, not yet on live accounts."}},{"@type":"Question","name":"Does it work with OpenSEO?","acceptedAnswer":{"@type":"Answer","text":"Yes. Connect your OpenSEO address and API key and each site is linked to its OpenSEO project by domain. Then you get search volume next to your own queries, your best striking-distance searches sent to OpenSEO’s rank tracker after a free cost preview, and OpenSEO’s latest site audit in your to-do list, on the pages that earn clicks. It was checked against a live self-hosted OpenSEO."}},{"@type":"Question","name":"How long does setup take?","acceptedAnswer":{"@type":"Answer","text":"About 20 minutes once the Google sign-in is configured. A set-up guide on the dashboard walks through nine steps in three phases, ticks each one off by itself, and does some in one click, such as switching on the indexing monitor."}},{"@type":"Question","name":"How mature is it?","acceptedAnswer":{"@type":"Answer","text":"Early. It has more than 1,000 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed end to end. Verification on real accounts is ongoing, so expect rough edges and please report them."}}]}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -50,7 +39,7 @@
     <nav class="nav" aria-label="Main">
       <a href="#wins">Hidden wins</a>
       <a href="#product">How it works</a>
-      <a href="#agents">MCP</a>
+      <a href="#agents">Ask &amp; MCP</a>
       <a href="#compare">Compare</a>
       <a href="#self-host">Self-host</a>
       <a href="#faq">FAQ</a>
@@ -73,7 +62,7 @@
         <span class="ln l2"><span class="w">SEO <span class="hl">wins</span> hiding</span></span>
         <span class="ln l3"><span class="w">in your data.</span></span>
       </h1>
-    <p class="lead rv">Find hidden SEO opportunities across all your websites in one dashboard. Search Console shows one property at a time. SEOConsole brings every property from every Google account together with Bing, GA4 and Clarity, and tells you what to fix first.</p>
+    <p class="lead rv">Find hidden SEO opportunities across all your websites in one dashboard. Search Console shows one property at a time; SEOConsole puts every property from every Google account next to Bing, GA4 and Clarity, and tells you exactly what to fix first.</p>
       <div class="cta rv">
         <a class="btn primary" href="#self-host">Try it on demo data<span class="arr" aria-hidden="true">→</span></a>
         <a class="btn ghost" href="#wins">See what it finds</a>
@@ -81,7 +70,7 @@
       <ul class="proof rv" aria-label="The short version">
         <li>No account, no trial clock</li>
         <li>Your data stays in a file on your server</li>
-        <li><b>61</b> MCP tools, read-only until you allow changes</li>
+        <li><b>62</b> MCP tools, read-only until you allow changes</li>
       </ul>
     </div>
 
@@ -145,7 +134,7 @@
         <li><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 5h9M8 10h9M8 15h9"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5l1 1 2-2M3 10l1 1 2-2M3 15l1 1 2-2"/></svg>Ranked to-do list</li><li><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M6 3.5h8l3 4-7 9-7-9z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 7.5h14"/></svg>Hidden SEO wins</li><li><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 3v5L4 16h12L12 8V3M7 3h6"/></svg>SEO and LLM tests</li><li><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8.5 11.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5L10 5"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M11.5 8.5a3.5 3.5 0 0 0-5 0L4 11a3.5 3.5 0 0 0 5 5l1-1"/></svg>Internal-link suggestions</li><li><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 10l14-6-6 14-2-6z"/></svg>Indexing: IndexNow and Bing</li><li><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3a5 5 0 0 0-5 5v3l-1.5 3h13L15 11V8a5 5 0 0 0-5-5zM8 16.5a2 2 0 0 0 4 0"/></svg>Weekly digest and alerts</li><li><img class="lg" src="/assets/logos/mcp.svg" width="18" height="18" alt="">Your AI agent, over MCP</li>
       </ul>
     </div>
-    <p class="fine also">Also <img class="lg" src="/assets/logos/chrome.svg" width="16" height="16" alt="">Chrome UX Report for Core Web Vitals, IndexNow for submitting URLs, and OpenSEO if you run it.</p>
+    <p class="fine also">Also <img class="lg" src="/assets/logos/chrome.svg" width="16" height="16" alt="">Chrome UX Report for Core Web Vitals, IndexNow for submitting URLs, OpenSEO and DataForSEO if you use them, and the AI assistants’ own APIs for AI answers.</p>
   </div>
 </section>
 
@@ -310,12 +299,27 @@
   <div class="wrap">
     <div class="agent-head">
       <div>
-      <p class="kicker mono rv">MCP</p>
-      <h2 id="h-agents" class="h-lg rv">Ask your agent about every site at once.</h2>
-      <p class="sub rv">SEOConsole includes a Model Context Protocol server. Your agent calls 41 tools that read your own stored data, so one question can cover every site, every source and all the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
+      <p class="kicker mono rv">Ask</p>
+      <h2 id="h-agents" class="h-lg rv">Ask about every site at once.</h2>
+      <p class="sub rv">Two ways in. Type your question into the chat built into your dashboard, or connect the AI app you already use: SEOConsole includes a Model Context Protocol server. Your agent calls 42 tools that read your own stored data, so one question can cover every site, every source and all the history you have kept. If you allow it, 20 more let it act on what it finds.</p>
       </div>
     </div>
 
+    <article class="card c-wide rv">
+      <div>
+      <p class="ck mono"><span class="srcs" title="Runs on Claude"><span class="sr">Runs on Claude: </span><img class="lg" src="/assets/logos/claude.svg" width="14" height="14" alt=""></span>Ask your data</p>
+      <h3>Skip the reports. Just ask.</h3>
+      <p>Type “why did clicks drop?” and get the answer from your own data in seconds: the pages and searches that moved, a chart, and what to do next. It can fix things too, and every change waits for your OK.</p>
+      <p class="fine left">Illustration, not real data. Runs on Claude with your own Anthropic key.</p>
+      </div>
+      <div class="ask" aria-hidden="true">
+      <p class="ask-q">Why did clicks drop last week?</p>
+      <p class="ask-st mono"><span>✓ Checked trends</span><span>✓ Read history</span></p>
+      <p class="ask-a">Two guides on <b>trailmaps</b> slipped from position 3 to 7 after Tuesday’s title change. Roll the titles back, or test a new pair?</p>
+      </div>
+    </article>
+
+    <p class="agent-or mono rv">Or bring your own agent</p>
     <div class="agent-grid">
       <div class="term rv" data-term role="group" aria-label="Example conversation with an agent connected to SEOConsole">
         <div class="term-bar mono"><i></i><i></i><i></i><span>agent · seoconsole</span><em>demo data</em></div>
@@ -379,7 +383,7 @@
     </div>
 
     <ul class="stats rv" aria-label="MCP server facts">
-      <li><b data-count="41">41</b><span>tools that read</span></li>
+      <li><b data-count="42">42</b><span>tools that read</span></li>
       <li><b>20</b><span>that act, only if you allow it; deleting is a separate level</span></li>
       <li><b>OAuth</b><span>or API key, scoped per site</span></li>
       <li><b>Audit log</b><span>of every change, with rate limits per key</span></li>
@@ -389,14 +393,23 @@
 
 <!-- ───────────── MORE (bento) ───────────── -->
 <section class="sec more" id="more" aria-labelledby="h-more">
-  <div class="wrap">
+  <div class="wrap" data-tabs>
     <p class="kicker mono rv">Also included</p>
-    <h2 id="h-more" class="h-lg rv">The rest of the toolkit.</h2>
+    <h2 id="h-more" class="h-lg rv">Everything else you’d normally pay extra for.</h2>
+    <p class="sub rv">Twenty more tools in the same app, free, in four groups.</p>
 
-    <div class="bento">
+    <div class="tk-tabs" role="tablist" aria-label="Choose what to see">
+      <button type="button" role="tab" id="tkt-analyse" aria-controls="tk-analyse" aria-selected="true">Analyse<span>6</span></button>
+      <button type="button" role="tab" id="tkt-fix" aria-controls="tk-fix" aria-selected="false" tabindex="-1">Fix and index<span>5</span></button>
+      <button type="button" role="tab" id="tkt-ai" aria-controls="tk-ai" aria-selected="false" tabindex="-1">AI search<span>3</span></button>
+      <button type="button" role="tab" id="tkt-report" aria-controls="tk-report" aria-selected="false" tabindex="-1">Report and connect<span>6</span></button>
+    </div>
+    <div class="bento tk" data-tabs-panels>
+      <div class="tk-g" id="tk-analyse" role="tabpanel" aria-labelledby="tkt-analyse" data-n="6">
+      <p class="tk-h"><b>Analyse</b> Read every movement against history, Bing and real visitors.</p>
       <article class="card c-history rv">
         <p class="ck mono"><span class="srcs" title="Reads Search Console, Bing, GA4"><span class="sr">Reads Search Console, Bing, GA4: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>History</p>
-        <h3>History past 16 months.</h3>
+        <h3>Keep every month, not just the last 16.</h3>
         <p>Search Console keeps 16 months. SEOConsole keeps everything it has synced, in a file you own, so last year is still there next year.</p>
         <svg class="tl-svg" viewBox="0 0 600 190" role="img" aria-label="Illustration: your archive reaches far back, while Search Console's own window covers only the last 16 months.">
           <defs><clipPath id="gwin"><rect x="388" y="0" width="212" height="190"/></clipPath><linearGradient id="tlg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2f6b00" stop-opacity=".16"/><stop offset="1" stop-color="#2f6b00" stop-opacity="0"/></linearGradient></defs>
@@ -410,33 +423,12 @@
         <ul class="legend mono" aria-hidden="true"><li><i class="k a"></i>your archive, kept</li><li><i class="k g"></i>what Search Console still shows</li></ul>
         <p class="fine left">Illustration, not real data.</p>
       </article>
-      <article class="card c-audit rv">
-        <p class="ck mono"><span class="srcs" title="Reads Search Console, GA4, Tag Manager, Clarity"><span class="sr">Reads Search Console, GA4, Tag Manager, Clarity: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/tag-manager.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/clarity.png" width="14" height="14" alt=""></span>Tracking audit</p>
-        <h3>Is your tracking telling the truth?</h3>
-        <p>Cross-checks Search Console, GA4, Tag Manager and Clarity, then says what is broken.</p>
-        <ul class="chk">
-          <li class="ok v-i0"><span class="ci"></span><img src="/assets/logos/search-console.svg" width="16" height="16" alt=""><span>Search Console connected</span></li>
-          <li class="ok v-i1"><span class="ci"></span><img src="/assets/logos/ga4.svg" width="16" height="16" alt=""><span>GA4 receiving organic sessions</span></li>
-          <li class="no v-i2"><span class="ci"></span><img src="/assets/logos/tag-manager.svg" width="16" height="16" alt=""><span>Tag Manager sends to <code>G-OLDSITE01</code>, another property</span></li>
-          <li class="no v-i3"><span class="ci"></span><img src="/assets/logos/clarity.png" width="16" height="16" alt=""><span>Clarity connected, but its script is not on the pages</span></li>
-        </ul>
-        <p class="fine left">Demo data · pixelforge.example. A missing Clarity script can be added through Tag Manager in one click, after a preview.</p>
-      </article>
-      <article class="card c-digest rv">
-        <p class="ck mono"><span class="srcs" title="Reads Search Console, Bing, GA4"><span class="sr">Reads Search Console, Bing, GA4: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>Digest and alerts</p>
-        <h3>Monday’s to-do list, in Slack.</h3>
-        <p>A weekly summary of what to do first, plus alerts for blocking problems, sent to Slack, Discord or any webhook.</p>
-        <div class="msg">
-          <div class="msg-h"><img src="/assets/brand/mark-dark.svg" width="28" height="28" alt=""><b>SEOConsole</b><span class="mono">Weekly digest · Mon</span></div>
-          <p class="msg-l">Clicks across 6 sites: <b>23,007</b> this week, flat on the week before.</p>
-          <ol class="alist" data-alist aria-label="What to do first, from the demo digest">
-            <li><div><span class="tag block">BLOCKING</span><b>Tag Manager sends to a different GA4 property</b><small>pixelforge.example</small></div></li>
-            <li><div><span class="tag block">BLOCKING</span><b>The container has no published version</b><small>trailmaps.example</small></div></li>
-            <li><div><span class="tag gain">≈3,704 clicks / 28d</span><b>/guides/hiking-maps-3 converts better than average but ranks 10.7</b><small>trailmaps.example</small></div></li>
-            <li><div><span class="tag gain">≈1,684 clicks / 28d</span><b>“best hiking maps” is at position 6.5, within reach of the top 3</b><small>trailmaps.example</small></div></li>
-          </ol>
-        </div>
-        <p class="fine left">From the weekly digest on the demo data.</p>
+      <article class="card c-bing rv">
+        <p class="ck mono"><span class="srcs" title="Reads Bing, Search Console"><span class="sr">Reads Bing, Search Console: </span><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Bing beside Google</p>
+        <h3>The search engine you’re not checking.</h3>
+        <p>Bing clicks, queries and pages next to Google’s, plus where Bing already ranks you higher.</p>
+        <ul class="hbars ai"><li class="v-i0"><span class="nm"><img class="lg" src="/assets/logos/google.svg" width="16" height="16" alt="">Google</span><span class="hb"><i class="v-w100p"></i></span><b>16,051</b></li><li class="v-i1"><span class="nm"><img class="lg" src="/assets/logos/bing.svg" width="16" height="16" alt="">Bing</span><span class="hb bing"><i class="v-w16p"></i></span><b>2,503</b></li></ul>
+        <p class="fine left">Demo data · greenleaf.example, clicks in 28 days.</p>
       </article>
       <article class="card c-vitals rv">
         <p class="ck mono"><span class="srcs" title="Reads Chrome UX Report"><span class="sr">Reads Chrome UX Report: </span><img class="lg" src="/assets/logos/chrome.svg" width="14" height="14" alt=""></span>Core Web Vitals</p>
@@ -464,37 +456,71 @@
         </div>
         <p class="fine left">Demo data · bar shows each page's share of impressions.</p>
       </article>
-      <article class="card c-sitemap rv">
-        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Sitemap coverage</p>
-        <h3>URLs Google never shows.</h3>
-        <ul class="fun"><li class="v-8f8c107"><b>21</b><span>in your sitemaps</span></li><li class="v-a60485c"><b>13</b><span>shown in search</span></li><li class="bad v-939a33f"><b>6</b><span>never shown</span></li></ul>
-        <p class="fine left">Demo data · coffeelab.example, 90 days. Never shown is not the same as not indexed.</p>
-      </article>
-      <article class="card c-ai rv">
-        <p class="ck mono"><span class="srcs" title="Reads GA4"><span class="sr">Reads GA4: </span><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>AI assistant traffic</p>
-        <h3>Visits from ChatGPT and co.</h3>
-        <ul class="hbars ai"><li class="v-i0"><span>ChatGPT</span><span class="hb"><i class="v-w100p"></i></span><b>1,074</b></li><li class="v-i1"><span>Perplexity</span><span class="hb"><i class="v-w32p"></i></span><b>349</b></li><li class="v-i2"><span>Gemini</span><span class="hb"><i class="v-w28p"></i></span><b>304</b></li><li class="v-i3"><span>Claude</span><span class="hb"><i class="v-w18p"></i></span><b>192</b></li><li class="v-i4"><span>Copilot</span><span class="hb"><i class="v-w9p"></i></span><b>98</b></li></ul>
-        <p class="fine left">Demo data · greenleaf.example, 28 days. Assistants that send no referrer count as Direct.</p>
-      </article>
-      <article class="card c-bing rv">
-        <p class="ck mono"><span class="srcs" title="Reads Bing, Search Console"><span class="sr">Reads Bing, Search Console: </span><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Bing beside Google</p>
-        <h3>The other search engine.</h3>
-        <ul class="hbars ai"><li class="v-i0"><span>Google</span><span class="hb"><i class="v-w100p"></i></span><b>16,051</b></li><li class="v-i1"><span>Bing</span><span class="hb bing"><i class="v-w16p"></i></span><b>2,503</b></li></ul>
-        <p>Bing clicks, queries and pages next to Google’s, plus where Bing already ranks you higher.</p>
-        <p class="fine left">Demo data · greenleaf.example, clicks in 28 days.</p>
-      </article>
-      <article class="card c-index rv">
-        <p class="ck mono"><span class="srcs" title="Reads Bing, Search Console"><span class="sr">Reads Bing, Search Console: </span><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Indexing</p>
-        <h3>Indexing, the official routes.</h3>
-        <p>Send URLs to IndexNow and Bing, queue the overflow, and re-check on day 1, 3 and 5. Google has no request call for ordinary pages, so the app prepares your Request Indexing list instead.</p>
-        <ol class="tl"><li><b>Sent</b><span>IndexNow · Bing</span></li><li><b>Day 1</b><span>re-check</span></li><li><b>Day 3</b><span>re-check</span></li><li><b>Day 5</b><span>verdict</span></li></ol>
-      </article>
       <article class="card c-updates rv">
         <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Google updates</p>
         <h3>Was it you, or Google?</h3>
         <p>Ranking-update dates on your charts, your tests and your digest, so you can rule out an update before blaming your own change.</p>
         <svg class="upd" viewBox="0 0 400 110" aria-hidden="true"><rect class="ub" x="170" y="6" width="70" height="94" rx="6"/><text x="205" y="22" text-anchor="middle" class="ut mono">core update</text><path class="line draw" pathLength="1" d="M0 70 C40 66 70 74 110 64 S160 58 180 62 S210 92 240 88 S300 70 330 76 S380 60 400 62"/></svg>
         <p class="fine left">Illustration, not real data.</p>
+      </article>
+      </div>
+      <div class="tk-g" id="tk-fix" role="tabpanel" aria-labelledby="tkt-fix" data-n="5">
+      <p class="tk-h"><b>Fix and index</b> Catch what blocks pages and tracking, then get pages crawled.</p>
+      <article class="card c-sitemap rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Sitemap coverage</p>
+        <h3>URLs Google never shows.</h3>
+        <ul class="fun"><li class="v-8f8c107"><b>21</b><span>in your sitemaps</span></li><li class="v-a60485c"><b>13</b><span>shown in search</span></li><li class="bad v-939a33f"><b>6</b><span>never shown</span></li></ul>
+        <p class="fine left">Demo data · coffeelab.example, 90 days. Never shown is not the same as not indexed.</p>
+      </article>
+      <article class="card c-index rv">
+        <p class="ck mono"><span class="srcs" title="Reads Bing, Search Console"><span class="sr">Reads Bing, Search Console: </span><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Indexing</p>
+        <h3>Get pages indexed, the official way.</h3>
+        <p>Send URLs to IndexNow and Bing, queue the overflow, and re-check on day 1, 3 and 5. Google has no request call for ordinary pages, so the app prepares your Request Indexing list instead.</p>
+        <ol class="tl"><li><b>Sent</b><span>IndexNow · Bing</span></li><li><b>Day 1</b><span>re-check</span></li><li><b>Day 3</b><span>re-check</span></li><li><b>Day 5</b><span>verdict</span></li></ol>
+      </article>
+      <article class="card c-new rv">
+        <p class="ck mono">robots.txt watch</p>
+        <h3>A robots.txt slip, caught the next day.</h3>
+        <p>One bad line in robots.txt can quietly block a whole section from Google. SEOConsole reads it every day, keeps every change, and tests the pages that earn clicks against the rules Googlebot follows.</p>
+        <ul class="roles"><li><b>Blocks pages with clicks</b><span>blocking alert</span></li><li><b>Errors two days running</b><span>blocking alert</span></li><li><b>Rules changed</b><span>kept, to review</span></li></ul>
+      </article>
+      <article class="card c-audit rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console, GA4, Tag Manager, Clarity"><span class="sr">Reads Search Console, GA4, Tag Manager, Clarity: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/tag-manager.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/clarity.png" width="14" height="14" alt=""></span>Tracking audit</p>
+        <h3>Is your tracking telling the truth?</h3>
+        <p>Cross-checks Search Console, GA4, Tag Manager and Clarity, then says what is broken.</p>
+        <ul class="chk">
+          <li class="ok v-i0"><span class="ci"></span><img src="/assets/logos/search-console.svg" width="16" height="16" alt=""><span>Search Console connected</span></li>
+          <li class="ok v-i1"><span class="ci"></span><img src="/assets/logos/ga4.svg" width="16" height="16" alt=""><span>GA4 receiving organic sessions</span></li>
+          <li class="no v-i2"><span class="ci"></span><img src="/assets/logos/tag-manager.svg" width="16" height="16" alt=""><span>Tag Manager sends to <code>G-OLDSITE01</code>, another property</span></li>
+          <li class="no v-i3"><span class="ci"></span><img src="/assets/logos/clarity.png" width="16" height="16" alt=""><span>Clarity connected, but its script is not on the pages</span></li>
+        </ul>
+        <p class="fine left">Demo data · pixelforge.example. A missing Clarity script can be added through Tag Manager in one click, after a preview.</p>
+      </article>
+      <article class="card c-new rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Internal links</p>
+        <h3>Which pages should link where.</h3>
+        <p>For pages close to the top, the pages that already mention their searches but don’t link to them, with the anchor text as written. No credits.</p>
+        <ul class="tiles4"><li><b data-count="15">15</b><span>pages crawled</span></li><li><b data-count="115">115</b><span>links found</span></li><li><b data-count="50">50</b><span>suggestions</span></li><li><b data-count="1">1</b><span>orphan page</span></li></ul>
+        <p class="fine left">Demo data · greenleaf.example.</p>
+      </article>
+      </div>
+      <div class="tk-g" id="tk-ai" role="tabpanel" aria-labelledby="tkt-ai" data-n="3">
+      <p class="tk-h"><b>AI search</b> See what AI assistants send you and what they say about you.</p>
+      <article class="card c-ai rv">
+        <p class="ck mono"><span class="srcs" title="Reads GA4"><span class="sr">Reads GA4: </span><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>AI assistant traffic</p>
+        <h3>Visits from ChatGPT and co.</h3>
+        <ul class="hbars ai"><li class="v-i0"><span class="nm"><img class="lg" src="/assets/logos/openai.svg" width="16" height="16" alt="">ChatGPT</span><span class="hb"><i class="v-w100p"></i></span><b>1,074</b></li><li class="v-i1"><span class="nm"><img class="lg" src="/assets/logos/perplexity.svg" width="16" height="16" alt="">Perplexity</span><span class="hb"><i class="v-w32p"></i></span><b>349</b></li><li class="v-i2"><span class="nm"><img class="lg" src="/assets/logos/gemini.svg" width="16" height="16" alt="">Gemini</span><span class="hb"><i class="v-w28p"></i></span><b>304</b></li><li class="v-i3"><span class="nm"><img class="lg" src="/assets/logos/claude.svg" width="16" height="16" alt="">Claude</span><span class="hb"><i class="v-w18p"></i></span><b>192</b></li><li class="v-i4"><span class="nm"><img class="lg" src="/assets/logos/copilot.svg" width="16" height="16" alt="">Copilot</span><span class="hb"><i class="v-w9p"></i></span><b>98</b></li></ul>
+        <p class="fine left">Demo data · greenleaf.example, 28 days. Assistants that send no referrer count as Direct.</p>
+      </article>
+      <article class="card c-new rv">
+        <p class="ck mono"><span class="srcs" title="Asks ChatGPT, Gemini, Claude, Perplexity"><span class="sr">Asks ChatGPT, Gemini, Claude, Perplexity: </span><img class="lg" src="/assets/logos/openai.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/gemini.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/claude.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/perplexity.svg" width="14" height="14" alt=""></span>AI answers</p>
+        <h3>What do AI assistants say about you?</h3>
+        <p>Put your customers’ questions to ChatGPT, Gemini, Claude and Perplexity every week. See who gets mentioned, whose pages get cited, and where competitors win the answer. Bring your own API keys, or one DataForSEO login.</p>
+        <ul class="res">
+          <li><span class="mono">greenleaf.example (you)</span><b class="up">71%</b><small>of answers mention it · 3 in 10 cite one of its pages</small></li>
+          <li><span class="mono">acme-garden.example</span><b>57%</b><small>of answers mention it · never cited</small></li>
+        </ul>
+        <p class="fine left">Illustration, not real data: simulated answers on the demo data.</p>
       </article>
       <article class="card c-new rv">
         <p class="ck mono"><span class="srcs" title="Reads GA4"><span class="sr">Reads GA4: </span><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>LLM tests</p>
@@ -506,12 +532,34 @@
         </ul>
         <p class="fine left">Demo data · AI-assistant sessions against control pages.</p>
       </article>
+      </div>
+      <div class="tk-g" id="tk-report" role="tabpanel" aria-labelledby="tkt-report" data-n="6">
+      <p class="tk-h"><b>Report and connect</b> Reports, your team, and the tools you already use.</p>
+      <article class="card c-digest rv">
+        <p class="ck mono"><span class="srcs" title="Reads Search Console, Bing, GA4"><span class="sr">Reads Search Console, Bing, GA4: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/bing.svg" width="14" height="14" alt=""><img class="lg" src="/assets/logos/ga4.svg" width="14" height="14" alt=""></span>Digest and alerts</p>
+        <h3>Monday’s to-do list, in Slack.</h3>
+        <p>A weekly summary of what to do first, a monthly report, and alerts for blocking problems, sent to Slack, Discord or any webhook.</p>
+        <div class="msg">
+          <div class="msg-h"><img src="/assets/brand/mark-dark.svg" width="28" height="28" alt=""><b>SEOConsole</b><span class="mono">Weekly digest · Mon</span></div>
+          <p class="msg-l">Clicks across 6 sites: <b>23,007</b> this week, flat on the week before.</p>
+          <ol class="alist" data-alist aria-label="What to do first, from the demo digest">
+            <li><div><span class="tag block">BLOCKING</span><b>Tag Manager sends to a different GA4 property</b><small>pixelforge.example</small></div></li>
+            <li><div><span class="tag block">BLOCKING</span><b>The container has no published version</b><small>trailmaps.example</small></div></li>
+            <li><div><span class="tag gain">≈3,704 clicks / 28d</span><b>/guides/hiking-maps-3 converts better than average but ranks 10.7</b><small>trailmaps.example</small></div></li>
+            <li><div><span class="tag gain">≈1,684 clicks / 28d</span><b>“best hiking maps” is at position 6.5, within reach of the top 3</b><small>trailmaps.example</small></div></li>
+          </ol>
+        </div>
+        <p class="fine left">From the weekly digest on the demo data.</p>
+      </article>
       <article class="card c-new rv">
-        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Internal links</p>
-        <h3>Which pages should link where.</h3>
-        <p>For pages close to the top, the pages that already mention their searches but don’t link to them, with the anchor text as written. No credits.</p>
-        <ul class="tiles4"><li><b data-count="15">15</b><span>pages crawled</span></li><li><b data-count="115">115</b><span>links found</span></li><li><b data-count="50">50</b><span>suggestions</span></li><li><b data-count="1">1</b><span>orphan page</span></li></ul>
-        <p class="fine left">Demo data · greenleaf.example.</p>
+        <p class="ck mono"><span class="srcs" title="Reads Search Console"><span class="sr">Reads Search Console: </span><img class="lg" src="/assets/logos/search-console.svg" width="14" height="14" alt=""></span>Monthly report</p>
+        <h3>A monthly report your boss will read.</h3>
+        <p>On the 4th of every month: each site’s clicks against last month and last year, in sentences you can forward as they are. A change is called real only when it beats normal variation.</p>
+        <ul class="res">
+          <li><span class="mono">trailmaps.example</span><b>28,725</b><small>clicks in October, about the same a day as in September</small></li>
+          <li><span class="mono">coffeelab.example</span><b>15,456</b><small>clicks in October, about the same a day as in September</small></li>
+        </ul>
+        <p class="fine left">Demo data · the October report.</p>
       </article>
       <article class="card c-new rv">
         <p class="ck mono">Team</p>
@@ -519,12 +567,33 @@
         <p>Unlimited people, each with a role and, if you like, only some sites. Invite links work once and expire after 7 days.</p>
         <ul class="roles"><li><b>Owner</b><span>everything</span></li><li><b>Admin</b><span>team, keys, connections</span></li><li><b>Editor</b><span>sync, test, submit</span></li><li><b>Viewer</b><span>read only</span></li></ul>
       </article>
+      <article class="card c-new rv">
+        <p class="ck mono">Set-up guide</p>
+        <h3>From sign-in to useful in about 20 minutes.</h3>
+        <p>A guide on your dashboard walks you to a working setup. It ticks itself off, shows what each step adds, in your own numbers, and does some steps for you in one click.</p>
+        <ul class="tiles4"><li><b data-count="9">9</b><span>steps</span></li><li><b data-count="3">3</b><span>phases: connect, act, automate</span></li><li><b data-count="20">20</b><span>minutes, about</span></li><li><b data-count="2">2</b><span>done in one click</span></li></ul>
+      </article>
+      <article class="card c-new rv">
+        <p class="ck mono">OpenSEO</p>
+        <h3>Already run OpenSEO? Plug it in.</h3>
+        <p>Search volume beside your own queries. Your best striking-distance searches sent straight to its rank tracker, after a free cost preview. Its site audit, ranked by the pages that actually earn clicks.</p>
+        <ul class="roles"><li><b>Search volume</b><span>beside every query</span></li><li><b>Rank tracking</b><span>searches at 4 to 20</span></li><li><b>Site audit</b><span>issues on pages with clicks</span></li></ul>
+      </article>
+      <article class="card c-new rv">
+        <p class="ck mono">REST API</p>
+        <h3>Plug it into anything.</h3>
+        <p>Every tool your agent uses is also a REST endpoint, with the same keys, site limits and permissions. Pull your data into a spreadsheet, a dashboard or a script.</p>
+        <pre class="snip mono"><code>GET /api/v1/get_quick_wins?site=1
+Authorization: Bearer osc_…</code></pre>
+        <ul class="roles"><li><b>GET /api/v1</b><span>lists every endpoint</span></li><li><b>GET</b><span>reads, nothing changes</span></li><li><b>POST</b><span>acts, only if the key allows</span></li></ul>
+      </article>
+      </div>
     </div>
 
     <div class="not rv">
       <h3>What it doesn’t do</h3>
       <ul>
-        <li><b>No rank tracker or backlink index.</b> It works from what Google, Bing, GA4 and Clarity already know about your sites.</li>
+        <li><b>No rank tracker or backlink index of its own.</b> It works from what Google, Bing, GA4 and Clarity already know about your sites; if you run OpenSEO, it hands your best searches to OpenSEO’s rank tracker.</li>
         <li><b>No AI writing.</b> It tells you which page to work on and why. The changes are yours to make.</li>
         <li><b>No history from before you connect</b> beyond the 16 months Google still holds on that day.</li>
         <li><b>No hosted version yet.</b> You run it yourself, on your computer or a server.</li>
@@ -539,7 +608,7 @@
     <p class="kicker mono rv">Compare</p>
     <h2 id="h-compare" class="h-lg rv">More features. A fraction of the price.</h2>
     <p class="sub rv">Everything the paid tools charge for, free to self-host. Read from each tool’s own public pages on 7 and 8 November 2026; where something isn’t on their pages it says “not stated”, not “no”.</p>
-    <div class="ctable rv" tabindex="0" role="region" aria-label="Comparison table: SEOConsole, Google Search Console, SEOTesting.com, GSC Wizard and SEO Stack">
+    <div class="ctable rv" id="cmp-table" tabindex="0" role="region" aria-label="Comparison table: SEOConsole, Google Search Console, SEOTesting.com, GSC Wizard and SEO Stack">
       <table>
         <thead><tr><td></td><th scope="col" class="us"><img class="lg" src="/assets/brand/mark-dark.svg" width="20" height="20" alt="">SEOConsole</th><th scope="col"><img class="lg" src="/assets/logos/search-console.svg" width="20" height="20" alt="">Search Console</th><th scope="col">SEOTesting.com</th><th scope="col">GSC Wizard</th><th scope="col">SEO Stack</th></tr></thead>
         <tbody>
@@ -547,24 +616,29 @@
           <tr><th scope="row">History past 16 months</th><td><span class="v y">Yes</span><small>Kept from your first sync</small></td><td><span class="v n">No</span><small>About 16 months</small></td><td><span class="v u">Not stated</span></td><td><span class="v p">Partly</span><small>Up to 10 years, on storage plans only</small></td><td><span class="v y">Yes</span><small>60 or 120+ months by plan</small></td></tr>
           <tr><th scope="row">Bing beside Google</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span><small>Plus Yandex</small></td><td><span class="v u">Not stated</span></td></tr>
           <tr><th scope="row">GA4 beside Search Console</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
-          <tr><th scope="row">Clarity and Tag Manager, with a tracking audit</th><td><span class="v y">Yes</span><small>And one-click Clarity install</small></td><td><span class="v n">No</span></td><td><span class="v u">Not stated</span></td><td><span class="v u">Not stated</span></td><td><span class="v u">Not stated</span></td></tr>
+          <tr><th scope="row">Chat with your data, inside the app</th><td><span class="v y">Yes</span><small>Claude, your own key; changes wait for your OK</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span><small>Its AI assistant</small></td></tr>
           <tr><th scope="row">SEO tests with a control group and significance</th><td><span class="v y">Yes</span><small>Before/after, split and redirect</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span><small>Before/after, split and switch</small></td><td><span class="v y">Yes</span><small>A/B with p-values</small></td><td><span class="v p">Partly</span><small>Before/after only</small></td></tr>
-          <tr><th scope="row">LLM tests: AI-assistant visits before and after a change</th><td><span class="v y">Yes</span><small>From GA4</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span><small>From GA4</small></td><td><span class="v u">Not stated</span></td><td><span class="v p">Partly</span><small>AI-visibility before/after</small></td></tr>
-          <tr><th scope="row">Internal-link suggestions</th><td><span class="v y">Yes</span><small>No credits</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span><small>Monthly credit allowance</small></td><td><span class="v u">Not stated</span></td><td><span class="v p">Partly</span><small>Within its recommendations</small></td></tr>
-          <tr><th scope="row">Decay, cannibalization, striking distance and CTR gaps</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
-          <tr><th scope="row">AI-assistant traffic by page</th><td><span class="v y">Yes</span><small>ChatGPT, Perplexity, Gemini, Claude, Copilot</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
-          <tr><th scope="row">Core Web Vitals from real users</th><td><span class="v y">Yes</span><small>Stored daily</small></td><td><span class="v y">Yes</span><small>Core Web Vitals report</small></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span><small>In its site audit</small></td></tr>
           <tr><th scope="row">Indexing toolkit: IndexNow, Bing, request list, re-checks</th><td><span class="v y">Yes</span></td><td><span class="v p">Partly</span><small>Request Indexing button, by hand</small></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span><small>Bulk inspection, IndexNow, tracker</small></td><td><span class="v p">Partly</span><small>Indexing checks</small></td></tr>
-          <tr><th scope="row">Weekly digest and alerts to Slack, Discord or a webhook</th><td><span class="v y">Yes</span></td><td><span class="v p">Partly</span><small>Email messages about issues</small></td><td><span class="v y">Yes</span><small>Monthly report, daily email</small></td><td><span class="v y">Yes</span><small>Slack, Teams, webhooks</small></td><td><span class="v p">Partly</span><small>PDF reports by email</small></td></tr>
           <tr><th scope="row">MCP server for AI agents</th><td><span class="v y">Yes</span><small>Reads by default; acts only if you allow</small></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
-          <tr><th scope="row">Team members</th><td><span class="v y">Yes</span><small>Unlimited, free, with roles</small></td><td><span class="v y">Yes</span><small>Per property</small></td><td><span class="v y">Yes</span><small>Unlimited</small></td><td><span class="v p">Partly</span><small>1 to 10 seats, then €9 each</small></td><td><span class="v p">Partly</span><small>5 to 15 by plan</small></td></tr>
+          <tr><th scope="row">Weekly and monthly reports, alerts to Slack, Discord or a webhook</th><td><span class="v y">Yes</span><small>Monthly report in plain sentences</small></td><td><span class="v p">Partly</span><small>Email messages about issues</small></td><td><span class="v y">Yes</span><small>Monthly report, daily email</small></td><td><span class="v y">Yes</span><small>Slack, Teams, webhooks</small></td><td><span class="v p">Partly</span><small>PDF reports by email</small></td></tr>
           <tr><th scope="row">Your data stays on your server</th><td><span class="v y">Yes</span><small>When self-hosted</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v n">No</span><small>Hosted</small></td><td><span class="v n">No</span><small>Hosted</small></td><td><span class="v n">No</span><small>Hosted</small></td></tr>
+          <tr class="x"><th scope="row">Clarity and Tag Manager, with a tracking audit</th><td><span class="v y">Yes</span><small>And one-click Clarity install</small></td><td><span class="v n">No</span></td><td><span class="v u">Not stated</span></td><td><span class="v u">Not stated</span></td><td><span class="v u">Not stated</span></td></tr>
+          <tr class="x"><th scope="row">LLM tests: AI-assistant visits before and after a change</th><td><span class="v y">Yes</span><small>From GA4</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span><small>From GA4</small></td><td><span class="v u">Not stated</span></td><td><span class="v p">Partly</span><small>AI-visibility before/after</small></td></tr>
+          <tr class="x"><th scope="row">Internal-link suggestions</th><td><span class="v y">Yes</span><small>No credits</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span><small>Monthly credit allowance</small></td><td><span class="v u">Not stated</span></td><td><span class="v p">Partly</span><small>Within its recommendations</small></td></tr>
+          <tr class="x"><th scope="row">Decay, cannibalization, striking distance and CTR gaps</th><td><span class="v y">Yes</span></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
+          <tr class="x"><th scope="row">AI-assistant traffic by page</th><td><span class="v y">Yes</span><small>ChatGPT, Perplexity, Gemini, Claude, Copilot</small></td><td><span class="v n">No</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span></td></tr>
+          <tr class="x"><th scope="row">Core Web Vitals from real users</th><td><span class="v y">Yes</span><small>Stored daily</small></td><td><span class="v y">Yes</span><small>Core Web Vitals report</small></td><td><span class="v u">Not stated</span></td><td><span class="v y">Yes</span></td><td><span class="v y">Yes</span><small>In its site audit</small></td></tr>
+          <tr class="x"><th scope="row">AI answers: what assistants say about you, and what they cite</th><td><span class="v p">Partly</span><small>ChatGPT, Gemini, Claude, Perplexity; your keys or DataForSEO</small></td><td><span class="v n">No</span></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span><small>AI visibility tracking</small></td></tr>
+          <tr class="x"><th scope="row">Daily robots.txt watch</th><td><span class="v y">Yes</span><small>Tests pages with clicks against the rules</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v y">Yes</span><small>Within its daily watch</small></td><td><span class="v x" aria-label="Not compared">—</span></td><td><span class="v x" aria-label="Not compared">—</span></td></tr>
+          <tr class="x"><th scope="row">REST API</th><td><span class="v y">Yes</span><small>Same keys and permissions as MCP</small></td><td><span class="v y">Yes</span><small>Search Console API</small></td><td><span class="v y">Yes</span><small>Listed with its MCP server</small></td><td><span class="v y">Yes</span></td><td><span class="v n">No</span><small>Not out yet, its own words</small></td></tr>
+          <tr class="x"><th scope="row">Team members</th><td><span class="v y">Yes</span><small>Unlimited, free, with roles</small></td><td><span class="v y">Yes</span><small>Per property</small></td><td><span class="v y">Yes</span><small>Unlimited</small></td><td><span class="v p">Partly</span><small>1 to 10 seats, then €9 each</small></td><td><span class="v p">Partly</span><small>5 to 15 by plan</small></td></tr>
         </tbody>
         <tfoot>
           <tr class="price"><th scope="row">Price</th><td><b>Free to self-host</b><small>Every feature, unlimited sites and users. Hosted plan planned at $9 a month.</small></td><td><b>Free</b></td><td><b>$50 a month</b><small>1 site · $125 for 5 · $375 for 20</small></td><td><b>€17 a month</b><small>15 properties · €39 for 75 · €249 for 650, excl. VAT</small></td><td><b>$129.99 a month</b><small>10 sites · $349.99 for 30 · $679.99 for 200</small></td></tr>
         </tfoot>
       </table>
     </div>
+    <p class="cmp-more"><button class="btn ghost small" type="button" data-more aria-expanded="false" aria-controls="cmp-table">Show all 20 rows</button></p>
     <p class="fine">Prices and features change, so check their sites. Every claim, its source, and the things each tool does that SEOConsole doesn’t are in <a href="https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/src/lib/compare.ts" rel="noopener">src/lib/compare.ts</a> and the app’s Compare pages. “—” means not compared.</p>
   </div>
 </section>
@@ -614,13 +688,17 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
     <h2 id="h-faq" class="h-lg rv">Common questions.</h2>
     <div class="qa rv">
       <details><summary>Is it really free?</summary><p>Yes. It is open source under the AGPL-3.0 licence and free to self-host, with every feature included. A hosted plan at $9 a month is planned but not open yet.</p></details>
-      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 41 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key.</p></details>
+      <details><summary>What can an AI agent do with it?</summary><p>Read first. The MCP server has 42 tools that read your stored search data, and 20 that can change things: mark a finding done, log a change, start a test, refresh data, run page checks, send URLs to Bing through IndexNow or Bing's own submission API, submit a sitemap, ask for indexing checks, set brand terms, watch URLs. Those 20 refuse unless you gave that connection the submit level, which is off by default. A separate delete level, also off by default, adds only two things: removing a sitemap from Search Console and discarding queued submissions, each after a second, confirming call. Nothing can delete your search data, connect accounts, or touch keys and passwords, and every change is written to an audit log. Live URL inspections are rate-limited and have a daily budget per key. The same tools are also a plain REST API, with the same keys and permissions.</p></details>
       <details><summary>Where does my data live?</summary><p>In a SQLite file on the server you run it on. Google sign-in tokens are encrypted at rest with AES-256-GCM. Whatever an agent reads is sent to that agent’s provider, so connect only agents you trust with that data.</p></details>
       <details><summary>How far back does history go?</summary><p>As far as Google provides when you first connect, up to 16 months, and then it keeps everything it syncs from that day on. It cannot recover data Google no longer has.</p></details>
       <details><summary>Which AI clients work?</summary><p>Claude’s custom connector works with one-click sign-in, and Claude Code works with a single command. Any MCP client that speaks HTTP with a bearer token or OAuth should work, but only Claude has been confirmed.</p></details>
       <details><summary>How is it different from Google Search Console?</summary><p>It reads from Search Console, so it does not replace it. It puts every property and Google account in one place, keeps history past 16 months, adds Bing, GA4 and Clarity, and turns the data into a ranked to-do list, SEO tests and a weekly digest. Search Console keeps tools SEOConsole does not copy, such as Removals, Manual actions, Security issues, the Links report and the Request Indexing button itself.</p></details>
       <details><summary>How does it compare with SEOTesting.com?</summary><p>Both run before/after, split and redirect tests on Search Console data, with a control group and a significance figure; both have LLM tests on AI-assistant sessions from Google Analytics, an internal-linking tool and unlimited users. SEOTesting.com is hosted and costs from $50 a month (its pricing page, read on 7 November 2026), and its internal-linking reports use a monthly credit allowance. SEOConsole is free to self-host for any number of sites, with no credits, adds Bing, Clarity, Tag Manager, an indexing toolkit and an MCP server, and keeps your data on your own server.</p></details>
-      <details><summary>How mature is it?</summary><p>Early. It has more than 900 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed end to end. Verification on real accounts is ongoing, so expect rough edges and please report them.</p></details>
+      <details><summary>Can I just ask it questions instead of reading reports?</summary><p>Yes. The Ask page in your dashboard is a chat: ask “why did clicks drop?” or “which titles should I rewrite?” and it answers from your own data, with tables and charts, using the same tools as the MCP server. It runs on Claude with your own Anthropic API key, so messages are billed to your account and capped per person per day. It acts as you: a viewer’s chat only reads, and for everyone else each change is shown with Approve and Decline before it runs. It is new and has been tested against a stand-in for the API, not yet on a live key.</p></details>
+      <details><summary>Can it track what AI assistants say about my brand?</summary><p>Yes. The AI answers tab puts the questions you choose to ChatGPT, Gemini, Claude and Perplexity every week, with web search on, and records whether your brand is mentioned, whether your pages are cited, and which competitors appear. It covers the essentials; dedicated tools such as Promptwatch go deeper. It uses your own API keys, or one DataForSEO login that also reads ChatGPT and Gemini as people see them in the apps. Every run is billed to your account, so runs are capped per day. It is new and has been tested against each provider’s documented responses, not yet on live accounts.</p></details>
+      <details><summary>Does it work with OpenSEO?</summary><p>Yes. Connect your OpenSEO address and API key and each site is linked to its OpenSEO project by domain. Then you get search volume next to your own queries, your best striking-distance searches sent to OpenSEO’s rank tracker after a free cost preview, and OpenSEO’s latest site audit in your to-do list, on the pages that earn clicks. It was checked against a live self-hosted OpenSEO.</p></details>
+      <details><summary>How long does setup take?</summary><p>About 20 minutes once the Google sign-in is configured. A set-up guide on the dashboard walks through nine steps in three phases, ticks each one off by itself, and does some in one click, such as switching on the indexing monitor.</p></details>
+      <details><summary>How mature is it?</summary><p>Early. It has more than 1,000 automated tests and browser checks on demo data, and sign-in with Claude has been confirmed end to end. Verification on real accounts is ongoing, so expect rough edges and please report them.</p></details>
     </div>
   </div>
 </section>
@@ -645,10 +723,10 @@ cp .env.example .env &amp;&amp; echo DEMO_MODE=1 &gt;&gt; .env &amp;&amp; pnpm s
       <a href="https://github.com/Ubaidofficial/OpenSiteConsole#readme" rel="noopener">Docs</a>
       <a href="https://github.com/Ubaidofficial/OpenSiteConsole/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>
     </nav>
-    <p>© 2026 SEOConsole. Google Search Console, GA4, Tag Manager, Chrome, Bing, Microsoft Clarity, IndexNow, Claude, Claude Code, ChatGPT, OpenAI, Cursor, Windsurf, Model Context Protocol and the other names and logos here belong to their owners. They are shown only to say what SEOConsole works with. SEOConsole is not affiliated with or endorsed by them.</p>
+    <p>© 2026 SEOConsole. Google Search Console, GA4, Tag Manager, Chrome, Bing, Microsoft Clarity, IndexNow, Claude, Claude Code, ChatGPT, OpenAI, Gemini, Perplexity, Microsoft Copilot, Google, Cursor, Windsurf, Model Context Protocol and the other names and logos here belong to their owners. They are shown only to say what SEOConsole works with. SEOConsole is not affiliated with or endorsed by them.</p>
   </div>
 </footer>
 
-<script src="/assets/main.js?v=590eeb3947" defer></script>
+<script src="/assets/main.js?v=52e7da53ab" defer></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { tick } from 'svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
 	import OppScatter from '$lib/components/viz/OppScatter.svelte';
@@ -6,15 +7,16 @@
 	import Dumbbell from '$lib/components/viz/Dumbbell.svelte';
 	import { fmtInt, fmtPct } from '$lib/format';
 	import { HIDDEN_GROUPS, HIDDEN_INTRO, HIDDEN_SOURCE_HINT } from '$lib/explain';
-	let { data } = $props();
-	const sCols = [
+	let { data, form } = $props();
+	const sCols = $derived([
 		{ key: 'query', label: 'Query', type: 'text' as const },
 		{ key: 'expectedGain', label: 'Est. +clicks', type: 'int' as const, bar: true, title: 'Extra clicks per period if this query reached position 3, using your own CTR curve' },
 		{ key: 'impressions', label: 'Impressions', type: 'int' as const },
 		{ key: 'clicks', label: 'Clicks', type: 'int' as const },
 		{ key: 'ctr', label: 'CTR', type: 'pct' as const },
-		{ key: 'position', label: 'Position', type: 'pos' as const }
-	];
+		{ key: 'position', label: 'Position', type: 'pos' as const },
+		...(data.hasVolumes ? [{ key: 'volume', label: 'Volume', type: 'int' as const, title: 'Monthly searches, from OpenSEO (fetch them on the Queries tab)' }, { key: 'kd', label: 'KD', type: 'int' as const, title: 'Keyword difficulty from OpenSEO, 0 to 100' }] : [])
+	]);
 	const gCols = [
 		{ key: 'query', label: 'Query', type: 'text' as const },
 		{ key: 'page', label: 'Page', type: 'link' as const },
@@ -116,6 +118,33 @@
 		<p class="mb-3 max-w-3xl text-xs text-muted-foreground">{sel.blurb}</p>
 		{#if bell}<div class="mb-4 max-w-3xl">{#key sel.id}<Dumbbell rows={bell.rows} better={bell.better} beforeLabel={bell.before} afterLabel={bell.after} format={bell.format} change={bell.change} unit={bell.unit} />{/key}</div>{/if}
 		{#key sel.id}<DataTable rows={sel.rows} cols={sel.cols} sortKey={sel.sort} pageSize={15} />{/key}
+	</section>
+{/if}
+{#if data.openseo}
+	<section id="openseo-track" class="card mb-6 scroll-mt-20 p-4 text-sm">
+		<h3 class="mb-1 font-medium">Track striking-distance searches in OpenSEO</h3>
+		<p class="mb-2 text-xs text-muted-foreground">Sends your best non-brand searches at positions 4 to 20 to the rank tracker of <span class="pii">{data.openseo.project ?? 'the linked project'}</span>, for daily positions and competitors. {data.openseo.tracked ? `${data.openseo.tracked} sent so far; they are not sent again.` : ''} Preview first: it shows OpenSEO's own cost estimate and changes nothing.</p>
+		{#if data.openseo.candidates}
+			<form method="POST" action="?/oseoPreview" use:enhance class="flex flex-wrap items-center gap-2 text-xs">
+				<label class="flex items-center gap-1.5">Top <input class="input w-20" type="number" name="n" min="1" max={data.openseo.max} value="25" /> searches</label>
+				<button class="btn !h-8 text-xs">Preview</button>
+			</form>
+		{:else}<p class="text-xs text-muted-foreground">No striking-distance searches left to send.</p>{/if}
+		{#if form?.plan}
+			{@const p = form.plan}
+			<div class="mt-3 rounded border p-3 text-xs" style="border-color:var(--border)">
+				<p class="mb-1">{p.action === 'create' ? 'No tracker for this domain yet: a new manual tracker (mobile, top 40 results) will be created. A manual tracker has no recurring cost; positions appear when you run a check in OpenSEO.' : `Adds to the existing ${p.schedule} tracker.`} Adding keywords uses no credits; checks do{p.schedule === 'manual' || p.action === 'create' ? ', and you start those in OpenSEO' : ''}.</p>
+				{#if p.estimate}<p class="mb-1">OpenSEO's estimate: one check after adding costs at most <b>${p.estimate.costUsd.toFixed(4)}</b> ({p.estimate.costCredits} credits){#if p.estimate.scheduled}; its {p.estimate.scheduled.interval} checks cost at most <b>{p.estimate.scheduled.costCredits} credits</b> each, up to about ${p.estimate.scheduled.monthlyCostUsd.toFixed(2)} a month{/if}.</p>{/if}
+				<details class="mb-2"><summary class="cursor-pointer text-muted-foreground">{p.keywords.length} searches</summary><p class="pii mt-1">{p.keywords.join(' · ')}</p></details>
+				<form method="POST" action="?/oseoTrack" use:enhance>
+					<input type="hidden" name="keywords" value={p.keywords.join('\n')} />
+					{#if p.estimate?.scheduled}<input type="hidden" name="credits" value={p.estimate.scheduled.costCredits} />{/if}
+					<button class="btn btn-primary !h-8 text-xs">Send {p.keywords.length} searches{p.estimate?.scheduled ? `, up to ${p.estimate.scheduled.costCredits} credits per check` : ''}</button>
+				</form>
+			</div>
+		{/if}
+		{#if form?.ok}<p class="mt-2 text-xs text-good">{form.ok}{#if form.trackerUrl} <a class="underline" href={form.trackerUrl} target="_blank" rel="noreferrer noopener">Open the tracker</a>{/if}</p>{/if}
+		{#if form?.error}<p class="mt-2 text-xs text-bad">{form.error}</p>{/if}
 	</section>
 {/if}
 {#if none.length || needs.length}

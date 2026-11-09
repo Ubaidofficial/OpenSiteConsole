@@ -81,7 +81,7 @@
 								{@const [before, hit, after] = parts(s.snippet, s.anchor)}
 								<tr>
 									<td class="td pii max-w-56 align-top">
-										<div class="flex items-center gap-1"><a class="truncate hover:underline" href={s.source} target="_blank" rel="noreferrer noopener" title={s.source}>{path(s.source)}</a><button class="shrink-0 text-muted-foreground hover:text-foreground" title="Copy the page URL" aria-label="Copy the page URL" onclick={() => copy(s.source, 'URL')}><Copy class="size-3.5" /></button></div>
+										<div class="flex items-center gap-1"><a class="truncate hover:underline" href={s.source} target="_blank" rel="noreferrer noopener" title={s.source}>{path(s.source)}</a><button class="tap shrink-0 text-muted-foreground hover:text-foreground" title="Copy the page URL" aria-label="Copy the page URL" onclick={() => copy(s.source, 'URL')}><Copy class="size-3.5" /></button></div>
 										<div class="text-[11px] text-muted-foreground">{fmtInt(s.sourceClicks)} clicks · {fmtInt(s.sourceImpressions)} impr.</div>
 									</td>
 									<td class="td pii align-top text-xs leading-relaxed">

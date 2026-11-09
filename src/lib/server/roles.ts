@@ -66,11 +66,12 @@ const A: Role = 'admin';
  * action cannot slip through unclassified; and anything not listed needs admin anyway (fail closed).
  */
 export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
-	'/': { syncAll: E, hideDuplicates: E, toggleHidden: E, purgeRemoved: A },
+	'/': { syncAll: E, hideDuplicates: E, toggleHidden: E, purgeRemoved: A, hideOnboarding: A, showOnboarding: A, onboardIndexing: E, onboardBrand: A },
 	'/accounts': { refresh: E, verifyToken: A, verifyNow: A, relabel: A, remove: A, addSite: A },
 	'/agents': { create: A, permission: A, changes: A, remove: A },
 	'/connect': { resync: E, bingKey: A, bingRemove: A, ga4Auto: A, gtmAuto: A, clarity: A, manual: A, unlink: A, openseo: A, crux: A, cruxRemove: A, openseoRemove: A },
-	'/digest': { generate: E, send: E, check: E },
+	'/chat': { delete: 'viewer' },
+	'/digest': { generate: E, send: E, monthly: E, sendMonthly: E, check: E },
 	'/updates': { import: E, add: E, remove: E },
 	'/sitemaps': { resubmitAll: E },
 	'/oauth/authorize': { allow: A, deny: A },
@@ -78,14 +79,17 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/sites/[id]': { addNote: E, makeTest: E, deleteNote: E },
 	'/sites/[id]/actions': { state: E },
 	'/sites/[id]/clarity': { check: E, plan: E, install: A },
+	'/sites/[id]/ai': { addPrompts: E, deletePrompt: E, competitors: E, run: E },
 	'/sites/[id]/links': { crawl: E, done: E },
 	'/sites/[id]/indexing': { sitemapRefresh: E, watchAdd: E, watchRemove: E, toggle: E, check: E },
 	'/sites/[id]/indexnow': { createKey: E, regenerate: E, verify: E, verifyAll: E, auto: E, submit: E, presetRecent: E, presetRemoved: E },
 	'/sites/[id]/inspect': { submitSelected: E, addToRequests: E, inspect: E, top: E },
-	'/sites/[id]/onpage': { top: E, urls: E },
+	'/sites/[id]/onpage': { top: E, urls: E, oseoAudit: E },
 	'/sites/[id]/request': { build: E, requested: E, dismiss: E },
 	'/sites/[id]/settings': { save: A, resync: A, removeProperty: A },
-	'/sites/[id]/sitemaps': { lastmodCompare: E, check: E, submit: E, delete: E },
+	'/sites/[id]/queries': { oseoVolumes: E },
+	'/sites/[id]/opportunities': { oseoPreview: E, oseoTrack: E },
+	'/sites/[id]/sitemaps': { lastmodCompare: E, check: E, robotsCheck: E, submit: E, delete: E },
 	'/sites/[id]/submit': { preset: E, submit: E, sitemapSubmit: E, sitemapResubmit: E, sitemapCheck: E, refreshQuota: E, clearQueue: E, check: E },
 	'/sites/[id]/tests': { create: E, remove: E }
 };
@@ -93,6 +97,8 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 /** +server endpoints, and the GET endpoints that change something (starting or finishing an account connection). */
 export const ENDPOINTS: Record<string, Role> = {
 	'POST /logout': 'viewer',
+	// Chat acts as the person, with their role and sites (src/lib/server/chat.ts), so anyone signed in may use it.
+	'POST /chat/stream': 'viewer',
 	'POST /sites/[id]/sync': E,
 	'GET /auth/connect': A,
 	'GET /auth/callback': A,
@@ -120,6 +126,8 @@ export function requiredRole(method: string, url: URL): Role {
 
 /** Pages a person limited to some sites may still open: they show nothing from other sites. Everything else covers every site. */
 const SCOPED_READABLE = new Set(['/', '/team', '/updates']);
+/** Routes a person limited to some sites may also post to: the chat, whose tools only ever see that person's sites. */
+const SCOPED_USABLE = new Set(['/chat', '/chat/stream']);
 
 /**
  * Why a request is refused, or null. `not-found` for a site outside the person's scope (it is not even confirmed to exist),
@@ -131,7 +139,7 @@ export function accessRefusal(user: CurrentUser, method: string, url: URL): { ki
 		const route = routeOf(url.pathname);
 		if (site) {
 			if (!user.siteIds.includes(Number(site[1]))) return { kind: 'not-found' };
-		} else if (route !== '/logout' && !(isRead(method) && SCOPED_READABLE.has(route))) return { kind: 'cross-site' };
+		} else if (route !== '/logout' && !SCOPED_USABLE.has(route) && !(isRead(method) && SCOPED_READABLE.has(route))) return { kind: 'cross-site' };
 	}
 	const need = requiredRole(method, url);
 	return hasRole(user.role, need) ? null : { kind: 'role', need };

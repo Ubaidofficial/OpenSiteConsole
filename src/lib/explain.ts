@@ -6,16 +6,17 @@
 import { DONE_DAYS, SNOOZE_DAYS, type ActionType, type Confidence, type Effort } from './actions';
 
 export const TYPE_LABEL: Record<ActionType, string> = {
-	tracking: 'Measurement', blocked: 'Blocked', deindexed: 'De-indexed', sitewide: 'Site-wide', anomaly: 'Traffic drop', dead: 'Gone',
+	tracking: 'Measurement', blocked: 'Blocked', robots: 'robots.txt', deindexed: 'De-indexed', sitewide: 'Site-wide', anomaly: 'Traffic drop', dead: 'Gone',
 	'not-indexed': 'Not indexed', update: 'Google update', cannibalization: 'Cannibalization', 'ctr-gap': 'CTR gap', decay: 'Decay',
 	striking: 'Striking distance', onpage: 'On-page', sitemap: 'Sitemap', lastmod: 'Sitemap dates', submitted: 'Sent, not indexed', request: 'Request indexing', vitals: 'Web vitals', test: 'Test',
 	'lost-query': 'Lost searches', rising: 'Rising searches', 'page-edge': 'Page on the edge', gem: 'Hidden gem', questions: 'Unanswered questions',
-	bing: 'Bing', device: 'Phone gap', engagement: 'Visitors leave', friction: 'Friction', 'internal-link': 'Internal links'
+	bing: 'Bing', device: 'Phone gap', engagement: 'Visitors leave', friction: 'Friction', 'internal-link': 'Internal links', audit: 'OpenSEO audit'
 };
 
 export const TYPE_EXPLAIN: Record<ActionType, string> = {
 	tracking: 'Your measurement looks broken or incomplete (for example a missing or misconfigured Google Analytics tag), so some numbers cannot be trusted until it is fixed.',
 	blocked: 'Pages that earn clicks are blocked from Google by robots.txt, a noindex tag or a header. If that is not intended, they will lose their traffic.',
+	robots: 'Your robots.txt, read once a day: it now blocks Googlebot from pages that earn clicks, it has been answering with server errors (which can stop Google crawling the whole site), or its rules changed recently and are worth a second look.',
 	deindexed: 'Pages that were in Google\'s index a short while ago are no longer there. The indexing monitor saw them drop out.',
 	sitewide: 'Total clicks for the whole site are down against the previous period, not just one page. Check for a Google update or a site-wide change.',
 	anomaly: 'Clicks on one day were far below what is normal for that weekday on this site. A single dip that recovers is often noise or an outage.',
@@ -42,7 +43,8 @@ export const TYPE_EXPLAIN: Record<ActionType, string> = {
 	device: 'You rank noticeably worse on phones than on desktop for the same search. Most visitors are on phones, so check the mobile page and its speed.',
 	engagement: 'Visitors who arrive from Google leave faster or convert less than on the rest of the site: the page may not match what the search promised.',
 	friction: 'Microsoft Clarity recorded many visits with rage clicks or dead clicks (repeated clicks on things that do nothing) on a page that Google sends visitors to.',
-	'internal-link': 'A page close to ranking better (positions 4 to 20) that other pages of yours already mention in their text without linking to it. A link from those words helps Google find the page and understand what it is about.'
+	'internal-link': 'A page close to ranking better (positions 4 to 20) that other pages of yours already mention in their text without linking to it. A link from those words helps Google find the page and understand what it is about.',
+	audit: 'OpenSEO\'s latest site audit found a problem (rated critical or warning there) on pages that earn clicks in Search Console. Those pages are listed first because a fault on them costs real traffic; the fix is OpenSEO\'s own advice.',
 };
 
 export const BLOCKING_EXPLAIN = 'This stops the site earning traffic or stops you measuring it, so it is listed before everything else, however large the other items look.';
@@ -105,6 +107,7 @@ export const SITE_TABS = [
 	['/bing', 'Bing', 'Bing Webmaster data for this site, once Bing is linked.'],
 	['/analytics', 'GA4', 'Google Analytics 4 organic sessions beside Search Console clicks, once GA4 is linked.'],
 	['/tags', 'Tag Manager', 'What is in your Google Tag Manager container, checked against GA4 and Search Console, once it is linked.'],
+	['/ai', 'AI answers', 'What ChatGPT, Gemini, Claude and Perplexity answer to the questions you track: whether they mention your brand, cite your pages, and which sites they cite instead. Needs their API keys or DataForSEO.'],
 	['/clarity', 'Clarity', 'Microsoft Clarity snapshot, once linked. Clarity only exposes the last 1 to 3 days and 10 API calls a day, so the daily snapshot is refreshed three times a day (every 8½ hours) (9 calls) and kept.'],
 	['/settings', 'Settings', 'Site preferences such as label, tags and brand terms, and what data is stored.']
 ] as const;
@@ -125,7 +128,7 @@ export const SITE_TAB_GROUPS = [
 	['Traffic', ['', '/queries', '/pages', '/trends', '/groups', '/segments', '/types']],
 	['Findings', ['/quickwins', '/actions', '/opportunities', '/cannibalization', '/decay', '/onpage', '/links', '/vitals', '/tests']],
 	['Indexing', ['/submit', '/request', '/indexing', '/indexnow', '/sitemaps', '/inspect']],
-	['Other sources', ['/bing', '/analytics', '/tags', '/clarity']],
+	['Other sources', ['/bing', '/analytics', '/tags', '/clarity', '/ai']],
 	['Site', ['/settings']]
 ] as const;
 

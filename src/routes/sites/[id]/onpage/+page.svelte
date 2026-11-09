@@ -24,7 +24,7 @@
 </Explainer>
 	<div class="flex flex-wrap items-start gap-3">
 		<form method="POST" action="?/top" use:enhance={submit('top')}><button class="btn btn-primary" disabled={busy !== null}>{busy === 'top' ? 'Checking…' : 'Check top 15 pages'}</button></form>
-		<form method="POST" action="?/urls" use:enhance={submit('urls')} class="flex min-w-64 flex-1 gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" placeholder="…or paste full URLs, one per line (up to 25)"></textarea><button class="btn" disabled={busy !== null}>{busy === 'urls' ? 'Checking…' : 'Check'}</button></form>
+		<form method="POST" action="?/urls" use:enhance={submit('urls')} class="flex min-w-64 flex-1 gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" aria-label="Page URLs to check" placeholder="…or paste full URLs, one per line (up to 25)"></textarea><button class="btn" disabled={busy !== null}>{busy === 'urls' ? 'Checking…' : 'Check'}</button></form>
 	</div>
 	{#if form?.ok}<p class="mt-2 text-sm text-good">{form.ok}</p>{/if}{#if form?.error}<p class="mt-2 text-sm text-bad">{form.error}</p>{/if}
 	{#if data.rows.length}<p class="mt-2 text-xs text-muted-foreground">{data.rows.length} page(s) checked{data.avgScore != null ? ` · average score ${data.avgScore}/100 (a relative aid, not a Google measure)` : ''}{data.failed ? ` · ${data.failed} could not be fetched` : ''}</p>{/if}
@@ -58,3 +58,28 @@
 {:else}
 	<div class="card p-6 text-center text-sm text-muted-foreground">Nothing checked yet. Start with “Check top 15 pages”.</div>
 {/each}
+
+{#if data.openseo}
+	{@const o = data.openseo}
+	<section id="openseo" class="card mt-6 scroll-mt-20 p-4 text-sm">
+		<div class="mb-1 flex flex-wrap items-center gap-2">
+			<h2 class="font-medium">OpenSEO site audit</h2>
+			{#if o.url}<a class="text-xs underline" href={o.url} target="_blank" rel="noreferrer noopener">Open in OpenSEO</a>{/if}
+			<form method="POST" action="?/oseoAudit" use:enhance={submit('oseo')} class="ml-auto"><button class="btn !h-8 text-xs" disabled={busy === 'oseo'}>{busy === 'oseo' ? 'Reading…' : 'Read again'}</button></form>
+		</div>
+		<p class="mb-2 text-xs text-muted-foreground">The latest audit of <span class="pii">{o.project ?? 'the linked project'}</span>, read once a day (free: it runs no audit), with the issues on pages that earn clicks listed first. Run a new audit in OpenSEO.</p>
+		{#if !o.snap}<p class="text-xs text-muted-foreground">Not read yet.</p>
+		{:else if o.snap.error}<p class="text-xs text-bad">{o.snap.error}</p>
+		{:else if !o.snap.total}<p class="text-xs text-muted-foreground">No audit with issues yet (read {ago(o.snap.fetchedAt)}).</p>
+		{:else}
+			<p class="mb-2 text-xs text-muted-foreground">{o.snap.total} issues · read {ago(o.snap.fetchedAt)} · {o.snap.summary.map((s) => `${s.title} (${s.severity}): ${s.count}`).join(' · ')}</p>
+			{#each o.findings as f (f.issueType)}
+				<div class="border-t py-2 text-xs" style="border-color:var(--border)">
+					<div><span class={f.severity === 'critical' ? 'text-bad' : 'text-warn'}>{f.severity}</span> <b>{f.title}</b> · {f.pages.length} page{f.pages.length === 1 ? '' : 's'} with clicks</div>
+					{#if f.howToFix}<div class="text-muted-foreground">{f.howToFix}</div>{/if}
+					<ul class="pii mt-1">{#each f.pages.slice(0, 5) as p (p.url)}<li class="break-all">{p.url} <span class="text-muted-foreground">({p.clicks} clicks)</span></li>{/each}</ul>
+				</div>
+			{:else}<p class="text-xs text-muted-foreground">None of the critical or warning issues are on pages that earn clicks.</p>{/each}
+		{/if}
+	</section>
+{/if}

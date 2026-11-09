@@ -27,7 +27,7 @@ docker run --rm -p 8080:8080 seoconsole-site
 
 ## How it works
 
-- `assets/main.js` drives everything that moves: the dashboard screenshot tilts flat as you scroll (a `--p` value from 0 to 1), sections fade in, charts draw and numbers count up, the six-step story swaps its screenshot as each step reaches the middle of the screen, and the agent terminal types itself once. Motion is switched off for visitors who ask their system for reduced motion, and the page is complete with JavaScript off.
+- `assets/main.js` drives everything that moves: the dashboard screenshot tilts flat as you scroll (a `--p` value from 0 to 1), sections fade in, charts draw and numbers count up, the six-step story is a short list to click through on wide screens (it moves on by itself every 7 seconds while on screen, pauses while the pointer is over it, stops for good once you pick a step, and never moves for visitors who ask for less motion; on phones each step shows its own screenshot), and the agent terminal types itself once. It also runs the few controls: the toolkit's four tabs (Analyse, Fix and index, AI search, Report and connect; arrow keys move between them), the comparison's *Show all 20 rows* (the ten rows that decide most choices show first), and the menu, which marks the section on screen. Without JavaScript every toolkit group is shown under its own heading and the whole table is open. Motion is switched off for visitors who ask their system for reduced motion, and the page is complete with JavaScript off.
 - The agent conversation uses real output from the app's MCP tools on the demo data (`get_action_queue`, `get_opportunities`). The assistant's wording is an example, and the page says so.
 - Nothing is loaded from another site: the font is self-hosted and there are no analytics, so the strict policy in `security-headers.conf` (default-src 'self') holds.
 
@@ -70,6 +70,7 @@ Motion: charts draw, bars grow and counters count up once, when they scroll into
 | `mcp.svg`, `claude.svg`, `claude-code.svg` | [Simple Icons](https://simpleicons.org) (CC0 for the drawings; the marks remain their owners' trademarks), in the brand colour Simple Icons lists |
 | `openai.svg` (ChatGPT and Codex) | The 2025 OpenAI symbol (Wikimedia Commons, `OpenAI_logo_2025_(symbol).svg`) |
 | `cursor.svg`, `windsurf.svg` | Simple Icons, as above |
+| `perplexity.svg`, `gemini.svg`, `copilot.svg` (Microsoft Copilot), `google.svg` | [LobeHub Icons](https://github.com/lobehub/lobe-icons) (`@lobehub/icons-static-svg` 1.102.0, MIT for the drawings; the marks remain their owners' trademarks), the `-color` variants, with the inline `style` attribute removed so they pass the strict style policy |
 
 The app shows the same AI-app marks on its MCP page from `static/logos/` (copies of these files). The black ones are inverted in dark mode.
 

@@ -1,5 +1,5 @@
 import { db } from './db';
-import { allSites, brandTerms, fittedCurve, historyCoversPrevious, performanceBy, periodFor, queryPageRows, siteEnd, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
+import { type PerfFilters, allSites, brandTerms, fittedCurve, historyCoversPrevious, performanceBy, periodFor, queryPageRows, siteEnd, summary, topPages, topQueries, pageTotals, dailySeries, anonymisedShare, typeBreakdown, appearanceFor } from './queries';
 import { ALL_TYPES } from '../searchTypes';
 import { cruxIntegration, cruxLatest } from './crux';
 import { rate, VITALS } from '../vitals';
@@ -20,7 +20,7 @@ import { coverageMap } from '../property';
 import { gtmSnapshot, trackingHealth } from './tracking';
 import { tagTypeLabel } from './gtm';
 import { allLinks } from './links';
-import { aiTrafficReport, countryCannibalReport, forecastReport, groupsReport, heatmapReport, localesReport, trajectories, trendsReport, urlClassesReport } from './insights';
+import { aiTrafficReport, countryCannibalReport, forecastReport, groupsReport, heatmapReport, intentReport, localesReport, monthlyReport, queryCountReport, trajectories, trendsReport, urlClassesReport } from './insights';
 import { evaluateTestCached, listTests } from './seotests';
 import { indexHistory, indexSummary, recentEvents, watchList } from './indexmon';
 import { storedChecks } from './onpage';
@@ -43,7 +43,7 @@ import { listAccounts } from './accounts';
 import { VERIFY_METHODS, getVerificationToken, verifyAndAdd, type VerifyMethod } from './siteverify';
 import { scoreOf } from '../actions';
 import { listUpdates } from './gupdates';
-import { isQuestionQuery } from '../trends';
+import { isQuestionQuery, safeRegex } from '../trends';
 import { EVENT_SEVERITY } from '../indexing';
 
 /**
@@ -218,7 +218,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_page_insights',
-		description: `Every page across Google, Bing, GA4, AI assistants (via GA4) and Clarity side by side, joined on URL path, each with its change against the previous equal period (null when that period is not stored; a source with nothing for a page is null, not zero). Sources: google (clicks, impressions, CTR, position), bing (clicks, impressions, position), ga4 (organic sessions, engaged share, key events), ai (sessions from AI assistants, split per assistant), clarity (latest 24 hours only). \`notes\` says what each does not measure.`,
+		description: `Every page across Google, Bing, GA4, AI assistants (via GA4) and Clarity, joined on URL path, each with its change vs the previous equal period (null when not stored; a source with nothing for a page is null, not zero). google: clicks, impressions, CTR, position; bing: clicks, impressions, position; ga4: organic sessions, engaged share, key events; ai: sessions per assistant; clarity: latest 24 h only. \`notes\` says what each does not measure.`,
 		schema: { ...siteArg, ...daysArg, path_contains: { type: 'string', description: 'Only paths containing this text (case-insensitive)' }, sort: { type: 'string', enum: ['google_clicks', 'bing_clicks', 'ga4_sessions', 'ga4_key_events', 'ai_sessions', 'google_clicks_change'], description: 'default google_clicks' }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
@@ -269,8 +269,8 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_opportunities',
-		description: 'SEO findings computed from stored history. Google-only: striking (positions 4-20 ranked by estimated extra clicks, on the site\'s own fitted CTR curve), ctr_gaps (pages under-performing their position), cannibalization (queries split across competing pages), decay (statistically significant page declines, labelled page-specific vs site-wide; `compare: year_ago` makes it year on year and needs 12+ months of history), anomalies (unusual days). Hidden opportunities that join several sources or periods: lost_queries (searches that used to bring clicks), rising_queries (fast-growing searches not yet won), pages_on_the_edge (one page just below the top for many searches), question_gaps (question searches ranked low), bing_gaps (Bing ranks you top 5, Google does not), not_in_bing (pages with Google clicks and no Bing impressions), hidden_gems (pages that convert better than average but rank 4-20, from GA4), engagement_leaks and conversion_leaks (Google landing pages that lose visitors or produce no key events, from GA4), friction (rage and dead clicks on landing pages, from Clarity), mobile_gaps (rank much worse on phones). hidden_overview counts every one of them and says which sources are missing. Estimates use the site\'s own click curve; null means there is no honest figure.',
-		schema: { ...siteArg, ...daysArg, compare: { type: 'string', enum: ['previous_period', 'year_ago'], description: 'decay only: previous_period (default) or year_ago (needs 12+ months of history)' }, type: { type: 'string', enum: ['striking', 'ctr_gaps', 'cannibalization', 'decay', 'anomalies', 'hidden_overview', 'lost_queries', 'rising_queries', 'pages_on_the_edge', 'question_gaps', 'bing_gaps', 'not_in_bing', 'hidden_gems', 'engagement_leaks', 'conversion_leaks', 'friction', 'mobile_gaps'] }, limit: { type: 'integer' } },
+		description: 'Findings from stored history. Google: striking (positions 4-20 by est. extra clicks on the site\'s fitted CTR curve), ctr_gaps (pages below their position\'s CTR), cannibalization (queries split across pages), decay (significant page declines, page-specific vs site-wide; compare year_ago needs 12+ months), anomalies (unusual days). Hidden, joining sources or periods: lost_queries, rising_queries (growing, not yet won), pages_on_the_edge (just below the top for many searches), question_gaps, bing_gaps (Bing top 5, Google not), not_in_bing, hidden_gems (convert well, rank 4-20; GA4), engagement_leaks and conversion_leaks (GA4), friction (rage/dead clicks; Clarity), mobile_gaps. hidden_overview counts them all and names missing sources. null = no honest estimate.',
+		schema: { ...siteArg, ...daysArg, compare: { type: 'string', enum: ['previous_period', 'year_ago'], description: 'decay only' }, type: { type: 'string', enum: ['striking', 'ctr_gaps', 'cannibalization', 'decay', 'anomalies', 'hidden_overview', 'lost_queries', 'rising_queries', 'pages_on_the_edge', 'question_gaps', 'bing_gaps', 'not_in_bing', 'hidden_gems', 'engagement_leaks', 'conversion_leaks', 'friction', 'mobile_gaps'] }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			const n = days(a);
@@ -428,13 +428,22 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_trends',
-		description: `Movement from stored history. view: movers (queries and pages that moved beyond noise), new_lost (appeared or vanished queries), bands (non-branded queries in positions 1-3, 4-10, 11-20, 21-50, 51+, now vs previous), questions (question-style queries), trajectories (top queries over 12 weeks), forecast (8-week click projection, not seasonality-aware).`,
-		schema: { ...siteArg, ...daysArg, view: { type: 'string', enum: ['movers', 'new_lost', 'bands', 'questions', 'trajectories', 'forecast'] }, limit: { type: 'integer' } },
+		description: `Movement from stored history. view: movers (queries and pages that moved beyond noise), new_lost (appeared or vanished queries), bands (non-branded queries in positions 1-3, 4-10, 11-20, 21-50, 51+, now vs previous), questions (question-style queries), trajectories (top queries over 12 weeks), forecast (8-week click projection, not seasonality-aware), monthly (complete months: clicks, change, page and query winners and losers each month), query_count (distinct queries per week: all, with clicks, top 10), intent (clicks by search intent; English, rule-based).`,
+		schema: { ...siteArg, ...daysArg, view: { type: 'string', enum: ['movers', 'new_lost', 'bands', 'questions', 'trajectories', 'forecast', 'monthly', 'query_count', 'intent'] }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
 			const lim = limit(a);
 			const view = String(a.view ?? 'movers');
 			if (view === 'trajectories') return { site: displayName(site.site_url), trajectories: trajectories(site, lim) };
+			if (view === 'monthly') {
+				const m = monthlyReport(site, a.limit == null ? 6 : Math.min(24, lim), 5);
+				return { site: displayName(site.site_url), months: m.months, note: m.note ?? undefined };
+			}
+			if (view === 'query_count') return { site: displayName(site.site_url), ...queryCountReport(site, a.limit == null ? 12 : lim) };
+			if (view === 'intent') {
+				const r = intentReport(site, days(a), 5);
+				return { site: displayName(site.site_url), period: r.period, intents: r.intents, caution: `Rule-based on the wording of each search, English only${r.brandTermsSet ? '' : '; no brand terms are set, so branded searches are not recognised as navigational'}.` };
+			}
 			if (view === 'forecast') {
 				const f = forecastReport(site);
 				return f.projection ? { site: displayName(site.site_url), method: f.projection.method, weeklyTrendPct: r2(f.projection.weeklyTrendPct * 100), basedOnWeeks: f.projection.basedOnWeeks, history: f.weekly.slice(-12).map((w) => ({ weekEnding: w.weekEnd, clicks: w.clicks })), projection: f.projection.points, sameWeeksLastYear: f.lastYear, caution: 'A projection of recent behaviour, not a prediction. It ignores seasonality and Google updates.' } : { site: displayName(site.site_url), note: 'Needs at least 8 complete weeks of stored history.' };
@@ -451,7 +460,7 @@ const TOOLS: Tool[] = [
 				case 'questions':
 					return { period: t.period, count: t.questions.count, clickShare: r2(t.questions.clickShare * 100) + '%', impressionShare: r2(t.questions.impressionShare * 100) + '%', rows: t.questions.rows };
 				default:
-					throw new Error('`view` must be one of movers, new_lost, bands, questions, trajectories, forecast');
+					throw new Error('`view` must be one of movers, new_lost, bands, questions, trajectories, forecast, monthly, query_count, intent');
 			}
 		}
 	},
@@ -502,7 +511,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_seo_tests',
-		description: `SEO tests for a site (before/after, split against control pages, redirect) with results: change in clicks and impressions of the test pages against the control (or, for LLM tests with metric ai_sessions, in GA4 sessions from AI assistants, with a per-assistant breakdown), a 95% interval, a p-value and a verdict (positive, negative, inconclusive, too-little-data). Observational, not randomised: significant means unlikely to be noise given the control, not proof of cause. Fewer than three earlier windows to measure noise = estimate only, no verdict.`,
+		description: `SEO tests (before/after, split, redirect) with results: change in clicks and impressions vs control pages (LLM tests with metric ai_sessions: GA4 AI-assistant sessions, per assistant), 95% interval, p-value, verdict (positive, negative, inconclusive, too-little-data). Observational: significant = unlikely to be noise given the control, not proof of cause. Under three earlier windows: estimate only, no verdict.`,
 		schema: siteArg,
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
@@ -538,7 +547,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_action_queue',
-		description: 'THE prioritised to-do list: every finding (measurement problems, pages blocked or de-indexed, traffic collapses, dead pages, cannibalization, CTR gaps, decay, striking distance, on-page and sitemap problems, finished tests) in the order to do it. Blocking items come first, then estimated clicks per 28 days weighted by confidence. Estimates are model figures from the site\'s own CTR curve, not promises, and are not additive. Omit `site` for the top items across all sites. Done or snoozed items are left out. Each item has a `key` for mark_action.',
+		description: 'THE prioritised to-do list: every finding (measurement, blocked or de-indexed pages, robots.txt, traffic drops, dead pages, cannibalization, CTR gaps, decay, striking distance, on-page, sitemap, finished tests) in order. Blocking first, then estimated clicks per 28 days x confidence (model figures from the site\'s CTR curve, not promises, not additive). Omit `site` for all sites. Done and snoozed items are left out; each has a `key` for mark_action.',
 		schema: { site: { type: 'string', description: 'Optional: site id, domain or property URL. Omit for all visible sites.' }, limit: { type: 'integer' } },
 		run: (a, sites) => {
 			const lim = limit(a, 15);
@@ -639,7 +648,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_performance',
-		description: `Search performance for one site by ONE dimension (query, page, country, device or date), over any date range, optionally compared with another and filtered by country, device or text. Dates YYYY-MM-DD; compare "previous" = the equally long window before, "custom" = compare_start/compare_end. Countries are ISO alpha-3 lower case (usa, gbr). Rows leave out anonymised queries, so they do not sum to \`totals\`.`,
+		description: `Search performance for one site by ONE dimension (query, page, country, device or date), over any date range, optionally compared with another and filtered by country, device, text, regex or exclusion. Dates YYYY-MM-DD; compare "previous" = the equally long window before, "custom" = compare_start/compare_end. Rows leave out anonymised queries, so they do not sum to \`totals\`.`,
 		schema: {
 			...siteArg,
 			dimension: { type: 'string', enum: ['query', 'page', 'country', 'device', 'date'], description: 'default query' },
@@ -653,6 +662,10 @@ const TOOLS: Tool[] = [
 			device: { type: 'string', enum: ['mobile', 'desktop', 'tablet'] },
 			query_contains: { type: 'string' },
 			page_contains: { type: 'string' },
+			query_regex: { type: 'string' },
+			page_regex: { type: 'string' },
+			exclude_query: { type: 'string' },
+			exclude_page: { type: 'string' },
 			sort: { type: 'string', enum: ['clicks', 'impressions', 'ctr', 'position', 'clicks_change'], description: 'default clicks (dates: chronological)' },
 			limit: { type: 'integer' }
 		},
@@ -662,7 +675,7 @@ const TOOLS: Tool[] = [
 			if (!['query', 'page', 'country', 'device', 'date'].includes(dim)) throw new Error('`dimension` must be query, page, country, device or date.');
 			const w = resolveWindows({ start: a.start, end: a.end, days: a.days, compare: a.compare, compareStart: a.compare_start, compareEnd: a.compare_end }, siteEnd(site));
 			if ('error' in w) throw new Error(w.error);
-			const f: { country?: string; device?: string; queryContains?: string; pageContains?: string } = {};
+			const f: PerfFilters = {};
 			if (a.country != null && a.country !== '') {
 				const c = String(a.country).trim().toLowerCase();
 				if (!/^[a-z]{3}$/.test(c)) throw new Error('`country` is a 3-letter ISO code such as usa, gbr or deu.');
@@ -675,6 +688,14 @@ const TOOLS: Tool[] = [
 			}
 			if (a.query_contains) f.queryContains = String(a.query_contains).slice(0, 200);
 			if (a.page_contains) f.pageContains = String(a.page_contains).slice(0, 500);
+			for (const [arg, key] of [['query_regex', 'queryRegex'], ['page_regex', 'pageRegex']] as const) {
+				if (a[arg] == null || a[arg] === '') continue;
+				const r = safeRegex(String(a[arg]));
+				if ('error' in r) throw new Error(`\`${arg}\`: ${r.error}`);
+				f[key] = String(a[arg]).trim();
+			}
+			if (a.exclude_query) f.queryExcludes = String(a.exclude_query).slice(0, 200);
+			if (a.exclude_page) f.pageExcludes = String(a.exclude_page).slice(0, 500);
 			const filtered = Object.keys(f).length > 0;
 			const notes = [...w.notes];
 			if (!site.backfill_done && site.backfilled_to && w.main.start < site.backfilled_to) notes.push(`History before ${site.backfilled_to} is still downloading, so the start of this window is incomplete.`);
@@ -1158,7 +1179,7 @@ const TOOLS: Tool[] = [
 	},
 	{
 		name: 'get_quick_wins',
-		description: `The low-hanging fruit, by group: ctr (top-10 pages with a click rate far below the site's own curve: rewrite title and description), page-one (positions 8-15), questions (question searches at positions 3-20: add a direct answer), sitemap (pages earning clicks but not listed), onpage (flagged titles and descriptions), indexing (pages worth asking Google about). Each has why, how, top rows and the total; \`gain\` = estimated extra clicks per window (null when unknown), not additive.`,
+		description: `Low-hanging fruit by group: ctr (top-10 pages far below the site's CTR curve: rewrite title/description), page-one (positions 8-15), questions (question searches at 3-20: add a direct answer), sitemap (pages with clicks not listed), onpage (flagged titles/descriptions), indexing (pages worth asking Google about). Each: why, how, top rows, total; \`gain\` = est. extra clicks per window (null if unknown), not additive.`,
 		schema: { ...siteArg, ...daysArg },
 		run: (a, sites) => {
 			const site = resolveSite(sites, a.site);
@@ -1193,6 +1214,41 @@ export function writeLimited(keyId: number, now = Date.now()): boolean {
 	return false;
 }
 
+export type ToolAuth = NonNullable<ReturnType<typeof authenticate>>;
+/** Why a call was refused, so the REST API can answer with the matching HTTP status. */
+export type ToolRefusal = 'read-only' | 'write-rate' | 'permission' | 'failed';
+export type ToolCallResult = { kind: 'ok'; data: unknown } | { kind: 'unknown' } | { kind: 'refused'; reason: ToolRefusal; error: string };
+
+/** The one path every tool call takes, from MCP and from the REST API alike: permission, read-only mode, the write rate limit and the audit log. */
+export async function callTool(auth: ToolAuth, name: string, args: Record<string, unknown>, sites = allSites().filter((s) => !auth.scope || auth.scope.includes(s.id))): Promise<ToolCallResult> {
+	const tool = TOOLS.find((t) => t.name === name);
+	if (!tool) return { kind: 'unknown' };
+	const need = needOf(tool);
+	if (need) {
+		// Changes need an explicit yes from the owner, never just a valid key, and never in read-only mode.
+		// The tools of the submit/delete family check READ_ONLY themselves (a dry run is still allowed); the app-changing ones are refused here.
+		if (tool.write && config.readOnly) return { kind: 'refused', reason: 'read-only', error: 'This server is in read-only mode (READ_ONLY=1), so nothing can be changed through it.' };
+		if (permits(auth.permission, need) && writeLimited(auth.id)) return { kind: 'refused', reason: 'write-rate', error: `Too many changes: at most ${MCP_WRITES_PER_MINUTE} a minute per key. Wait a minute.` };
+		if (!permits(auth.permission, need)) {
+			const level = need === 'delete' ? 'the "delete" permission (submit plus the few things that cannot be undone: removing a sitemap, discarding the queue)' : 'the "submit" permission';
+			return { kind: 'refused', reason: 'permission', error: `${tool.name} changes things, so it needs an API key created with ${level}. This key has "${auth.permission}". The owner can change that on the MCP page (or choose that level when signing in a connector). Do not retry until they have.` };
+		}
+	}
+	try {
+		const out = await tool.run(args, sites, { keyId: auth.id, keyName: auth.name, permission: auth.permission, scoped: auth.scope !== null });
+		if (tool.write) {
+			const site = args.site == null ? null : sites.find((x) => String(x.id) === String(args.site).trim() || hostKey(x.site_url) === hostKey(String(args.site)));
+			audit(`mcp.${tool.name}`, { siteId: site?.id, detail: `${auth.name}: ${JSON.stringify(args).slice(0, 500)}` });
+		}
+		return { kind: 'ok', data: out };
+	} catch (e) {
+		return { kind: 'refused', reason: 'failed', error: e instanceof Error ? e.message : 'Tool failed' };
+	}
+}
+
+/** Name, description, input schema and the permission each tool needs: the tool list for MCP and the index of the REST API. */
+export const toolCatalog = () => TOOLS.map((t) => ({ name: t.name, description: t.description, schema: t.schema, needs: needOf(t) ?? 'read' as Permission }));
+
 const rpc = (id: unknown, result: unknown) => ({ jsonrpc: '2.0', id, result });
 const rpcErr = (id: unknown, code: number, message: string) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
@@ -1224,30 +1280,9 @@ export async function handleMcp(request: Request): Promise<Response> {
 		case 'tools/list':
 			return reply(rpc(msg.id, { tools: TOOLS.map((t) => ({ name: t.name, description: t.description + (needOf(t) && !/(submit|delete) permission/.test(t.description) ? ` Needs the ${needOf(t)} permission.` : ''), inputSchema: { type: 'object', properties: t.schema }, annotations: needOf(t) ? { readOnlyHint: false, destructiveHint: needOf(t) === 'delete', openWorldHint: true } : { readOnlyHint: true } })) }));
 		case 'tools/call': {
-			const tool = TOOLS.find((t) => t.name === msg.params?.name);
-			if (!tool) return reply(rpcErr(msg.id, -32602, `Unknown tool ${String(msg.params?.name)}`));
-			const args = (msg.params?.arguments as Record<string, unknown>) ?? {};
-			if (needOf(tool)) {
-				// Changes need an explicit yes from the owner, never just a valid key, and never in read-only mode.
-				// The tools of the submit/delete family check READ_ONLY themselves (a dry run is still allowed); the app-changing ones are refused here.
-				if (tool.write && config.readOnly) return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: 'This server is in read-only mode (READ_ONLY=1), so nothing can be changed through it.' }] }));
-				if (permits(auth.permission, needOf(tool)!) && writeLimited(auth.id)) return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: `Too many changes: at most ${MCP_WRITES_PER_MINUTE} a minute per key. Wait a minute.` }] }));
-			}
-			try {
-				const need = needOf(tool);
-				if (need && !permits(auth.permission, need)) {
-					const level = need === 'delete' ? 'the "delete" permission (submit plus the few things that cannot be undone: removing a sitemap, discarding the queue)' : 'the "submit" permission';
-					return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: `${tool.name} changes things, so it needs an API key created with ${level}. This key has "${auth.permission}". The owner can change that on the MCP page (or choose that level when signing in a connector). Do not retry until they have.` }] }));
-				}
-				const out = await tool.run(args, sites, { keyId: auth.id, keyName: auth.name, permission: auth.permission, scoped: auth.scope !== null });
-				if (tool.write) {
-					const site = args.site == null ? null : sites.find((x) => String(x.id) === String(args.site).trim() || hostKey(x.site_url) === hostKey(String(args.site)));
-					audit(`mcp.${tool.name}`, { siteId: site?.id, detail: `${auth.name}: ${JSON.stringify(args).slice(0, 500)}` });
-				}
-				return reply(rpc(msg.id, { content: [{ type: 'text', text: JSON.stringify(out) }] }));
-			} catch (e) {
-				return reply(rpc(msg.id, { isError: true, content: [{ type: 'text', text: e instanceof Error ? e.message : 'Tool failed' }] }));
-			}
+			const r = await callTool(auth, String(msg.params?.name ?? ''), (msg.params?.arguments as Record<string, unknown>) ?? {}, sites);
+			if (r.kind === 'unknown') return reply(rpcErr(msg.id, -32602, `Unknown tool ${String(msg.params?.name)}`));
+			return reply(rpc(msg.id, r.kind === 'ok' ? { content: [{ type: 'text', text: JSON.stringify(r.data) }] } : { isError: true, content: [{ type: 'text', text: r.error }] }));
 		}
 		default:
 			return reply(rpcErr(msg.id, -32601, `Method not found: ${msg.method}`));

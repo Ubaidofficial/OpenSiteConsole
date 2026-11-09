@@ -195,6 +195,57 @@ export function demoOpenSeoProjects() {
 	];
 }
 
+/**
+ * Demo OpenSEO: answers the MCP tools SEOConsole uses, in the shapes OpenSEO's source returns them, with made-up but stable numbers.
+ * Rank trackers live in memory for the life of the process.
+ */
+const demoTrackers = new Map<number, { id: string; domain: string; scheduleInterval: string; isActive: boolean; locationName: null; keywords: Set<string> }[]>();
+export function demoOpenSeoApi(siteId: number) {
+	const hash = (s: string) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return h; };
+	return {
+		async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+			const list = demoTrackers.get(siteId) ?? [];
+			if (name === 'get_keyword_metrics') {
+				// About one keyword in eight has too little volume to measure, as with real data.
+				return { keywords: (args.keywords as string[]).filter((k) => hash(k) % 8 !== 0).map((k) => { const h = hash(k); return { keyword: k, search_volume: [10, 20, 30, 50, 70, 90, 110, 140, 170, 210, 260, 320, 390, 480, 590, 720, 880, 1000, 1300, 1600, 2400, 3600, 5400, 8100][h % 24], keyword_difficulty: h % 71, main_intent: ['informational', 'commercial', 'transactional', 'navigational'][h % 4], cpc: Math.round((h % 400) / 10) / 10, competition: (h % 100) / 100, competition_level: 'MEDIUM', monthly_searches: null }; }) };
+			}
+			if (name === 'get_rank_tracker') return { configs: list.map(({ keywords, ...c }) => ({ ...c, keywordCount: keywords.size })) };
+			if (name === 'create_rank_tracker') {
+				const t = { id: `00000000-0000-4000-8000-${String(siteId).padStart(12, '0')}`, domain: String(args.domain), scheduleInterval: String(args.scheduleInterval ?? 'manual'), isActive: true, locationName: null, keywords: new Set<string>() };
+				demoTrackers.set(siteId, [...list, t]);
+				return { trackerId: t.id };
+			}
+			if (name === 'estimate_rank_tracker_cost') {
+				const t = list.find((x) => x.id === args.trackerId);
+				const n = (t?.keywords.size ?? 0) + (args.additionalKeywords as string[]).length;
+				const cost = Math.round(n * 2 * 6 * 0.0006 * 1e4) / 1e4;
+				return { trackerId: args.trackerId, costUsd: cost, costCredits: Math.ceil(cost * 1000), keywordCount: n, devicesCount: 2, totalChecks: n * 2, existingKeywordCount: t?.keywords.size ?? 0, additionalKeywordCount: (args.additionalKeywords as string[]).length, scheduledEstimate: t?.scheduleInterval !== 'manual' ? { scheduleInterval: t?.scheduleInterval, costUsd: cost, costCredits: Math.ceil(cost * 1000), checksPerMonth: 4, monthlyCostUsd: cost * 4, monthlyCostCredits: Math.ceil(cost * 4000) } : undefined };
+			}
+			if (name === 'add_rank_tracking_keywords') {
+				const t = list.find((x) => x.id === args.trackerId);
+				if (!t) throw new Error('Rank tracker not found');
+				const before = t.keywords.size;
+				for (const k of args.keywords as string[]) t.keywords.add(k.toLowerCase());
+				return { trackerId: t.id, requested: (args.keywords as string[]).length, added: t.keywords.size - before, addedIds: [] };
+			}
+			if (name === 'get_audit_issues') {
+				// Issues on a few of the pages that earn the most clicks, so the join with Search Console has something to show.
+				const pages = (db().prepare('SELECT page, SUM(clicks) c FROM sa_rows WHERE site_id = ? GROUP BY page ORDER BY c DESC LIMIT 40').all(siteId) as { page: string }[]).map((r) => r.page);
+				const types = [
+					{ issueType: 'missing_meta_description', title: 'Missing meta description', severity: 'warning', howToFix: 'Write a unique meta description of 120-160 characters that states what the page offers.' },
+					{ issueType: 'broken_internal_link', title: 'Broken internal link', severity: 'critical', howToFix: 'Update or remove links that point to pages returning 4xx or 5xx.' },
+					{ issueType: 'slow_page', title: 'Slow page response', severity: 'warning', howToFix: 'Reduce server response time: cache pages and compress assets.' },
+					{ issueType: 'image_missing_alt', title: 'Image without alt text', severity: 'info', howToFix: 'Add descriptive alt text to content images.' }
+				];
+				const issues = pages.flatMap((u) => types.filter((t) => hash(t.issueType + u) % 5 === 0).map((t) => ({ severity: t.severity, issueType: t.issueType, title: t.title, url: u, details: null, howToFix: t.howToFix })));
+				const summary = types.map((t) => ({ issueType: t.issueType, title: t.title, severity: t.severity, count: issues.filter((i) => i.issueType === t.issueType).length })).filter((s) => s.count);
+				return { summary, issues, total: issues.length, page: 1 };
+			}
+			throw new Error(`Demo OpenSEO has no ${name}`);
+		}
+	};
+}
+
 /** Demo: unique users per channel over a window (about 60% of summed daily users, since people return). */
 export function demoGa4UsersByChannel(property: string, start: string, end: string): { channel: string; users: number }[] {
 	const sum = new Map<string, number>();
@@ -331,6 +382,32 @@ export function demoPageFetch(siteUrl: string): typeof fetch {
 		const claritySnip = def.brand === 'greenleaf' ? claritySnippet(DEMO_CLARITY_ID) : '';
 		const html = `<!doctype html><html lang="en"><head><title>${title}</title>${desc}${robots}<link rel="canonical" href="${url.href}">${gtmSnip}${claritySnip}</head><body>${demoBody(def.siteUrl, def.topic, url, h1)}</body></html>`;
 		return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
+	}) as typeof fetch;
+}
+
+/**
+ * Demo robots.txt: ordinary rules that block nothing earning clicks (cart, internal search, sorted lists), a stricter group for
+ * one other crawler, and the sitemap. Anything else on the host is a 404.
+ */
+export function demoRobotsFetch(siteUrl: string): typeof fetch {
+	const def = siteOf(siteUrl);
+	return (async (input: RequestInfo | URL) => {
+		const url = new URL(String(input));
+		if (url.pathname !== '/robots.txt') return new Response('not found', { status: 404 });
+		const body = [
+			`# robots.txt for ${def.brand}`,
+			'User-agent: *',
+			'Disallow: /cart/',
+			'Disallow: /search',
+			'Disallow: /*?sort=',
+			'Allow: /search/help',
+			'',
+			'User-agent: ExampleScraperBot',
+			'Disallow: /',
+			'',
+			`Sitemap: ${url.origin}/sitemap.xml`
+		].join('\n');
+		return new Response(body, { status: 200, headers: { 'content-type': 'text/plain' } });
 	}) as typeof fetch;
 }
 

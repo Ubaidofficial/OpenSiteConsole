@@ -2,13 +2,14 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { Eye, EyeOff, ExternalLink, RefreshCw, Search, Trash2 } from '@lucide/svelte';
+	import { Eye, EyeOff, ExternalLink, RefreshCw, Search, Trash2, Sparkles } from '@lucide/svelte';
 	import { ConfirmButton } from '$lib/components/ui/confirm';
 	import PeriodPicker from '$lib/components/PeriodPicker.svelte';
 	import AreaSpark from '$lib/components/AreaSpark.svelte';
 	import { trendOf } from '$lib/trend';
 	import SiteAvatar from '$lib/components/SiteAvatar.svelte';
 	import Delta from '$lib/components/Delta.svelte';
+	import GetStarted from '$lib/components/GetStarted.svelte';
 	import { privacy } from '$lib/privacy.svelte';
 	import { fmtInt, fmtPct, fmtPos, ago } from '$lib/format';
 
@@ -80,7 +81,7 @@
 	<div class="ml-auto flex flex-wrap items-center gap-2">
 		<div class="relative">
 			<Search class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-			<input class="input w-52 pl-8" placeholder="Search sites or tags" bind:value={q} />
+			<input class="input w-52 pl-8" placeholder="Search sites or tags" aria-label="Search sites or tags" bind:value={q} />
 		</div>
 		<select class="input" bind:value={account} aria-label="Account">
 			<option value="all">All accounts</option>
@@ -96,12 +97,23 @@
 	</div>
 </div>
 
+<form method="GET" action="/chat" class="group mb-6 flex items-center gap-2 rounded-2xl border bg-card py-1.5 pr-1.5 pl-4 shadow-xs transition-shadow focus-within:shadow-sm focus-within:ring-2 focus-within:ring-ring/30">
+	<Sparkles class="size-4 shrink-0 text-muted-foreground" />
+	<label for="ask-data" class="sr-only">Ask your data</label>
+	<input id="ask-data" name="q" maxlength="2000" autocomplete="off" class="h-9 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted-foreground" placeholder="Ask your data: “Why did clicks drop last week?” or “What should I fix first?”" />
+	<button class="btn btn-primary h-8 rounded-xl">Ask</button>
+</form>
+
+{#if data.onboarding && !data.onboarding.hidden}<GetStarted steps={data.onboarding.steps} progress={data.onboarding.progress} running={data.onboarding.running} />{/if}
+
 {#if data.cards.length === 0}
+	{#if !data.onboarding || data.onboarding.hidden}
 	<div class="card p-10 text-center">
 		<p class="mb-2 text-lg font-semibold">No sites yet</p>
 		<p class="mb-5 text-muted-foreground">Connect a Google account to import every Search Console property it can see.</p>
 		<a class="btn btn-primary" href="/accounts">Connect an account</a>
 	</div>
+	{/if}
 {:else}
 	<div class="stagger mb-5 grid grid-cols-2 gap-4 md:grid-cols-4">
 		{#each kpis as k}
@@ -139,7 +151,7 @@
 							<a href="/sites/{c.id}?days={data.days}" class="pii truncate text-lg leading-tight font-semibold tracking-tight after:absolute after:inset-0 after:rounded-2xl">{title(c)}</a>
 							{#if c.removed}<span class="chip shrink-0 !px-1.5 !py-0 text-[10px]" title="Google no longer lists this property for the account">removed in Search Console</span>{/if}
 							{#if isPrefix(c)}<span class="chip shrink-0 !px-1.5 !py-0 text-[10px]">URL prefix</span>{/if}
-							<a href={c.href} target="_blank" rel="noreferrer noopener" class="relative z-10 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100" aria-label="Open the site in a new tab" title="Open site"><ExternalLink class="size-3.5" /></a>
+							<a href={c.href} target="_blank" rel="noreferrer noopener" class="tap relative z-10 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 [@media(hover:none)]:opacity-100" aria-label="Open the site in a new tab" title="Open site"><ExternalLink class="size-3.5" /></a>
 						</div>
 						<div class="pii truncate text-sm text-muted-foreground">{c.label ? c.name + ' · ' : ''}{c.account}</div>
 						{#if c.coveredBy}<div class="pii truncate text-xs text-warn" title={privacy.on ? undefined : `This property's data is already included in ${c.coveredBy}`}>↳ included in {c.coveredBy.replace('sc-domain:', '')}</div>{/if}
@@ -203,4 +215,7 @@
 		Periods end at each site's newest synced day (Search Console data lags ~2 days; days are Pacific time). Green line = clicks growing, red = falling (vs the previous period); dashed end = the last 2 days, which Google may still revise.
 		<a class="underline underline-offset-2" href="?days={data.days}&hidden={data.showHidden ? 0 : 1}">{data.showHidden ? 'Hide' : 'Show'} hidden sites</a>
 	</p>
+{/if}
+{#if data.onboarding?.hidden}
+	<form method="POST" action="?/showOnboarding" use:enhance class="mt-2 text-xs text-muted-foreground"><button class="underline underline-offset-2">Set-up guide{data.onboarding.progress.complete ? '' : ` (${data.onboarding.progress.done} of ${data.onboarding.progress.total} done)`}</button></form>
 {/if}

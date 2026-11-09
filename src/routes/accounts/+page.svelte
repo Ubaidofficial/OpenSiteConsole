@@ -42,7 +42,7 @@
 					<form method="POST" action="?/refresh" use:enhance><input type="hidden" name="id" value={a.id} /><button class="btn">Refresh properties</button></form>
 					<form method="POST" action="?/relabel" use:enhance class="flex gap-1">
 						<input type="hidden" name="id" value={a.id} />
-						<input class="input w-36" name="label" placeholder="Label" value={a.label ?? ''} />
+						<input class="input w-36" name="label" aria-label="Label" placeholder="Label" value={a.label ?? ''} />
 						<button class="btn">Save</button>
 					</form>
 					<form method="POST" action="?/remove" use:enhance>

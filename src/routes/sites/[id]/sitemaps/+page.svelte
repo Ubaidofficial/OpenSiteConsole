@@ -7,6 +7,8 @@
 	let { data, form } = $props();
 	let busy = $state(false);
 	const r = $derived(data.lastmod.report);
+	const rb = $derived(data.robots);
+	let robotsBusy = $state(false);
 </script>
 
 {#if data.error}<p class="mb-3 text-sm text-bad">{data.error}</p>{/if}
@@ -58,6 +60,57 @@
 {#if data.sitemaps.some((s) => s.isPending)}<Explainer lead="Pending: Google has the submission and has not processed it yet.">
 	<p><b>Pending</b> means Google has accepted the submission and has not processed the file yet. After a resubmit it is normal: “Last read” and the URL count stay at their old values until Google fetches the sitemap again, which Google decides. Use <b>Check</b> to confirm the file itself is fine.</p>
 </Explainer>{/if}
+<section id="robots" class="card mt-6 scroll-mt-20 p-4 text-sm">
+	<div class="mb-1 flex flex-wrap items-center gap-2">
+		<h2 class="font-medium">robots.txt watch</h2>
+		{#if rb.hosts.length}
+			{@const bad = rb.blocked.length > 0 || rb.hosts.some((h) => h.state === 'error' && h.failStreak >= rb.errorStreak)}
+			<span class="chip {bad ? 'border-[color:var(--bad)] text-bad' : 'text-good'}">{bad ? 'needs fixing' : 'nothing blocked'}</span>
+		{/if}
+		<form method="POST" action="?/robotsCheck" use:enhance={() => { robotsBusy = true; return async ({ update }) => { await update(); robotsBusy = false; }; }} class="ml-auto">
+			<button class="btn !h-8 text-xs" disabled={robotsBusy}>{#if robotsBusy}<LoaderCircle class="size-4 animate-spin" />Reading…{:else}Check now{/if}</button>
+		</form>
+	</div>
+	<Explainer lead="Read once a day; pages that earn clicks are tested against the rules Googlebot obeys.">
+		<p>Once a day SEOConsole reads <code>/robots.txt</code> on each host your clicks come from (up to three), keeps every change in what the rules mean (comments and blank lines are ignored), and tests the pages that earned clicks in the last 28 days against the group Googlebot obeys. A rule that blocks them, or a file that keeps answering with server errors, goes to the top of the action queue and to urgent alerts. Matching follows the published robots.txt standard as this app understands it; confirm a surprising result in Search Console's robots.txt report.</p>
+	</Explainer>
+	{#if !rb.hosts.length}
+		<p class="text-xs text-muted-foreground">Not read yet. It is read within a day of adding the site, or now with <b>Check now</b>.</p>
+	{:else}
+		<ul class="mb-2 space-y-1 text-xs">
+			{#each rb.hosts as h (h.origin)}
+				<li class="flex flex-wrap gap-x-3 gap-y-0.5">
+					<a class="pii font-medium hover:underline" href="{h.origin}/robots.txt" target="_blank" rel="noreferrer noopener">{h.origin.replace(/^https?:\/\//, '')}</a>
+					<span class={h.state === 'error' ? 'text-bad' : 'text-muted-foreground'}>{h.state === 'ok' ? `HTTP ${h.status}` : h.state === 'missing' ? `no file (HTTP ${h.status}): everything may be crawled` : `error: ${h.error ?? 'no answer'} (${h.failStreak} read${h.failStreak === 1 ? '' : 's'} in a row)`}</span>
+					{#if h.group}<span class="text-muted-foreground">Googlebot obeys the <code>{h.group}</code> group: {h.rules} rule{h.rules === 1 ? '' : 's'}</span>{:else if h.body != null}<span class="text-muted-foreground">no group applies to Googlebot</span>{/if}
+					<span class="text-muted-foreground">read {ago(h.checkedAt)}{h.changedAt ? ` · last changed ${ago(h.changedAt)}` : ''}</span>
+				</li>
+			{/each}
+		</ul>
+		{#if rb.blocked.length}
+			<p class="mb-1 text-xs text-bad">✕ Blocks {rb.blocked.length} page{rb.blocked.length === 1 ? '' : 's'} that earned clicks in the last 28 days:</p>
+			<ul class="mb-2 space-y-0.5 text-xs">{#each rb.blocked.slice(0, 10) as b (b.url)}<li class="break-all"><span class="pii">{b.url}</span> <span class="text-muted-foreground">· {fmtInt(b.clicks)} clicks · <code>{b.rule}</code></span></li>{/each}</ul>
+		{:else}
+			<p class="mb-2 text-xs text-good">✓ No page that earned clicks in the last 28 days is blocked for Googlebot.</p>
+		{/if}
+		{#if rb.changes.length}
+			<details class="text-xs"><summary class="cursor-pointer text-muted-foreground">Changes ({rb.changes.length} most recent)</summary>
+				<ul class="mt-1 space-y-2">
+					{#each rb.changes as c (c.id)}
+						<li>
+							<div class="text-muted-foreground">{new Date(c.at).toISOString().slice(0, 16).replace('T', ' ')} UTC · <span class="pii">{c.origin.replace(/^https?:\/\//, '')}</span>{c.beforeState !== c.afterState ? ` · ${c.beforeState} → ${c.afterState}` : ''}</div>
+							<ul class="pii font-mono">{#each c.removed as l}<li class="text-bad">− {l}</li>{/each}{#each c.added as l}<li class="text-good">+ {l}</li>{/each}</ul>
+							{#if c.beforeBody}<details><summary class="cursor-pointer text-muted-foreground">The file before this change</summary><pre class="pii mt-1 max-h-60 overflow-auto whitespace-pre-wrap rounded border p-2">{c.beforeBody}</pre></details>{/if}
+						</li>
+					{/each}
+				</ul>
+			</details>
+		{/if}
+		{#each rb.hosts.filter((h) => h.body != null) as h (h.origin)}
+			<details class="mt-1 text-xs"><summary class="cursor-pointer text-muted-foreground">The file as read on <span class="pii">{h.origin.replace(/^https?:\/\//, '')}</span></summary><pre class="pii mt-1 max-h-60 overflow-auto whitespace-pre-wrap rounded border p-2">{h.body}</pre></details>
+		{/each}
+	{/if}
+</section>
 <section class="card mt-6 p-4 text-sm">
 	<div class="mb-1 flex flex-wrap items-center gap-2">
 		<h2 class="font-medium">Are the dates in your sitemap believable?</h2>

@@ -109,16 +109,56 @@
   const steps = $$('.step'), frames = $$('.frame'), dots = $$('.dots li');
   const labels = ['Overview', 'Portfolio', 'Pages', 'Opportunities', 'Tests', 'Indexing'];
   const pinUrl = $('[data-pin-url]');
+  const story = $('[data-story]');
+  const wide = window.matchMedia('(min-width: 981px)');
+  let current = 0, touched = false, timer = 0;
+  // On wide screens the story is a short list you click through, the screenshot beside it; on phones each step shows its own.
+  const tabbed = () => !!story && story.classList.contains('tabbed');
   function setActive(i) {
-    steps.forEach((s, k) => s.classList.toggle('on', k === i));
+    current = i;
+    steps.forEach((s, k) => { s.classList.toggle('on', k === i); if (tabbed()) s.setAttribute('aria-pressed', String(k === i)); });
     frames.forEach((f, k) => f.classList.toggle('on', k === i));
     dots.forEach((d, k) => d.classList.toggle('on', k === i));
     if (pinUrl) pinUrl.textContent = labels[i] + ' · demo data';
   }
-  if (steps.length && 'IntersectionObserver' in window) {
-    const so = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setActive(Number(e.target.dataset.i)); }), { rootMargin: '-45% 0px -45% 0px' });
-    steps.forEach((s) => so.observe(s));
-    setActive(0);
+  function stopAuto() { clearInterval(timer); timer = 0; if (story) story.classList.remove('auto'); }
+  function startAuto() {
+    if (still || touched || timer || !tabbed()) return;
+    story.classList.add('auto');
+    timer = setInterval(() => setActive((current + 1) % steps.length), 7000);
+  }
+  function applyMode() {
+    if (!story) return;
+    story.classList.toggle('tabbed', wide.matches);
+    steps.forEach((s) => {
+      if (wide.matches) { s.tabIndex = 0; s.setAttribute('role', 'button'); }
+      else { s.removeAttribute('tabindex'); s.removeAttribute('role'); s.removeAttribute('aria-pressed'); }
+    });
+    if (!wide.matches) stopAuto();
+    setActive(current);
+  }
+  if (steps.length) {
+    applyMode();
+    wide.addEventListener('change', applyMode);
+    steps.forEach((s, i) => {
+      const pick = () => { if (!tabbed()) return; touched = true; stopAuto(); setActive(i); };
+      s.addEventListener('click', pick);
+      s.addEventListener('keydown', (e) => {
+        if (!tabbed()) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+        const k = { ArrowDown: i + 1, ArrowUp: i - 1 }[e.key];
+        if (k !== undefined) { e.preventDefault(); steps[(k + steps.length) % steps.length].focus(); }
+      });
+    });
+    if ('IntersectionObserver' in window) {
+      // phones: the step in the middle of the screen is the current one
+      const so = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && !tabbed()) setActive(Number(e.target.dataset.i)); }), { rootMargin: '-45% 0px -45% 0px' });
+      steps.forEach((s) => so.observe(s));
+      // wide screens: advance by itself only while the story is on screen, until someone picks a step
+      new IntersectionObserver((es) => es.forEach((e) => (e.isIntersecting ? startAuto() : stopAuto())), { threshold: 0.35 }).observe(story);
+      story.addEventListener('mouseenter', stopAuto);
+      story.addEventListener('mouseleave', () => { if (!touched) startAuto(); });
+    }
   }
 
   /* the agent terminal types itself once, when it scrolls into view */
@@ -173,6 +213,8 @@
       tabs.forEach((t, k) => { const on = k === i; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; panels[k].hidden = !on; });
       if (focus) tabs[i].focus();
     };
+    // Panels are all visible until the script runs (the page is complete without it); then only the selected one shows.
+    select(Math.max(0, tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true')));
     tabs.forEach((t, i) => {
       t.addEventListener('click', () => select(i));
       t.addEventListener('keydown', (e) => {
@@ -199,6 +241,25 @@
     btn.classList.add('ok');
     setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1600);
   }));
+
+  /* comparison: show the other ten rows */
+  const more = $('[data-more]');
+  if (more) more.addEventListener('click', () => {
+    const on = more.closest('.compare').classList.toggle('all');
+    more.setAttribute('aria-expanded', String(on));
+    more.textContent = on ? 'Show the top 10' : 'Show all 20 rows';
+  });
+
+  /* the menu marks the section you are reading */
+  const navLinks = $$('.nav a[href^="#"]');
+  const spied = navLinks.map((a) => $(a.getAttribute('href'))).filter(Boolean);
+  if (spied.length && 'IntersectionObserver' in window) {
+    const spy = new IntersectionObserver((es) => es.forEach((e) => {
+      if (!e.isIntersecting) return;
+      navLinks.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id));
+    }), { rootMargin: '-45% 0px -50% 0px' });
+    spied.forEach((el) => spy.observe(el));
+  }
 
   /* cursor-following highlight on the feature cards */
   if (!still) $$('.card, .win').forEach((c) => c.addEventListener('pointermove', (e) => {
