@@ -109,16 +109,56 @@
   const steps = $$('.step'), frames = $$('.frame'), dots = $$('.dots li');
   const labels = ['Overview', 'Portfolio', 'Pages', 'Opportunities', 'Tests', 'Indexing'];
   const pinUrl = $('[data-pin-url]');
+  const story = $('[data-story]');
+  const wide = window.matchMedia('(min-width: 981px)');
+  let current = 0, touched = false, timer = 0;
+  // On wide screens the story is a short list you click through, the screenshot beside it; on phones each step shows its own.
+  const tabbed = () => !!story && story.classList.contains('tabbed');
   function setActive(i) {
-    steps.forEach((s, k) => s.classList.toggle('on', k === i));
+    current = i;
+    steps.forEach((s, k) => { s.classList.toggle('on', k === i); if (tabbed()) s.setAttribute('aria-pressed', String(k === i)); });
     frames.forEach((f, k) => f.classList.toggle('on', k === i));
     dots.forEach((d, k) => d.classList.toggle('on', k === i));
     if (pinUrl) pinUrl.textContent = labels[i] + ' · demo data';
   }
-  if (steps.length && 'IntersectionObserver' in window) {
-    const so = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setActive(Number(e.target.dataset.i)); }), { rootMargin: '-45% 0px -45% 0px' });
-    steps.forEach((s) => so.observe(s));
-    setActive(0);
+  function stopAuto() { clearInterval(timer); timer = 0; if (story) story.classList.remove('auto'); }
+  function startAuto() {
+    if (still || touched || timer || !tabbed()) return;
+    story.classList.add('auto');
+    timer = setInterval(() => setActive((current + 1) % steps.length), 7000);
+  }
+  function applyMode() {
+    if (!story) return;
+    story.classList.toggle('tabbed', wide.matches);
+    steps.forEach((s) => {
+      if (wide.matches) { s.tabIndex = 0; s.setAttribute('role', 'button'); }
+      else { s.removeAttribute('tabindex'); s.removeAttribute('role'); s.removeAttribute('aria-pressed'); }
+    });
+    if (!wide.matches) stopAuto();
+    setActive(current);
+  }
+  if (steps.length) {
+    applyMode();
+    wide.addEventListener('change', applyMode);
+    steps.forEach((s, i) => {
+      const pick = () => { if (!tabbed()) return; touched = true; stopAuto(); setActive(i); };
+      s.addEventListener('click', pick);
+      s.addEventListener('keydown', (e) => {
+        if (!tabbed()) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+        const k = { ArrowDown: i + 1, ArrowUp: i - 1 }[e.key];
+        if (k !== undefined) { e.preventDefault(); steps[(k + steps.length) % steps.length].focus(); }
+      });
+    });
+    if ('IntersectionObserver' in window) {
+      // phones: the step in the middle of the screen is the current one
+      const so = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && !tabbed()) setActive(Number(e.target.dataset.i)); }), { rootMargin: '-45% 0px -45% 0px' });
+      steps.forEach((s) => so.observe(s));
+      // wide screens: advance by itself only while the story is on screen, until someone picks a step
+      new IntersectionObserver((es) => es.forEach((e) => (e.isIntersecting ? startAuto() : stopAuto())), { threshold: 0.35 }).observe(story);
+      story.addEventListener('mouseenter', stopAuto);
+      story.addEventListener('mouseleave', () => { if (!touched) startAuto(); });
+    }
   }
 
   /* the agent terminal types itself once, when it scrolls into view */

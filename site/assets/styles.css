@@ -608,6 +608,7 @@ html.js .c-sitemap:not(.in) .fun li::before { width: 0; }
 
 /* motion preferences: everything becomes static and fully visible */
 @media (prefers-reduced-motion: reduce) {
+  .story.auto .step.on::after { animation: none; display: none; }
   html { scroll-behavior: auto; }
   .w { animation: none; transform: none; opacity: 1; } .hl::before { animation: none; transform: none; }
   html.js .rv { opacity: 1; transform: none; transition: none; }
@@ -895,3 +896,19 @@ html.js .tk-h { display: none; }
 html.js .compare:not(.all) tr.x { display: none; }
 .cmp-more { margin: 18px 0 0; text-align: center; }
 html:not(.js) .cmp-more { display: none; }
+
+/* the story on wide screens: a short list to click through, the screenshot beside it */
+.story.tabbed { align-items: center; }
+.story.tabbed .step { min-height: 0; padding: 16px 0 16px 24px; cursor: pointer; position: relative; }
+.story.tabbed .step h3 { font-size: clamp(1.25rem, 1.9vw, 1.6rem); margin: 6px 0 0; }
+.story.tabbed .step:not(.on) p { display: none; }
+.story.tabbed .step.on h3 { margin-bottom: 12px; }
+.story.tabbed .step:hover h3 { color: var(--fg); }
+.story.tabbed .step:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; border-radius: 4px; }
+.story.tabbed .pin { position: static; }
+.story.auto .step.on::after { content: ''; position: absolute; left: -2px; top: 0; width: 2px; height: 100%; background: var(--acc-ink); transform-origin: top; animation: step-fill 7s linear both; }
+@keyframes step-fill { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* small links and buttons get a finger-sized target */
+.foot nav a { display: inline-flex; align-items: center; min-height: 40px; }
+@media (max-width: 640px) { .copy { padding: 8px 12px; } }
