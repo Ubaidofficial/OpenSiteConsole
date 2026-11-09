@@ -58,4 +58,9 @@ The owner (whoever signs in with `ADMIN_PASSWORD`) or an admin invites people fr
 
 ## License
 
-Free software under the **GNU Affero General Public License v3.0** (AGPL-3.0-only); see [LICENSE](LICENSE). If you modify it and let other people use your version over a network, the AGPL requires you to offer them the source. This is not legal advice; the license text is what applies.
+Free software under the **GNU Affero General Public License, version 3 only** (SPDX: `AGPL-3.0-only`); see [LICENSE](LICENSE). You may use, study, change and share it. The two main obligations:
+
+- **If you share copies** (source, a build or a Docker image, changed or not), you must pass them on under this same license and give recipients the corresponding source.
+- **If you change it and run your version for other people over a network**, you must offer those users the complete source of your changed version, free of charge.
+
+This is a plain-language summary, not legal advice; the license text is what applies.
