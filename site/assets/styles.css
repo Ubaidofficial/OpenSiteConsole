@@ -36,6 +36,7 @@ code, pre, .mono { font-family: var(--mono); }
 .bar-cta { display: flex; gap: 8px; align-items: center; }
 .nav a { padding: 8px 14px; border-radius: 10px; color: var(--mut); font-size: 15px; font-weight: 500; transition: color 0.2s, background 0.2s; }
 .nav a:hover { color: var(--fg); background: rgba(13, 13, 15, 0.06); }
+.nav a.on { color: var(--fg); background: rgba(13, 13, 15, 0.06); }
 
 /* buttons: crisp, slightly rounded rectangles */
 .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: var(--r); font-weight: 600; font-size: 16px; border: 1px solid var(--fg); transition: transform 0.25s var(--ease), background 0.25s, color 0.25s, box-shadow 0.25s; will-change: transform; }
@@ -232,7 +233,7 @@ html.js .rv.in { opacity: 1; transform: none; }
 /* pinned story */
 .story { display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); gap: clamp(30px, 5vw, 80px); align-items: start; }
 .steps { list-style: none; margin: 0; padding: 0; }
-.step { min-height: 78vh; display: flex; flex-direction: column; justify-content: center; padding: 30px 0 30px 26px; border-left: 2px solid var(--line); transition: border-color 0.5s var(--ease); }
+.step { min-height: 60vh; display: flex; flex-direction: column; justify-content: center; padding: 30px 0 30px 26px; border-left: 2px solid var(--line); transition: border-color 0.5s var(--ease); }
 .step.on { border-left-color: var(--fg); }
 .step .num { font-size: 13px; letter-spacing: 0.1em; color: var(--dim); transition: color 0.5s; } .step.on .num { color: var(--acc-ink); font-weight: 700; }
 .step h3 { font-size: clamp(1.7rem, 3.1vw, 2.7rem); line-height: 1.04; letter-spacing: -0.045em; font-weight: 700; margin: 14px 0 16px; color: var(--mut); transition: color 0.5s var(--ease); } .step.on h3 { color: var(--fg); }
@@ -583,7 +584,7 @@ html.js .c-sitemap:not(.in) .fun li::before { width: 0; }
   .hx { max-width: 600px; }
   /* on a phone the product comes right after the headline, so it is on the first screen */
   .hero-copy { display: contents; } .hero-grid { gap: 22px 0; }
-  .hero-copy > .kicker { order: 1; } .hero-copy > .h-xl { order: 2; } .hx { order: 3; } .hero-copy > .lead { order: 4; } .hero-copy > .cta { order: 5; } .hero-copy > .proof { order: 6; }
+  .hero-copy > .kicker { order: 1; } .hero-copy > .h-xl { order: 2; } .hero-copy > .lead { order: 3; } .hero-copy > .cta { order: 4; } .hx { order: 5; } .hero-copy > .proof { order: 6; }
   .win { grid-column: span 6; }
   .c-history, .c-digest, .c-audit, .c-vitals, .c-decay, .c-cannibal, .c-index, .c-updates { grid-column: span 12; } .c-sitemap, .c-ai, .c-bing { grid-column: span 6; }
 }
@@ -858,3 +859,39 @@ html.js .c-sitemap:not(.in) .fun li::before { width: 0; }
 .v-x72p { --x:72%; }
 .v-x73_7p { --x:73.7%; }
 /* ── end generated ── */
+
+/* toolkit: four groups behind tabs; without JavaScript every group is shown, each under its own heading */
+.tk-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 36px 0 0; padding: 5px; width: max-content; max-width: 100%; border: 1px solid var(--line2); border-radius: 14px; background: var(--card); box-shadow: var(--soft); }
+.tk-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 0; border-radius: 10px; background: none; color: var(--mut); font: inherit; font-size: 14.5px; font-weight: 550; cursor: pointer; transition: background 0.2s, color 0.2s; }
+.tk-tabs button:hover { color: var(--fg); background: rgba(13, 13, 15, 0.05); }
+.tk-tabs button span { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--bg2); color: var(--mut); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tk-tabs button[aria-selected="true"] { background: var(--fg); color: #fff; }
+.tk-tabs button[aria-selected="true"] span { background: rgba(255, 255, 255, 0.18); color: #fff; }
+html:not(.js) .tk-tabs { display: none; }
+.bento.tk { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 18px; }
+.tk-g { display: contents; }
+.tk-g[hidden] { display: none; }
+.bento.tk .card { grid-column: span 2; }
+.bento.tk .tk-g[data-n="5"] > .card:nth-last-child(-n+2) { grid-column: span 3; }
+.tk-h { grid-column: 1 / -1; margin: 22px 0 2px; color: var(--mut); font-size: 15px; }
+.tk-h b { color: var(--fg); margin-right: 6px; }
+html.js .tk-h { display: none; }
+@media (max-width: 980px) {
+  .bento.tk .card, .bento.tk .tk-g[data-n="5"] > .card:nth-last-child(-n+2) { grid-column: span 3; }
+  .bento.tk .tk-g[data-n="5"] > .card:last-child, .bento.tk .tk-g[data-n="3"] > .card:last-child { grid-column: span 6; }
+}
+@media (max-width: 640px) {
+  .bento.tk .card, .bento.tk .tk-g > .card:last-child, .bento.tk .tk-g[data-n="5"] > .card:nth-last-child(-n+2) { grid-column: span 6; }
+  .tk-tabs { width: 100%; } .tk-tabs button { flex: 1 1 auto; justify-content: center; padding: 8px 10px; }
+  .hero .cta { display: grid; grid-template-columns: minmax(0, 1fr); } .hero .cta .btn { justify-content: center; }
+}
+
+/* Ask: the built-in chat first, then your own agent */
+.agents .c-wide { margin-top: 44px; }
+.agent-or { display: flex; align-items: center; gap: 14px; margin: 44px 0 16px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+.agent-or::after { content: ''; flex: 1; height: 1px; background: var(--line2); }
+
+/* comparison: the ten rows that decide it, the other ten one click away */
+html.js .compare:not(.all) tr.x { display: none; }
+.cmp-more { margin: 18px 0 0; text-align: center; }
+html:not(.js) .cmp-more { display: none; }

@@ -173,6 +173,8 @@
       tabs.forEach((t, k) => { const on = k === i; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; panels[k].hidden = !on; });
       if (focus) tabs[i].focus();
     };
+    // Panels are all visible until the script runs (the page is complete without it); then only the selected one shows.
+    select(Math.max(0, tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true')));
     tabs.forEach((t, i) => {
       t.addEventListener('click', () => select(i));
       t.addEventListener('keydown', (e) => {
@@ -199,6 +201,25 @@
     btn.classList.add('ok');
     setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1600);
   }));
+
+  /* comparison: show the other ten rows */
+  const more = $('[data-more]');
+  if (more) more.addEventListener('click', () => {
+    const on = more.closest('.compare').classList.toggle('all');
+    more.setAttribute('aria-expanded', String(on));
+    more.textContent = on ? 'Show the top 10' : 'Show all 20 rows';
+  });
+
+  /* the menu marks the section you are reading */
+  const navLinks = $$('.nav a[href^="#"]');
+  const spied = navLinks.map((a) => $(a.getAttribute('href'))).filter(Boolean);
+  if (spied.length && 'IntersectionObserver' in window) {
+    const spy = new IntersectionObserver((es) => es.forEach((e) => {
+      if (!e.isIntersecting) return;
+      navLinks.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id));
+    }), { rootMargin: '-45% 0px -50% 0px' });
+    spied.forEach((el) => spy.observe(el));
+  }
 
   /* cursor-following highlight on the feature cards */
   if (!still) $$('.card, .win').forEach((c) => c.addEventListener('pointermove', (e) => {
