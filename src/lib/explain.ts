@@ -175,5 +175,8 @@ export const HIDDEN_GROUPS: { id: string; title: string; blurb: string }[] = [
 	{ id: 'leaks', title: 'Visitors who leave', blurb: 'Google landing pages where far fewer visitors engage than on the rest of your site (GA4).' },
 	{ id: 'noconv', title: 'Busy pages with no conversions', blurb: 'Busy Google landing pages with no key events at all, on a site that converts elsewhere. Check the key event can fire there before changing content.' },
 	{ id: 'friction', title: 'Rage and dead clicks', blurb: 'Pages Google sends visitors to where many sessions had repeated clicks on things that do nothing (Clarity, last day only).' },
+	{ id: 'bots', title: 'Pages bots visit most', blurb: 'Pages where a quarter or more of the sessions Clarity recorded were bots (last day only). Treat any other number for these pages with care: visits, engagement and clicks may be partly automated.' },
+	{ id: 'devicefriction', title: 'One device struggles', blurb: 'Visitors on one kind of device hit rage or dead clicks at least one and a half times as often as everyone else, on a device Google sends real traffic to (Clarity, last day only). Test the page on that device first.' },
+	{ id: 'frictiontrend', title: 'Friction after your changes', blurb: 'For each change in your change log: how often sessions had rage or dead clicks before it and after it, from Clarity\'s daily snapshots. The day of the change and the day after are left out. A lead to check, not proof the change caused it.' },
 	{ id: 'device', title: 'Worse on phones', blurb: 'You rank at least three places worse on phones than on desktop for the same search. Google ranks the phone version of your pages.' }
 ];

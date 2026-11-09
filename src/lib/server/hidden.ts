@@ -1,6 +1,6 @@
 import { db } from './db';
 import type { SiteRow } from './clients';
-import { brandTerms, fittedCurve, historyCoversPrevious, pageTotals, periodFor, queryPageRows, topQueries } from './queries';
+import { annotationsFor, brandTerms, fittedCurve, historyCoversPrevious, pageTotals, performanceBy, periodFor, queryPageRows, topQueries } from './queries';
 import { linksFor } from './links';
 import { clarityPages, pathKey, type ClarityPage, type Ga4Page, type Vol } from '../pageinsights';
 import type { ClarityMetric } from './clarity';
@@ -9,6 +9,7 @@ import {
 	bingGaps, clarityFriction, conversionLeaks, deviceGaps, engagementLeaks, hiddenGems, lostQueries, pagesNotInBing, pagesOnTheEdge, questionGaps, risingQueries, beyondPageTwo, type BeyondPageTwo,
 	type BingGap, type ConversionLeak, type DeviceGap, type EngagementLeak, type Friction, type HiddenGem, type LostQuery, type NotInBing, type PageEdge, type QuestionGap, type RisingQuery
 } from '../hidden';
+import { botHeavyPages, clarityDevices, deviceFriction, frictionAroundChanges, normDevice, type BotPage, type Device, type DeviceFriction, type FrictionChange, type PageSnapshot } from '../clarityplus';
 import type { QRow } from '../analytics';
 
 type Site = Pick<SiteRow, 'id' | 'site_url' | 'synced_through' | 'backfill_done' | 'backfilled_to' | 'brand_terms'>;
@@ -32,6 +33,9 @@ export interface HiddenReport {
 	pageEdge: PageEdge[];
 	questions: QuestionGap[];
 	beyond: BeyondPageTwo[];
+	bots: BotPage[];
+	deviceFriction: DeviceFriction[];
+	frictionTrend: FrictionChange[];
 }
 
 /** Every cross-source and cross-period finding for one site in one window. Cheap enough to run on demand; actions.ts caches its use of it. */
@@ -73,6 +77,37 @@ export function hiddenReport(site: Site, days: number): HiddenReport {
 		}
 	}
 
+	// Clarity's device split (newest snapshot) against where Google's clicks come from, and the daily URL snapshots around each logged change.
+	let deviceRows: ReturnType<typeof clarityDevices> = [];
+	let trend: FrictionChange[] = [];
+	if (links.clarity) {
+		const dsnap = d.prepare("SELECT payload FROM clarity_snapshots WHERE site_id = ? AND dimension = 'Device' ORDER BY day DESC LIMIT 1").get(site.id) as { payload: string } | undefined;
+		if (dsnap) {
+			try {
+				deviceRows = clarityDevices(JSON.parse(dsnap.payload) as ClarityMetric[]);
+			} catch {
+				deviceRows = [];
+			}
+		}
+		const changes = annotationsFor(site.id);
+		if (changes.length) {
+			const snaps: PageSnapshot[] = [];
+			for (const r of d.prepare("SELECT day, payload FROM clarity_snapshots WHERE site_id = ? AND dimension = 'URL' ORDER BY day DESC LIMIT 180").all(site.id) as { day: string; payload: string }[]) {
+				try {
+					snaps.push({ day: r.day, pages: clarityPages(JSON.parse(r.payload) as ClarityMetric[]) });
+				} catch {
+					/* an unreadable snapshot is skipped, never counted as zero */
+				}
+			}
+			trend = frictionAroundChanges(snaps, changes);
+		}
+	}
+	const googleDevice: Partial<Record<Device, number>> = {};
+	for (const r of performanceBy(site.id, p.start, p.end, 'device')) {
+		const dev = normDevice(r.key);
+		if (dev) googleDevice[dev] = (googleDevice[dev] ?? 0) + r.clicks;
+	}
+
 	const googleVol: Vol[] = pages.map((r) => ({ url: r.page, clicks: r.clicks, impressions: r.impressions, position: r.position }));
 	const clicksByPath = new Map<string, number>();
 	for (const r of pages) clicksByPath.set(pathKey(r.page), (clicksByPath.get(pathKey(r.page)) ?? 0) + r.clicks);
@@ -102,6 +137,9 @@ export function hiddenReport(site: Site, days: number): HiddenReport {
 		device: deviceGaps(mobile, desktop, curve, terms, { minMobileImpressions: n(40, 15), minDesktopImpressions: n(20, 8) }),
 		pageEdge: pagesOnTheEdge(qp, curve, terms, { minQueryImpressions: n(10, 5), minTotalImpressions: n(100, 40) }),
 		questions: questionGaps(now, curve, terms, isQuestionQuery, { minImpressions: n(15, 6) }),
-		beyond: beyondPageTwo(now, qp, terms, { minImpressions: n(20, 8) })
+		beyond: beyondPageTwo(now, qp, terms, { minImpressions: n(20, 8) }),
+		bots: clarity.length ? botHeavyPages(clarity) : [],
+		deviceFriction: deviceRows.length ? deviceFriction(deviceRows, googleDevice) : [],
+		frictionTrend: trend
 	};
 }

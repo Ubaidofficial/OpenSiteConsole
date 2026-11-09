@@ -49,6 +49,7 @@ function plant() {
 	d.prepare('DELETE FROM bing_terms WHERE site_id = 1').run();
 	d.prepare('DELETE FROM ga4_landing WHERE site_id = 1').run();
 	d.prepare('DELETE FROM clarity_snapshots WHERE site_id = 1').run();
+	d.prepare('DELETE FROM annotations WHERE site_id = 1').run();
 	d.prepare('DELETE FROM action_cache WHERE site_id = 1').run();
 	d.prepare('UPDATE sites SET brand_terms = ?, backfill_done = 1 WHERE id = 1').run('greenleaf');
 
@@ -75,9 +76,26 @@ function plant() {
 	ga('/', 800, 440, 20); ga('/leaky', 250, 50, 0); ga('/gem', 100, 80, 8); ga('/friction', 50, 30, 1);
 	const pg = (u: string, n: string, v: number) => ({ Url: origin + u, [n]: v });
 	d.prepare("INSERT INTO clarity_snapshots (site_id, day, dimension, payload, fetched_at) VALUES (1,?,'URL',?,?)").run(now.end, JSON.stringify([
-		{ metricName: 'Traffic', information: [pg('/friction', 'totalSessionCount', 100)] },
+		{ metricName: 'Traffic', information: [pg('/friction', 'totalSessionCount', 100), { Url: origin + '/botty', totalSessionCount: 80, totalBotSessionCount: 40 }] },
 		{ metricName: 'RageClickCount', information: [pg('/friction', 'sessionsCount', 12)] }
 	]), Date.now());
+
+	// Clarity by device: phones hit dead clicks far more often than desktop, and Google's clicks here are almost all phone (see `sa`).
+	const dev = (device: string, key: string, v: number) => ({ Device: device, [key]: v });
+	d.prepare("INSERT INTO clarity_snapshots (site_id, day, dimension, payload, fetched_at) VALUES (1,?,'Device',?,?)").run(now.end, JSON.stringify([
+		{ metricName: 'Traffic', information: [dev('Mobile', 'totalSessionCount', 400), dev('PC', 'totalSessionCount', 400)] },
+		{ metricName: 'DeadClickCount', information: [dev('Mobile', 'sessionsCount', 60), dev('PC', 'sessionsCount', 10)] }
+	]), Date.now());
+
+	// A logged change on /guide twelve days before the window ends, with a daily Clarity snapshot on each side: 3% friction before, 15% after.
+	d.prepare('INSERT INTO annotations (site_id, date, title, note, kind, page_prefix, created_at) VALUES (1,?,?,?,?,?,?)').run(addDays(now.end, -12), 'New guide layout', null, 'content', origin + '/guide', Date.now());
+	for (let back = 25; back >= 1; back--) {
+		const after = back <= 10;
+		d.prepare("INSERT INTO clarity_snapshots (site_id, day, dimension, payload, fetched_at) VALUES (1,?,'URL',?,?)").run(addDays(now.end, -back), JSON.stringify([
+			{ metricName: 'Traffic', information: [pg('/guide', 'totalSessionCount', 100)] },
+			{ metricName: 'DeadClickCount', information: [pg('/guide', 'sessionsCount', after ? 15 : 3)] }
+		]), Date.now());
+	}
 }
 
 beforeAll(async () => {
@@ -304,7 +322,7 @@ describe('Claude can ask for each of them in plain language through the existing
 		const r = await tool('get_opportunities', { site: '1', type: 'hidden_overview' });
 		expect(r.isError).toBe(false);
 		expect(r.data.sources).toEqual({ previousPeriod: 'ok', bing: 'ok', ga4: 'ok', clarity: 'ok' });
-		expect(r.data.found).toEqual({ lost_queries: 1, rising_queries: 2, pages_on_the_edge: 3, question_gaps: 1, beyond_page_two: 1, bing_gaps: 1, not_in_bing: 15 /* the planted page, the 12 filler pages and the two extra edge pages, none of which Bing lists */, hidden_gems: 1, engagement_leaks: 1, conversion_leaks: 1, friction: 1, mobile_gaps: 1 });
+		expect(r.data.found).toEqual({ lost_queries: 1, rising_queries: 2, pages_on_the_edge: 3, question_gaps: 1, beyond_page_two: 1, bot_traffic: 1, device_friction: 1, friction_vs_changes: 1, bing_gaps: 1, not_in_bing: 15 /* the planted page, the 12 filler pages and the two extra edge pages, none of which Bing lists */, hidden_gems: 1, engagement_leaks: 1, conversion_leaks: 1, friction: 1, mobile_gaps: 1 });
 	});
 	it('each type returns its rows with the names an assistant needs and no model jargon', async () => {
 		const t = async (type: string) => (await tool('get_opportunities', { site: '1', type })).data;
@@ -338,5 +356,74 @@ describe('Claude can ask for each of them in plain language through the existing
 		expect(r.isError).toBe(true);
 		expect(r.data).toContain('hidden_overview');
 		expect(r.data).toContain('mobile_gaps');
+	});
+});
+
+describe('Clarity over time: bots, devices and changes', () => {
+	const h = () => hiddenReport(getSite(1)!, DAYS);
+	const t = async (type: string) => (await tool('get_opportunities', { site: '1', type })).data;
+
+	it('finds the page where half of Clarity\'s sessions were bots, and only that one', () => {
+		expect(h().bots).toEqual([{ page: '/botty', sessions: 80, botSessions: 40, share: 0.5 }]);
+	});
+	it('finds the device that struggles, against Google\'s click split', async () => {
+		const [r] = h().deviceFriction;
+		expect(r).toMatchObject({ device: 'mobile', sessions: 400, rate: 0.15, otherRate: 0.025 });
+		expect(r.ratio).toBeCloseTo(6);
+		expect(r.googleClickShare).toBeGreaterThan(0.9);
+		expect((await t('device_friction')).rows[0]).toMatchObject({ device: 'mobile', frictionRate: '15%', otherDevicesRate: '2.5%', timesHigher: 6, extraSessionsWithFriction: 50 });
+	});
+	it('reports friction before and after a logged change, scoped to its pages', async () => {
+		const [r] = h().frictionTrend;
+		expect(r).toMatchObject({ title: 'New guide layout', verdict: 'worse', snapshotsBefore: 13, snapshotsAfter: 10, sessionsBefore: 1300, sessionsAfter: 1000 });
+		expect(r.rateBefore).toBeCloseTo(0.03);
+		expect(r.rateAfter).toBeCloseTo(0.15);
+		expect((await t('friction_vs_changes')).rows[0]).toMatchObject({ date: addDays(now.end, -12), pages: origin + '/guide', frictionBefore: '3%', frictionAfter: '15%', result: 'worse' });
+	});
+	it('says nothing about devices or changes when Clarity is not connected for the site', async () => {
+		db().prepare('DELETE FROM site_links WHERE site_id = 1 AND kind = ?').run('clarity');
+		const x = h();
+		expect([x.bots, x.deviceFriction, x.frictionTrend]).toEqual([[], [], []]);
+		expect(x.sources.clarity).toBe('not-connected');
+		await connectClarity(1, 'demo'); // put it back for any later tests
+	});
+});
+
+describe('the combined list by page', () => {
+	// Earlier tests in this file delete rows on purpose, so start from the full planted data again.
+	beforeAll(() => plant());
+	const rows = async () => (await tool('get_opportunities', { site: '1', type: 'fix_first' })).data.rows as { page: string; score: number | null; sources: string[]; botHeavy: boolean; findings: { kind: string; what: string; countedAsEvidence: boolean }[] }[];
+
+	it('lists the pages where two sources agree, biggest estimate first, and leaves out pages with a single source', async () => {
+		const r = await rows();
+		expect(r.map((x) => x.page)).toEqual(['/gem', '/edge-b', '/edge-c']);
+		expect(r[0].findings.map((f) => f.kind).sort()).toEqual(['ctr-gap', 'gem']);
+		expect(r[0].sources.sort()).toEqual(['ga4', 'google']);
+		expect(r[0].score).toBe(6); // its largest estimate (10 clicks) at medium confidence; the two are not added
+		for (const x of r.slice(1)) {
+			expect(x.sources.sort()).toEqual(['bing', 'google']);
+			expect(x.findings.map((f) => f.kind).sort()).toEqual(['not-in-bing', 'page-edge']);
+		}
+		// /friction, /leaky and /gone-from-bing each have findings from one source only, so they are not here
+		for (const one of ['/friction', '/leaky', '/gone-from-bing', '/edge']) expect(r.map((x) => x.page)).not.toContain(one);
+	});
+
+	it('lists a page once Google, GA4, Clarity and Bing all have something to say about it, and names each finding', async () => {
+		// /leaky already loses visitors and never converts (GA4). Give it Google clicks that Bing does not see, and rage clicks in Clarity.
+		steady('leaky topic', '/leaky', 20, 300, 6);
+		const snap = db().prepare("SELECT payload FROM clarity_snapshots WHERE site_id = 1 AND dimension = 'URL' AND day = ?").get(now.end) as { payload: string };
+		const metrics = JSON.parse(snap.payload) as { metricName: string; information: Record<string, string | number>[] }[];
+		metrics.find((m) => m.metricName === 'Traffic')!.information.push({ Url: origin + '/leaky', totalSessionCount: 100 });
+		metrics.push({ metricName: 'DeadClickCount', information: [{ Url: origin + '/leaky', sessionsCount: 12 }] });
+		db().prepare("UPDATE clarity_snapshots SET payload = ? WHERE site_id = 1 AND dimension = 'URL' AND day = ?").run(JSON.stringify(metrics), now.end);
+
+		const r = await rows();
+		const leaky = r.find((x) => x.page === '/leaky')!;
+		expect(leaky.findings.map((f) => f.kind).sort()).toEqual(['conversion', 'engagement', 'friction', 'not-in-bing']);
+		expect(leaky.sources.sort()).toEqual(['bing', 'clarity', 'ga4']);
+		expect(leaky.score).toBeNull(); // none of the findings has a click estimate
+		expect(leaky.findings.every((f) => f.countedAsEvidence && f.what.length > 20)).toBe(true);
+		expect(r[r.length - 1].page).toBe('/leaky'); // pages with an estimate come first
+		expect(r.map((x) => x.page)).not.toContain('/botty');
 	});
 });

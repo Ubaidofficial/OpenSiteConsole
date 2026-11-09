@@ -11,7 +11,7 @@ export interface Vol { url: string; clicks: number; impressions: number; positio
 export interface Ga4Page { page: string; sessions: number; engagedSessions: number; keyEvents: number }
 /** GA4 sessions that came from one AI assistant and landed on one page. */
 export interface AiPage { page: string; assistant: string; sessions: number; engagedSessions: number; keyEvents: number }
-export interface ClarityPage { url: string; sessions: number | null; rageClicks: number | null; deadClicks: number | null }
+export interface ClarityPage { url: string; sessions: number | null; rageClicks: number | null; deadClicks: number | null; /** sessions Clarity flagged as bots, when it says (optional so older callers need not set it) */ botSessions?: number | null }
 
 /** Path of a URL (or of something that already is a path): no query, no fragment, no trailing slash, "/" stays "/". */
 export function pathKey(u: string): string {
@@ -168,8 +168,11 @@ export function clarityPages(metrics: { metricName: string; information: Record<
 			if (v === null) continue;
 			const k = pathKey(String(row[urlKey]));
 			const cur = out.get(k) ?? { url: k, sessions: null, rageClicks: null, deadClicks: null };
-			if (m.metricName === 'Traffic') cur.sessions = (cur.sessions ?? 0) + v;
-			else if (m.metricName === 'RageClickCount') cur.rageClicks = (cur.rageClicks ?? 0) + v;
+			if (m.metricName === 'Traffic') {
+				cur.sessions = (cur.sessions ?? 0) + v;
+				const bots = num(row.totalBotSessionCount);
+				if (bots !== null) cur.botSessions = (cur.botSessions ?? 0) + bots;
+			} else if (m.metricName === 'RageClickCount') cur.rageClicks = (cur.rageClicks ?? 0) + v;
 			else cur.deadClicks = (cur.deadClicks ?? 0) + v;
 			out.set(k, cur);
 		}
