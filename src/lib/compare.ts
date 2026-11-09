@@ -35,7 +35,7 @@ export const VERDICT_LABEL: Record<Verdict, string> = { yes: 'Yes', partial: 'Pa
 
 const MATURITY = (theirs: Cell): Row => ({
 	group: 'Price and maturity', feature: 'How established it is',
-	ours: p('A young project: tested on demo data and test doubles, not yet run against live Google data (see "Known limits" in the README).'),
+	ours: p('A young project: tested on demo data and test doubles, not yet run against live Google data (see "Known limits" in docs/known-limits.md).'),
 	theirs
 });
 
