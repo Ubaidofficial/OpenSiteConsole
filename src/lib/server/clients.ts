@@ -45,6 +45,7 @@ export interface SiteRow {
 	index_message: string | null;
 	index_next_at: number | null;
 	request_auto: number;
+	sitemap_auto: number;
 	created_at: number;
 }
 

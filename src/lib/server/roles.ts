@@ -81,7 +81,7 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/sites/[id]/clarity': { check: E, plan: E, install: A },
 	'/sites/[id]/ai': { addPrompts: E, deletePrompt: E, competitors: E, run: E },
 	'/sites/[id]/links': { crawl: E, done: E },
-	'/sites/[id]/indexing': { sitemapRefresh: E, watchAdd: E, watchRemove: E, toggle: E, check: E },
+	'/sites/[id]/indexing': { sitemapRefresh: E, sitemapAuto: E, watchAdd: E, watchRemove: E, toggle: E, check: E },
 	'/sites/[id]/indexnow': { createKey: E, regenerate: E, verify: E, verifyAll: E, auto: E, submit: E, presetRecent: E, presetRemoved: E },
 	'/sites/[id]/inspect': { submitSelected: E, addToRequests: E, inspect: E, top: E },
 	'/sites/[id]/onpage': { top: E, urls: E, oseoAudit: E },

@@ -9,7 +9,7 @@ import { syncBing, syncClarity, syncGa4, syncGtm } from './channels';
 import type { LinkKind } from './links';
 import { cruxIntegration, syncCrux } from './crux';
 import { monitorSite } from './indexmon';
-import { runSubmissionWork, submissionWorkDue } from './submission';
+import { autoResubmitSitemaps, runSubmissionWork, submissionWorkDue } from './submission';
 import { autoBuildDue, runAutoBuild } from './requestindex';
 import { listTests, warmTests } from './seotests';
 import { ensureGa4TestData } from './ga4tests';
@@ -142,6 +142,8 @@ export function enqueueSitemapSync(siteId: number): boolean {
 		// New and changed URLs go to IndexNow if the site has switched that on (a no-op otherwise).
 		const site = getSite(siteId);
 		if (site) await autoSubmit(site, r.changes).catch(() => {});
+		// And the sitemaps go to Search Console again if the site asked for that and something new or changed turned up.
+		if (site) await autoResubmitSitemaps(site, r.changes).catch(() => {});
 		return r;
 	});
 }

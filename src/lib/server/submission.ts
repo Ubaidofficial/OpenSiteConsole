@@ -301,7 +301,7 @@ export async function submitSitemapTo(site: SiteRow, feed: string, source: 'app'
 }
 
 /** Submit again every sitemap Search Console already lists for the site. Google may not read it sooner for it; it is the closest thing to a nudge it offers. */
-export async function resubmitSitemaps(site: SiteRow, source: 'app' | 'mcp'): Promise<{ submitted: string[]; failed: { path: string; error: string }[] }> {
+export async function resubmitSitemaps(site: SiteRow, source: 'app' | 'mcp' | 'auto'): Promise<{ submitted: string[]; failed: { path: string; error: string }[] }> {
 	guardWrite();
 	const { client } = clientForSite(site.id);
 	let list;
@@ -322,6 +322,26 @@ export async function resubmitSitemaps(site: SiteRow, source: 'app' | 'mcp'): Pr
 	}
 	audit('sitemap.resubmitted', { siteId: site.id, detail: `${submitted.length} of ${list.length} (${source})` });
 	return { submitted, failed };
+}
+
+/**
+ * If the site has it switched on and a sitemap read found new or changed pages, submit its sitemaps to Search Console again (the documented
+ * sitemap call; Google decides when to read the file, so this is a nudge, not a guarantee). At most once a day per site, and a refusal or
+ * failure is swallowed: it is tried again after the next day's change. A no-op otherwise.
+ */
+export async function autoResubmitSitemaps(site: SiteRow, changes: { added: string[]; updated: string[] } | null, now = Date.now()): Promise<{ submitted: string[]; failed: { path: string; error: string }[] } | null> {
+	if (!changes || !(changes.added.length + changes.updated.length)) return null;
+	const d = db();
+	if (!(d.prepare('SELECT sitemap_auto a FROM sites WHERE id = ?').get(site.id) as { a: number } | undefined)?.a) return null;
+	const key = `sitemapauto:${site.id}`;
+	const today = pacificToday(new Date(now));
+	if ((d.prepare('SELECT value v FROM kv WHERE key = ?').get(key) as { v: string } | undefined)?.v === today) return null;
+	d.prepare('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)').run(key, today);
+	try {
+		return await resubmitSitemaps(site, 'auto');
+	} catch {
+		return null;
+	}
 }
 
 export async function deleteSitemapFrom(site: SiteRow, feed: string, source: 'app' | 'mcp'): Promise<string> {
