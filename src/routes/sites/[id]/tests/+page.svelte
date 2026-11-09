@@ -29,7 +29,7 @@
 <section class="card mb-5 p-4">
 	<h2 class="mb-2 font-medium">New test</h2>
 	<form method="POST" action="?/create" use:enhance class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-		<input class="input" name="name" placeholder="Name, e.g. New titles on /guides/" required />
+		<input class="input" name="name" aria-label="Name" placeholder="Name, e.g. New titles on /guides/" required />
 		<select class="input" name="kind" aria-label="Kind of test" bind:value={kind}>{#each Object.entries(kinds) as [k, l]}<option value={k}>{l}</option>{/each}</select>
 		<label class="flex items-center gap-2"><span class="w-40 text-xs text-muted-foreground">Change went live on</span><input class="input" type="date" name="startDate" max={data.today} required /></label>
 		<label class="flex items-center gap-2"><span class="w-40 text-xs text-muted-foreground">Measure on</span><select class="input" name="metric" bind:value={metric}><option value="clicks">Search clicks</option><option value="ai_sessions">AI-assistant sessions (LLM test)</option></select></label>
@@ -51,9 +51,9 @@
 			<label class="flex items-start gap-2 text-xs"><input type="radio" name="controlMode" value="matched" bind:group={controlMode} class="mt-0.5" /><span><b>Match automatically (recommended).</b> Pages in the sections of the site whose weekly clicks moved together with the test pages before the change. Picked from pre-change data only. On drifting traffic this detects real changes far more often than comparing with the whole site.</span></label>
 			<label class="mt-1 flex items-start gap-2 text-xs"><input type="radio" name="controlMode" value="rest" bind:group={controlMode} class="mt-0.5" /><span>The rest of the site (every other page)</span></label>
 			<label class="mt-1 flex items-start gap-2 text-xs"><input type="radio" name="controlMode" value="named" bind:group={controlMode} class="mt-0.5" /><span>I will name the control pages</span></label>
-			{#if controlMode === 'named'}<textarea class="input mt-2 h-16 w-full" name="control" placeholder="A path such as /blog/ or full URLs, one per line"></textarea>{/if}
+			{#if controlMode === 'named'}<textarea class="input mt-2 h-16 w-full" name="control" aria-label="A path such as /blog/ or full URLs" placeholder="A path such as /blog/ or full URLs, one per line"></textarea>{/if}
 		</fieldset>
-		<input class="input md:col-span-2" name="note" placeholder="Note (optional): what exactly changed" />
+		<input class="input md:col-span-2" name="note" aria-label="Note" placeholder="Note (optional): what exactly changed" />
 		<div class="md:col-span-2"><button class="btn btn-primary">Save test</button>
 			{#if form?.ok}<span class="ml-3 text-sm text-good">{form.ok}</span>{/if}{#if form?.error}<span class="ml-3 text-sm text-bad">{form.error}</span>{/if}</div>
 	</form>

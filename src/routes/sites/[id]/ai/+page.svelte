@@ -17,7 +17,7 @@
 </script>
 
 <div class="mb-1 flex flex-wrap items-center gap-3">
-	<h1 class="text-lg font-semibold">AI answers</h1>
+	<h2 class="text-lg font-semibold">AI answers</h2>
 	{#if r.demo}<span class="chip" title="Demo mode: the answers are made up, so the page has something to show">simulated answers</span>{/if}
 	{#if r.engines.length && r.prompts.length}
 		<form method="POST" action="?/run" use:enhance class="ml-auto"><button class="btn btn-primary" disabled={data.running}>{#if data.running}<LoaderCircle class="size-4 animate-spin" />Asking…{:else}<Play class="size-4" />Run now{/if}</button></form>

@@ -176,7 +176,14 @@
 			const q = data.q;
 			replaceState('/chat', {});
 			ask(q);
-		} else input?.focus();
+		} else {
+			if (data.draft && !data.thread) {
+				draft = data.draft;
+				replaceState('/chat', {});
+			}
+			input?.focus();
+			if (input && draft) input.setSelectionRange(draft.length, draft.length);
+		}
 		if (items.length) window.scrollTo({ top: document.documentElement.scrollHeight });
 	});
 

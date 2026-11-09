@@ -135,7 +135,7 @@
 			<tr>
 				{#each cols as c, ci}
 					<th class="th" class:text-right={numeric(c)} style="{tint(c)}{edge(ci)}" aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-						<Tip interactive text={c.title ?? COLUMN_HINT[c.label] ?? ''}><button class="inline-flex items-center gap-1 rounded-sm font-medium transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 {sortKey === c.key ? 'text-foreground' : ''}" onclick={() => sortBy(c.key)}>
+						<Tip interactive text={c.title ?? COLUMN_HINT[c.label] ?? ''}><button class="tap inline-flex items-center gap-1 rounded-sm font-medium transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 {sortKey === c.key ? 'text-foreground' : ''}" onclick={() => sortBy(c.key)}>
 							{c.label}
 							{#if sortKey === c.key}
 								{#if sortDir === 'asc'}<ArrowUp class="size-3" />{:else}<ArrowDown class="size-3" />{/if}

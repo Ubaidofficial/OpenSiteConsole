@@ -47,7 +47,7 @@
 <section class="card mb-4 p-4">
 	<h2 class="mb-2 font-medium">1 · URLs</h2>
 	<form method="POST" action="?/submit" use:enhance={run}>
-		<textarea class="input h-28 w-full" name="urls" bind:value={urls} placeholder="Full URLs of this site, one per line (up to {data.maxUrls})"></textarea>
+		<textarea class="input h-28 w-full" name="urls" bind:value={urls} aria-label="Full URLs of this site" placeholder="Full URLs of this site, one per line (up to {data.maxUrls})"></textarea>
 		<div class="mt-2 flex flex-wrap gap-2">
 			<button class="btn !h-8 text-xs" formaction="?/preset" name="preset" value="new" formnovalidate disabled={busy || !data.presets.new} title="Sitemap URLs whose date is in the last 7 days">New pages ({data.presets.new})</button>
 			<button class="btn !h-8 text-xs" formaction="?/preset" name="preset" value="never_shown" formnovalidate disabled={busy || !data.presets.never_shown} title="In a sitemap but never shown in search in 90 days: where indexing problems hide">Never shown ({data.presets.never_shown})</button>
@@ -138,7 +138,7 @@
 	<h2 class="mb-1 font-medium">Sitemaps (Google)</h2>
 	<p class="mb-2 max-w-3xl text-xs text-muted-foreground">This is Google's real route for ordinary pages. Search Console reads a sitemap on its own schedule: submitting it again is allowed but does not make Google read it sooner. Check a sitemap first to see why it may be pending.</p>
 	<form method="POST" use:enhance={run} class="flex flex-wrap items-center gap-2">
-		<input class="input min-w-72 flex-1" name="feed" placeholder="https://example.com/sitemap.xml" />
+		<input class="input min-w-72 flex-1" name="feed" aria-label="Sitemap address" placeholder="https://example.com/sitemap.xml" />
 		<button class="btn" formaction="?/sitemapCheck" disabled={busy}>Check</button>
 		<button class="btn btn-primary" formaction="?/sitemapSubmit" disabled={busy || data.readOnly}>Submit sitemap</button>
 		<button class="btn" formaction="?/sitemapResubmit" formnovalidate disabled={busy || data.readOnly} title="Submit again every sitemap Search Console already lists for this site">Resubmit all listed</button>

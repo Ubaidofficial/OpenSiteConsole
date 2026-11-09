@@ -81,7 +81,7 @@
 	<div class="ml-auto flex flex-wrap items-center gap-2">
 		<div class="relative">
 			<Search class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-			<input class="input w-52 pl-8" placeholder="Search sites or tags" bind:value={q} />
+			<input class="input w-52 pl-8" placeholder="Search sites or tags" aria-label="Search sites or tags" bind:value={q} />
 		</div>
 		<select class="input" bind:value={account} aria-label="Account">
 			<option value="all">All accounts</option>
@@ -151,7 +151,7 @@
 							<a href="/sites/{c.id}?days={data.days}" class="pii truncate text-lg leading-tight font-semibold tracking-tight after:absolute after:inset-0 after:rounded-2xl">{title(c)}</a>
 							{#if c.removed}<span class="chip shrink-0 !px-1.5 !py-0 text-[10px]" title="Google no longer lists this property for the account">removed in Search Console</span>{/if}
 							{#if isPrefix(c)}<span class="chip shrink-0 !px-1.5 !py-0 text-[10px]">URL prefix</span>{/if}
-							<a href={c.href} target="_blank" rel="noreferrer noopener" class="relative z-10 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100" aria-label="Open the site in a new tab" title="Open site"><ExternalLink class="size-3.5" /></a>
+							<a href={c.href} target="_blank" rel="noreferrer noopener" class="tap relative z-10 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 [@media(hover:none)]:opacity-100" aria-label="Open the site in a new tab" title="Open site"><ExternalLink class="size-3.5" /></a>
 						</div>
 						<div class="pii truncate text-sm text-muted-foreground">{c.label ? c.name + ' · ' : ''}{c.account}</div>
 						{#if c.coveredBy}<div class="pii truncate text-xs text-warn" title={privacy.on ? undefined : `This property's data is already included in ${c.coveredBy}`}>↳ included in {c.coveredBy.replace('sc-domain:', '')}</div>{/if}

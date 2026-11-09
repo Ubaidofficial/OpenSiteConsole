@@ -31,7 +31,7 @@
 	<section class="card p-4">
 		<h2 class="mb-2 font-medium">Create a key</h2>
 		<form method="POST" action="?/create" use:enhance class="space-y-3 text-sm">
-			<input class="input w-full" name="name" placeholder="Name, e.g. Claude Code (laptop)" required />
+			<input class="input w-full" name="name" aria-label="Name" placeholder="Name, e.g. Claude Code (laptop)" required />
 			<fieldset>
 				<legend class="mb-1 text-xs text-muted-foreground">Limit to sites (none ticked = all sites). Out-of-scope sites are invisible to the key.</legend>
 				<div class="grid max-h-40 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">

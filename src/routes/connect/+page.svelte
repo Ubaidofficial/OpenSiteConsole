@@ -71,7 +71,7 @@
 								{:else if editing && (k === 'bing' || k === 'ga4' || k === 'gtm')}
 									<details><summary class="cursor-pointer text-muted-foreground">link…</summary>
 										<form method="POST" action="?/manual" use:enhance class="mt-1 flex gap-1"><input type="hidden" name="siteId" value={r.id} /><input type="hidden" name="kind" value={k} />
-											<input class="input w-40 !py-0.5 text-xs" name="externalId" placeholder={k === 'bing' ? 'https://www.site.com/' : k === 'gtm' ? 'GTM-ABC1234' : 'properties/123456'} /><button class="btn !py-0.5">Link</button></form></details>
+											<input class="input w-40 !py-0.5 text-xs" name="externalId" aria-label={k === 'bing' ? 'Bing site address' : k === 'gtm' ? 'Tag Manager container ID' : 'GA4 property'} placeholder={k === 'bing' ? 'https://www.site.com/' : k === 'gtm' ? 'GTM-ABC1234' : 'properties/123456'} /><button class="btn !py-0.5">Link</button></form></details>
 								{:else}<span class="text-muted-foreground">–</span>{/if}
 							</td>
 						{/each}
@@ -83,7 +83,7 @@
 </section>
 
 <h2 class="mb-2 font-medium">Sources</h2>
-<div class="stagger grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+<div class="stagger flex flex-col gap-4">
 	<!-- 1 Google -->
 	<details class="card p-4 [&[open]>summary]:mb-2" open={!complete.google}>
 		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/search-console.svg" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />1 · Google Search Console <span class="chip ml-1">+ GA4 &amp; Tag Manager access</span></h2><span class="ml-auto text-xs {complete.google ? 'text-good' : 'text-muted-foreground'}">{statusOf.google}</span></summary>
@@ -111,8 +111,8 @@
 			<li>Paste it below. One key covers every site in that Bing account.</li>
 		</ol>
 		<form method="POST" action="?/bingKey" use:enhance={submit('bing')} class="flex flex-wrap gap-2">
-			<input class="input w-44" name="label" placeholder="Label (optional)" />
-			<input class="input min-w-0 flex-1" name="apiKey" type="password" autocomplete="off" placeholder="Bing API key" required />
+			<input class="input w-44" name="label" aria-label="Label" placeholder="Label (optional)" />
+			<input class="input min-w-0 flex-1" name="apiKey" type="password" autocomplete="off" aria-label="Bing API key" placeholder="Bing API key" required />
 			<button class="btn btn-primary" disabled={busy === 'bing'}>{busy === 'bing' ? 'Checking…' : 'Connect'}</button>
 		</form>
 		{#if data.bingOAuth}<a class="btn mt-2" href="/auth/bing/connect">Or sign in with Bing (OAuth)</a>{/if}
@@ -170,7 +170,7 @@
 							{:else}
 								<form method="POST" action="?/clarity" use:enhance={submit('c' + r.id)} class="flex gap-2">
 									<input type="hidden" name="siteId" value={r.id} />
-									<input class="input min-w-0 flex-1" name="token" type="password" autocomplete="off" placeholder="Clarity API token" />
+									<input class="input min-w-0 flex-1" name="token" type="password" autocomplete="off" aria-label="Clarity API token" placeholder="Clarity API token" />
 									<button class="btn" disabled={busy === 'c' + r.id}>Connect</button>
 								</form>
 							{/if}
@@ -194,8 +194,8 @@
 			<form method="POST" action="?/openseoRemove" use:enhance class="ml-auto"><button class="btn btn-danger">Disconnect</button></form></div>
 	{/if}
 	<form method="POST" action="?/openseo" use:enhance={submit('openseo')} class="flex flex-wrap gap-2">
-		<input class="input min-w-0 flex-1" name="baseUrl" placeholder="https://your-openseo.example.com" value={data.openseo?.baseUrl ?? ''} required />
-		<input class="input w-56" name="apiKey" type="password" autocomplete="off" placeholder="oseo_… API key" required />
+		<input class="input min-w-0 flex-1" name="baseUrl" aria-label="OpenSEO address" placeholder="https://your-openseo.example.com" value={data.openseo?.baseUrl ?? ''} required />
+		<input class="input w-56" name="apiKey" type="password" autocomplete="off" aria-label="OpenSEO API key" placeholder="oseo_… API key" required />
 		<button class="btn btn-primary" disabled={busy === 'openseo'}>{busy === 'openseo' ? 'Checking…' : data.openseo ? 'Reconnect' : 'Connect'}</button>
 	</form>
 	{#if msgFor('openseo')?.ok}<p class="mt-2 text-sm text-good">{msgFor('openseo')?.ok}</p>{/if}
@@ -213,7 +213,7 @@
 			<form method="POST" action="?/cruxRemove" use:enhance class="ml-auto"><button class="btn btn-danger">Disconnect</button></form></div>
 	{/if}
 	<form method="POST" action="?/crux" use:enhance={submit('crux')} class="flex flex-wrap gap-2">
-		<input class="input min-w-0 flex-1" name="apiKey" type="password" autocomplete="off" placeholder="Google API key" required />
+		<input class="input min-w-0 flex-1" name="apiKey" type="password" autocomplete="off" aria-label="Google API key" placeholder="Google API key" required />
 		<button class="btn btn-primary" disabled={busy === 'crux'}>{busy === 'crux' ? 'Checking…' : data.crux ? 'Replace key' : 'Connect'}</button>
 	</form>
 	{#if msgFor('crux')?.ok}<p class="mt-2 text-sm text-good">{msgFor('crux')?.ok}</p>{/if}

@@ -13,7 +13,7 @@
 
 <div class="mb-5 rounded-xl border bg-card p-4 shadow-xs">
 	<form method="POST" action="?/inspect" use:enhance={() => { busy = true; return async ({ update }) => { await update(); busy = false; }; }}>
-		<textarea class="input h-24 w-full font-mono text-xs" name="urls" placeholder="One URL per line (max 20 per run)"></textarea>
+		<textarea class="input h-24 w-full font-mono text-xs" name="urls" aria-label="URLs to inspect, one per line" placeholder="One URL per line (max 20 per run)"></textarea>
 		<div class="mt-2 flex flex-wrap items-center gap-3">
 			<button class="btn btn-primary" disabled={busy}>{#if busy}<LoaderCircle class="size-4 animate-spin" />Inspecting…{:else}<ScanSearch class="size-4" />Inspect URLs{/if}</button>
 			<button class="btn" formaction="?/top" disabled={busy}>Inspect top 10 pages</button>

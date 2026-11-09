@@ -20,6 +20,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		approvals: pending?.awaiting ?? [],
 		starters: STARTERS,
 		q: url.searchParams.get('q')?.slice(0, 2000) ?? '',
+		// a question started elsewhere (a site's "Ask about this site"), put in the box but not sent
+		draft: url.searchParams.get('draft')?.slice(0, 2000) ?? '',
 		usage: { sent: sentToday(user), limit: chatDailyLimit() }
 	};
 };

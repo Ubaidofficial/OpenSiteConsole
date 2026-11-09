@@ -24,7 +24,7 @@
 </Explainer>
 	<div class="flex flex-wrap items-start gap-3">
 		<form method="POST" action="?/top" use:enhance={submit('top')}><button class="btn btn-primary" disabled={busy !== null}>{busy === 'top' ? 'Checking…' : 'Check top 15 pages'}</button></form>
-		<form method="POST" action="?/urls" use:enhance={submit('urls')} class="flex min-w-64 flex-1 gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" placeholder="…or paste full URLs, one per line (up to 25)"></textarea><button class="btn" disabled={busy !== null}>{busy === 'urls' ? 'Checking…' : 'Check'}</button></form>
+		<form method="POST" action="?/urls" use:enhance={submit('urls')} class="flex min-w-64 flex-1 gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" aria-label="Page URLs to check" placeholder="…or paste full URLs, one per line (up to 25)"></textarea><button class="btn" disabled={busy !== null}>{busy === 'urls' ? 'Checking…' : 'Check'}</button></form>
 	</div>
 	{#if form?.ok}<p class="mt-2 text-sm text-good">{form.ok}</p>{/if}{#if form?.error}<p class="mt-2 text-sm text-bad">{form.error}</p>{/if}
 	{#if data.rows.length}<p class="mt-2 text-xs text-muted-foreground">{data.rows.length} page(s) checked{data.avgScore != null ? ` · average score ${data.avgScore}/100 (a relative aid, not a Google measure)` : ''}{data.failed ? ` · ${data.failed} could not be fetched` : ''}</p>{/if}
