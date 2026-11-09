@@ -85,7 +85,7 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/sites/[id]/indexnow': { createKey: E, regenerate: E, verify: E, verifyAll: E, auto: E, submit: E, presetRecent: E, presetRemoved: E },
 	'/sites/[id]/inspect': { submitSelected: E, addToRequests: E, inspect: E, top: E },
 	'/sites/[id]/onpage': { top: E, urls: E, oseoAudit: E },
-	'/sites/[id]/request': { build: E, requested: E, dismiss: E },
+	'/sites/[id]/request': { build: E, requested: E, dismiss: E, auto: E },
 	'/sites/[id]/settings': { save: A, resync: A, removeProperty: A },
 	'/sites/[id]/queries': { oseoVolumes: E },
 	'/sites/[id]/opportunities': { oseoPreview: E, oseoTrack: E },

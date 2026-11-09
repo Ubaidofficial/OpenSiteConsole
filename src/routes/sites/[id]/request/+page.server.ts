@@ -1,11 +1,12 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getSite } from '$lib/server/clients';
-import { REQUEST_COOLDOWN_DAYS, buildQueue, dismissRequests, markRequested, requestQueue } from '$lib/server/requestindex';
+import { REQUEST_COOLDOWN_DAYS, buildQueue, dismissRequests, markRequested, requestQueue, setAutoBuild } from '$lib/server/requestindex';
+import { webhook } from '$lib/server/digest';
 
 export const load: PageServerLoad = ({ params }) => {
 	const site = getSite(Number(params.id))!;
-	return { queue: requestQueue(site.id), cooldownDays: REQUEST_COOLDOWN_DAYS };
+	return { queue: requestQueue(site.id), cooldownDays: REQUEST_COOLDOWN_DAYS, auto: !!site.request_auto, webhookSet: !!webhook().url };
 };
 
 const urlsOf = (f: FormData) => f.getAll('url').map(String).filter(Boolean);
@@ -24,6 +25,12 @@ export const actions: Actions = {
 		if (!urls.length) return fail(400, { error: 'Nothing selected.' });
 		const r = markRequested(getSite(Number(params.id))!, urls, 'app');
 		return r.marked ? { ok: `Recorded ${r.marked} request${r.marked === 1 ? '' : 's'}. Google is asked again about each at day 1, 3 and 5.` } : fail(400, { error: 'None of those URLs belong to this site.' });
+	},
+	/** Switch the daily automatic list on or off for this site. */
+	auto: async ({ params, request }) => {
+		const on = (await request.formData()).get('on') === '1';
+		setAutoBuild(Number(params.id), on);
+		return { ok: on ? 'The list will be built every morning. The first one is built within a quarter of an hour.' : 'Daily list switched off. What is already on the list stays.' };
 	},
 	dismiss: async ({ params, request }) => {
 		const urls = urlsOf(await request.formData());

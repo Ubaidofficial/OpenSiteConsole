@@ -6,6 +6,10 @@
 	import { ago } from '$lib/format';
 	let { data, form } = $props();
 	let busy = $state(false);
+	// One-at-a-time mode: shows only the first unanswered row. Recording or skipping it reloads the list, so the next one takes its place.
+	let focus = $state(false);
+	let total = $state(0);
+	const start = () => { total = q.pending.length; focus = true; };
 	const q = $derived(data.queue);
 	const run = () => {
 		busy = true;
@@ -30,6 +34,12 @@
 	<p>Search Console's <b class="text-foreground">Request Indexing</b> button is the one official way to ask Google to look at a page soon, and it has <b class="text-foreground">no API</b>, so no tool can press it for you. What this page does is the slow part: it picks the few pages worth asking about,
 		skips what Google already has, sets aside pages where asking is pointless, links you straight to each, and keeps track of what you asked and whether it worked. It asks Google about the candidates first, which uses URL Inspection quota.</p>
 </Explainer>
+	<form method="POST" action="?/auto" use:enhance class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+		<input type="hidden" name="on" value={data.auto ? '0' : '1'} />
+		<span class="chip {data.auto ? 'chip-on' : ''}">{data.auto ? 'Daily list: on' : 'Daily list: off'}</span>
+		<button class="btn !h-8 text-xs {data.auto ? '' : 'btn-primary'}">{data.auto ? 'Switch off' : 'Build it every morning'}</button>
+		<span class="text-xs text-muted-foreground">Builds the list for you each day (it spends URL Inspection quota){data.webhookSet ? ' and posts to your webhook when pages are ready' : '; set DIGEST_WEBHOOK_URL to also get a message'}. It never presses the button for you.</span>
+	</form>
 	<p class="mt-2 text-sm">
 		<b>{q.budget.usedLast24h}</b> asked in the last 24 hours of about <b>{q.budget.perDay}</b> a day.
 		{#if q.budget.left === 0}<span class="text-warn"> Allowance used up{q.budget.nextSlotAt ? `: next slot ${until(q.budget.nextSlotAt)}` : ''}.</span>{:else}<span class="text-good"> {q.budget.left} left.</span>{/if}
@@ -43,9 +53,28 @@
 	<div class="mb-2 flex flex-wrap items-center gap-3">
 		<h2 class="font-medium">Today's list</h2>
 		{#if q.builtAt}<span class="text-xs text-muted-foreground">built {ago(q.builtAt)}</span>{/if}
+		{#if q.pending.length && !focus}<button class="btn" type="button" onclick={start}>Go through them one by one</button>{/if}
 		<form method="POST" action="?/build" use:enhance={run} class="ml-auto"><button class="btn btn-primary" disabled={busy || q.budget.left === 0}>{busy ? 'Asking Google…' : q.pending.length ? 'Rebuild the list' : 'Build today\'s list'}</button></form>
 	</div>
-	{#if q.pending.length}
+	{#if q.pending.length && focus}
+		{@const it = q.pending[0]}
+		<div class="rounded border p-4" style="border-color:var(--border)">
+			<div class="mb-2 flex items-center gap-2 text-xs"><span class="chip chip-on tnum">{Math.max(1, total - q.pending.length + 1)} of {total}</span><span class="chip">{TIER[it.tier]}</span>
+				{#if it.state}<span class="chip {it.state === 'indexed' ? 'text-good' : it.state === 'not_indexed' ? 'text-warn' : ''}">Google: {stateText[it.state]}</span>{/if}
+				<button class="ml-auto text-xs underline" type="button" onclick={() => (focus = false)}>Show the whole list</button></div>
+			<div class="pii break-all text-base font-medium">{it.url}</div>
+			<p class="mt-1 text-xs text-muted-foreground">{it.reason}</p>
+			<ol class="mt-3 list-decimal space-y-2 pl-5 text-sm">
+				<li>{#if it.link}<a class="btn btn-primary !h-8 text-xs" href={it.link} target="_blank" rel="noreferrer noopener">Open in Search Console ↗</a>{:else}<a class="btn !h-8 text-xs" href="https://search.google.com/search-console" target="_blank" rel="noreferrer noopener">Open Search Console ↗</a> <button class="btn !h-8 text-xs" type="button" onclick={() => copy(it.url)}>Copy URL</button> <span class="text-xs text-muted-foreground">then paste it into the inspection bar</span>{/if}</li>
+				<li>Press <b>Request indexing</b> there (Google may run a live test first).</li>
+				<li>Come back and press <b>Done, next</b>. Only press it after you really requested it: it starts the day 1, 3 and 5 checks.</li>
+			</ol>
+			<div class="mt-3 flex flex-wrap gap-2">
+				<form method="POST" action="?/requested" use:enhance={run}><input type="hidden" name="url" value={it.url} /><button class="btn btn-primary" disabled={busy}>Done, next →</button></form>
+				<form method="POST" action="?/dismiss" use:enhance={run}><input type="hidden" name="url" value={it.url} /><button class="btn" disabled={busy} title="Hide it for 30 days">Skip, next</button></form>
+			</div>
+		</div>
+	{:else if q.pending.length}
 		<ol class="space-y-3">
 			{#each q.pending as it, i (it.url)}
 				<li class="rounded border p-3" style="border-color:var(--border)">

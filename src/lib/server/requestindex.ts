@@ -1,12 +1,14 @@
 import { audit, db } from './db';
 import { env } from './config';
-import type { SiteRow } from './clients';
+import { displayName, type SiteRow } from './clients';
 import { inspectUrls, storedInspection } from './inspect';
 import { neverShownUrls } from './sitemapcov';
 import { cleanUrls, recordManualRequests, submissionStatus, type SubmissionRow } from './submission';
 import { flatten } from './indexmon';
 import { indexState } from '../indexing';
-import { addDays } from './dates';
+import { addDays, pacificToday } from './dates';
+import { postWebhook, webhook } from './digest';
+import { config } from './config';
 
 /**
  * The "Request indexing" list. Search Console's Request Indexing button is the one fast, official way to ask Google about a page, and it has
@@ -237,3 +239,45 @@ export function addPending(site: SiteRow, urlsIn: string[], now = Date.now()): {
 	})();
 	return out;
 }
+
+
+// ── daily automatic list ─────────────────────────────────────────────────────
+const autoKey = (siteId: number) => `reqauto:${siteId}`;
+
+/** Whether the list should be built for a site now: switched on and not already tried today (a failure is not retried until tomorrow, so Google is not hammered). */
+export function autoBuildDue(siteId: number, today = pacificToday()): boolean {
+	const d = db();
+	const on = (d.prepare('SELECT request_auto a FROM sites WHERE id = ?').get(siteId) as { a: number } | undefined)?.a;
+	if (!on) return false;
+	return (d.prepare('SELECT value v FROM kv WHERE key = ?').get(autoKey(siteId)) as { v: string } | undefined)?.v !== today;
+}
+
+export function renderRequestReady(site: string, listed: number, problems: number, origin: string, siteId: number): string {
+	return `SEOConsole: ${listed} page${listed === 1 ? ' is' : 's are'} ready to request indexing for ${site}${problems ? ` (${problems} more need fixing first)` : ''}.\nOpen the list, press Request indexing on each: ${origin.replace(/\/+$/, '')}/sites/${siteId}/request`;
+}
+
+/**
+ * Once a day, for a site that has it switched on: build the Request list (the same work as the button) and, if something is worth requesting and a
+ * webhook is set, say so. It never presses Google's button; that stays a person's click. The attempt is remembered for the day whether it
+ * worked or not.
+ */
+export async function runAutoBuild(site: SiteRow, o: { now?: number; fetchImpl?: typeof fetch } = {}): Promise<{ built: boolean; listed: number; notified: boolean }> {
+	const today = pacificToday(new Date(o.now ?? Date.now()));
+	db().prepare('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)').run(autoKey(site.id), today);
+	let r: BuildResult;
+	try {
+		r = await buildQueue(site, { now: o.now });
+	} catch {
+		return { built: false, listed: 0, notified: false };
+	}
+	if (r.limitReached) return { built: false, listed: 0, notified: false };
+	let notified = false;
+	if (r.listed > 0 && webhook().url) {
+		const name = displayName(site.site_url);
+		notified = (await postWebhook(renderRequestReady(name, r.listed, r.problems, config.origin, site.id), { requestIndexing: { site: site.site_url, listed: r.listed, problems: r.problems } }, o.fetchImpl)).ok;
+	}
+	audit('index.request_auto', { siteId: site.id, detail: `${r.listed} listed${notified ? ', webhook notified' : ''}` });
+	return { built: true, listed: r.listed, notified };
+}
+
+export const setAutoBuild = (siteId: number, on: boolean) => void db().prepare('UPDATE sites SET request_auto = ? WHERE id = ?').run(on ? 1 : 0, siteId);

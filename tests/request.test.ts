@@ -11,7 +11,7 @@ import { DemoClient } from '../src/lib/server/demo';
 import { syncSitemapUrls } from '../src/lib/server/sitemapcov';
 import { parseSitemapXml, readLastmod } from '../src/lib/sitemap';
 import { compareWithPages, lastLiveCompare, lastmodReport, spread, SAME_DATE_BAD } from '../src/lib/server/lastmod';
-import { REQUEST_COOLDOWN_DAYS, addPending, budget, buildQueue, candidates, dismissRequests, judge, markRequested, requestQueue, safeConsoleLink } from '../src/lib/server/requestindex';
+import { REQUEST_COOLDOWN_DAYS, autoBuildDue, renderRequestReady, runAutoBuild, setAutoBuild, addPending, budget, buildQueue, candidates, dismissRequests, judge, markRequested, requestQueue, safeConsoleLink } from '../src/lib/server/requestindex';
 import { submissionStatus } from '../src/lib/server/submission';
 import { buildActions } from '../src/lib/server/actions';
 import { watchList } from '../src/lib/server/indexmon';
@@ -74,11 +74,13 @@ beforeEach(() => {
 	live.n = 0;
 	live.fail = false;
 	for (const t of ['index_requests', 'index_submissions', 'index_watch', 'index_queue', 'index_rechecks', 'url_inspections', 'sitemap_urls', 'sitemap_sync', 'audit_log']) db().prepare(`DELETE FROM ${t}`).run();
-	db().prepare("DELETE FROM kv WHERE key LIKE 'lastmod_live:%' OR key LIKE 'submit:%' OR key LIKE 'inspect:%'").run();
+	db().prepare("DELETE FROM kv WHERE key LIKE 'reqauto:%' OR key LIKE 'lastmod_live:%' OR key LIKE 'submit:%' OR key LIKE 'inspect:%'").run();
 });
 afterEach(() => {
 	delete process.env.REQUEST_INDEXING_PER_DAY;
 	delete process.env.READ_ONLY;
+	delete process.env.DIGEST_WEBHOOK_URL;
+	setAutoBuild(1, false);
 });
 
 // ───────────────────────────── sitemap lastmod ─────────────────────────────
@@ -313,6 +315,62 @@ describe('building the list', () => {
 		expect(rows.find((x) => x.url === U('/new1'))).toMatchObject({ status: 'requested' });
 		expect(rows.find((x) => x.url === U('/manual'))).toMatchObject({ status: 'pending', tier: 0 });
 		expect(rows.filter((x) => x.status === 'pending' && x.url !== U('/manual')).length).toBeGreaterThan(0);
+	});
+});
+
+describe('the daily automatic list', () => {
+	const sitemap = () => setSitemap([{ url: U('/new1'), lastmod: iso(-1) }, { url: U('/new2'), lastmod: iso(-2) }]);
+	const hook = () => {
+		process.env.DIGEST_WEBHOOK_URL = 'https://hooks.example/x';
+		const calls: string[] = [];
+		const fetchImpl = (async (_u: unknown, init: { body: string }) => { calls.push(JSON.parse(init.body).text); return new Response('ok', { status: 200 }); }) as unknown as typeof fetch;
+		return { calls, fetchImpl };
+	};
+	it('is off until switched on, then due once a day', () => {
+		expect(autoBuildDue(1, '2026-01-05')).toBe(false);
+		setAutoBuild(1, true);
+		expect(autoBuildDue(1, '2026-01-05')).toBe(true);
+	});
+	it('builds the list, tells the webhook once, and is not due again the same day', async () => {
+		sitemap();
+		setAutoBuild(1, true);
+		const { calls, fetchImpl } = hook();
+		const r = await runAutoBuild(site(), { fetchImpl });
+		expect(r).toMatchObject({ built: true, listed: 2, notified: true });
+		expect(requestQueue(1).pending).toHaveLength(2);
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toMatch(/2 pages are ready/);
+		expect(calls[0]).toMatch(/\/sites\/1\/request/);
+		expect(autoBuildDue(1)).toBe(false);
+		expect(autoBuildDue(1, '2999-01-01')).toBe(true); // tomorrow it is due again
+	});
+	it('builds without a webhook, sends nothing when nothing is worth requesting, and does not retry a failed day', async () => {
+		sitemap();
+		setAutoBuild(1, true);
+		expect(await runAutoBuild(site())).toMatchObject({ built: true, listed: 2, notified: false }); // no webhook set
+		plan.set(U('/new1'), INDEXED);
+		plan.set(U('/new2'), INDEXED);
+		db().prepare("DELETE FROM index_requests WHERE site_id = 1").run();
+		const { calls, fetchImpl } = hook();
+		expect(await runAutoBuild(site(), { fetchImpl })).toMatchObject({ built: true, listed: 0, notified: false });
+		expect(calls).toHaveLength(0);
+		db().prepare("DELETE FROM kv WHERE key LIKE 'reqauto:%'").run();
+		live.fail = true; // Google refusing is caught: the stored answers are used
+		await expect(runAutoBuild(site())).resolves.toBeDefined();
+		expect(autoBuildDue(1)).toBe(false);
+	});
+	it('does nothing when today\'s allowance is used up', async () => {
+		sitemap();
+		process.env.REQUEST_INDEXING_PER_DAY = '1';
+		markRequested(site(), [U('/other')], 'app');
+		setAutoBuild(1, true);
+		const { calls, fetchImpl } = hook();
+		expect(await runAutoBuild(site(), { fetchImpl })).toMatchObject({ built: false, notified: false });
+		expect(calls).toHaveLength(0);
+	});
+	it('words the message with the count and the link', () => {
+		expect(renderRequestReady('example.com', 1, 0, 'https://app.example.com/', 7)).toBe('SEOConsole: 1 page is ready to request indexing for example.com.\nOpen the list, press Request indexing on each: https://app.example.com/sites/7/request');
+		expect(renderRequestReady('example.com', 3, 2, 'https://app.example.com', 7)).toMatch(/\(2 more need fixing first\)/);
 	});
 });
 

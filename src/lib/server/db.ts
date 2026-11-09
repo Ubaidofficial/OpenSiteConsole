@@ -689,6 +689,8 @@ function migrate(db: Database.Database) {
 	if (!cols('api_keys').includes('can_write')) db.exec('ALTER TABLE api_keys ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('oauth_codes').includes('can_write')) db.exec('ALTER TABLE oauth_codes ADD COLUMN can_write INTEGER NOT NULL DEFAULT 0');
 	if (!cols('sites').includes('index_checked_on')) db.exec('ALTER TABLE sites ADD COLUMN index_checked_on TEXT');
+	// Build the Request tab's list by itself once a day (and tell the webhook). Off unless the owner switched it on for the site.
+	if (!cols('sites').includes('request_auto')) db.exec('ALTER TABLE sites ADD COLUMN request_auto INTEGER NOT NULL DEFAULT 0');
 	if (!cols('ai_runs').includes('via')) db.exec('ALTER TABLE ai_runs ADD COLUMN via TEXT');
 	if (!cols('ai_runs').includes('cost')) db.exec('ALTER TABLE ai_runs ADD COLUMN cost REAL');
 	// Which team member a session belongs to (NULL = the owner). Earlier sessions were all the owner's, so they stay valid.
