@@ -9,20 +9,43 @@ import { allLinks, integrationMeta, linksFor, listIntegrations, removeIntegratio
 import { autoMatchGa4, autoMatchGtm, connectBingKey, connectClarity, connectCrux, connectOpenSeo, hasGa4Scope, hasGtmScope, linkGtmManually } from '$lib/server/connect';
 import { callsLeft } from '$lib/server/clarity';
 import { enqueueLinkSync } from '$lib/server/jobs';
+import { gtmSnapshot } from '$lib/server/tracking';
+import { GA4_TAG_TYPES } from '$lib/server/gtm';
+import { checkClarityNow } from '$lib/server/clarityscan';
+import { gtmOnSite, planSetup, runSetup, startGa4Account, type SetupChoices } from '$lib/server/setup';
 import { intParam } from '$lib/server/params';
 import { env } from '$lib/server/config';
 
 const KINDS: LinkKind[] = ['bing', 'ga4', 'gtm', 'clarity', 'openseo'];
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong');
 
-export const load: PageServerLoad = ({ url }) => {
+/** The decisions made on the setup panel, from its form. Empty fields are left out so the plan's own defaults apply. */
+function choicesFrom(f: { get(name: string): unknown }): SetupChoices {
+	const v = (k: string) => String(f.get(k) ?? '').trim() || undefined;
+	return { ga4Property: v('ga4Property'), ga4Account: v('ga4Account'), gtmContainer: v('gtmContainer'), gtmAccount: v('gtmAccount'), timeZone: v('timeZone'), currencyCode: v('currencyCode')?.toUpperCase() };
+}
+
+export const load: PageServerLoad = async ({ url }) => {
 	const sites = allSites().filter((s) => !['siteUnverifiedUser', 'none'].includes(s.permission));
 	const links = allLinks();
 	const accounts = listAccounts();
 	const bing = listIntegrations('bing').map((i) => ({ id: i.id, label: i.label, auth: integrationMeta(i).auth ?? 'apikey', status: i.status, demo: !!i.is_demo, sites: links.filter((l) => l.kind === 'bing' && l.integration_id === i.id).length }));
 	const openseo = listIntegrations('openseo')[0];
 	const crux = listIntegrations('crux')[0];
+	// The setup panel: opened from a site's "Set up GA4 & Tag Manager" button (?setup=ID). Reading the plan only ever reads.
+	const choices = choicesFrom(url.searchParams);
+	const setupId = Number(url.searchParams.get('setup'));
+	const setupSite = sites.find((s) => s.id === setupId);
+	const setup = setupSite
+		? await planSetup(setupSite.id, choices).catch((e) => ({ ok: false as const, error: msg(e), blockers: [] as string[], ready: false }))
+		: null;
+	const setupContainer = setup && 'gtm' in setup && setup.gtm && (setup.gtm.state === 'linked' || setup.gtm.state === 'match') ? setup.gtm.publicId : (setupSite ? linksFor(setupSite.id).gtm?.label?.split(' · ')[0] ?? null : null);
 	return {
+		setupSite: setupSite ? { id: setupSite.id, name: displayName(setupSite.site_url) } : null,
+		setup,
+		choices,
+		setupOnSite: setupSite && setupContainer ? gtmOnSite(setupSite.id, setupContainer) : null,
+		readOnly: config.readOnly,
 		crux: crux ? { demo: !!crux.is_demo, sites: (db().prepare('SELECT COUNT(DISTINCT site_id) n FROM crux_daily').get() as { n: number }).n } : null,
 		demo: config.demo,
 		bingOAuth: !!env('BING_CLIENT_ID') && !!env('BING_CLIENT_SECRET'),
@@ -42,7 +65,9 @@ export const load: PageServerLoad = ({ url }) => {
 				account: s.account_label ?? s.account_email,
 				google: s.synced_through ? 'synced' : s.sync_status,
 				links: Object.fromEntries(KINDS.map((k) => [k, l[k] ? { id: l[k]!.external_id, label: l[k]!.label, status: l[k]!.sync_status, message: l[k]!.sync_message, lastSync: l[k]!.last_sync_at } : null])) as Record<LinkKind, { id: string; label: string | null; status: string; message: string | null; lastSync: number | null } | null>,
-				clarityCallsLeft: clarityInteg ? callsLeft(clarityInteg) : null
+				clarityCallsLeft: clarityInteg ? callsLeft(clarityInteg) : null,
+				// the "Set up GA4 & Tag Manager" button: nothing linked yet, or a container whose live version has no Google tag
+				needsSetup: !l.ga4 || !l.gtm || (() => { const g = gtmSnapshot(s.id); return !g?.published || !g.tags.some((t) => GA4_TAG_TYPES.has(t.type)); })()
 			};
 		})
 	};
@@ -156,6 +181,26 @@ export const actions: Actions = {
 	cruxRemove: async () => {
 		for (const i of listIntegrations('crux')) removeIntegration(i.id);
 		return { ok: 'Chrome UX Report disconnected. Stored snapshots are kept.', section: 'crux' };
+	},
+	/** The confirmed setup: find or create the GA4 property and container, link both, add the Google tag. The button says whether to publish it. */
+	setupRun: async ({ request, url }) => {
+		const f = await request.formData();
+		const siteId = intParam(f.get('siteId'));
+		const mode = f.get('mode') === 'publish' ? 'publish' : 'workspace';
+		const result = await runSetup(siteId, choicesFrom(f), mode).catch((e) => ({ ok: false as const, error: msg(e), steps: [], published: false }));
+		return result.ok ? { section: 'setup', setupResult: result } : fail(400, { section: 'setup', setupResult: result });
+	},
+	/** For someone with no Google Analytics account: get Google's Terms of Service link. */
+	setupTos: async ({ request }) => {
+		const siteId = intParam((await request.formData()).get('siteId'));
+		const r = await startGa4Account(siteId).catch((e) => ({ ok: false as const, error: msg(e), url: undefined }));
+		return r.ok ? { section: 'setup', tosUrl: r.url } : fail(400, { section: 'setup', setupError: r.error });
+	},
+	/** Look at the site's pages now: do they load the container? */
+	setupCheck: async ({ request }) => {
+		const siteId = intParam((await request.formData()).get('siteId'));
+		await checkClarityNow(siteId).catch(() => {});
+		return { section: 'setup', checked: true };
 	},
 	openseoRemove: async () => {
 		for (const i of listIntegrations('openseo')) removeIntegration(i.id);

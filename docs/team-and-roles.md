@@ -11,7 +11,7 @@ Invites, roles, sessions and what each role may do.
 | Role | Can |
 |---|---|
 | **Owner** | Everything. The owner is whoever signs in with `ADMIN_PASSWORD` (or `ADMIN_PASSWORD_HASH`); it is not a row in the database, so it can never be disabled, demoted or locked out. Without a password, the app answers only this machine, and that machine is the owner. |
-| **Admin** | Everything, including the team (invite, revoke, change roles and sites, disable, remove), API keys and app sign-ins on the MCP page, connections (Google accounts, Bing, GA4, Tag Manager, Clarity, OpenSEO, CrUX), adding or removing Search Console properties, site settings and the Clarity install through Tag Manager. Always sees every site. |
+| **Admin** | Everything, including the team (invite, revoke, change roles and sites, disable, remove), API keys and app sign-ins on the MCP page, connections (Google accounts, Bing, GA4, Tag Manager, Clarity, OpenSEO, CrUX, and the **Set up GA4 & Tag Manager** button that creates and links a GA4 property and container), adding or removing Search Console properties, site settings and the Clarity install through Tag Manager. Always sees every site. |
 | **Editor** | Uses the app: sync, mark actions, notes, SEO tests, indexing checks, URL and sitemap submissions, IndexNow, the request list, digests, Google updates. Cannot connect or disconnect accounts, manage API keys, change site settings or manage the team. |
 | **Viewer** | Sees every page; every request that changes something is refused. |
 

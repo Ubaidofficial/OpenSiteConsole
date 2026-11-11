@@ -3,13 +3,17 @@ import type { RequestHandler } from './$types';
 import { config } from '$lib/server/config';
 import { buildAuthUrl, newState } from '$lib/server/google';
 import { GTM_WRITE_SCOPES } from '$lib/server/gtmwrite';
+import { SETUP_SCOPES } from '$lib/server/setup';
 import { stateWithOrigin } from '$lib/oauthrelay';
 import { safeReturn } from '$lib/server/guard';
 
 export const GET: RequestHandler = ({ cookies, url }) => {
 	if (!config.googleClientId || !config.googleClientSecret) error(400, 'Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET first (see .env.example).');
-	// ?grant=gtm-write: the owner chose to let SEOConsole edit and publish Tag Manager (to install Clarity). Never on a read-only server.
-	const extra = url.searchParams.get('grant') === 'gtm-write' && !config.readOnly ? GTM_WRITE_SCOPES : [];
+	// Opt-in extra permissions, never on a read-only server.
+	//   ?grant=gtm-write: edit and publish Tag Manager (to install Clarity).
+	//   ?grant=setup:     the same, plus creating Google Analytics properties (the "Set up GA4 & Tag Manager" button).
+	const grant = url.searchParams.get('grant');
+	const extra = config.readOnly ? [] : grant === 'setup' ? SETUP_SCOPES : grant === 'gtm-write' ? GTM_WRITE_SCOPES : [];
 	// Behind the hosted plan's shared redirect address the state also carries this instance's origin, so the relay can send the browser back.
 	const state = config.oauthRedirectUri ? stateWithOrigin(newState(), config.origin) : newState();
 	const secure = url.protocol === 'https:';

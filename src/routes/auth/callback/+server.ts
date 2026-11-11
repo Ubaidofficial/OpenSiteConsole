@@ -8,6 +8,9 @@ import { safeEqual } from '$lib/server/crypto';
 import { safeReturn } from '$lib/server/guard';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
+	// Google's Terms of Service page sends someone here when they have just accepted it (to create a Google Analytics account),
+	// with no sign-in in progress: there is nothing to finish, so take them back to the Connect page.
+	if (!url.searchParams.has('code') && !url.searchParams.has('error') && !url.searchParams.has('state')) redirect(303, '/connect?flash=' + encodeURIComponent('Back from Google. Press Continue on the setup panel to carry on.'));
 	const expected = cookies.get('osc_oauth_state');
 	cookies.delete('osc_oauth_state', { path: '/' });
 	const state = url.searchParams.get('state') ?? '';

@@ -3,7 +3,7 @@ import { config } from './config';
 import { allSites } from './queries';
 import { bestMatch, hostKey, hostsMatch } from './hosts';
 import { BingApiError, RealBingClient } from './bing';
-import { bingClientFor, ga4SourceFor, gtmSourceFor } from './channels';
+import { bingClientFor, ga4SourceFor, gtmSourceFor, type Ga4Source } from './channels';
 import { containerHosts, isWebContainer, type GtmContainer } from './gtm';
 import { fetchInsights, ClarityApiError, utcDay } from './clarity';
 import { demoClarityFetch, demoOpenSeoProjects } from './demo-channels';
@@ -59,6 +59,25 @@ export function saveBingOAuth(tokens: { access_token: string; refresh_token?: st
 }
 
 // ── GA4 ──────────────────────────────────────────────────────────────────────
+export interface Ga4PropertyWithUrls { property: string; displayName: string; urls: string[] }
+
+/** An account's GA4 properties (the first 100) with the website address of each one's web streams. */
+export async function ga4PropertiesWithUrls(src: Pick<Ga4Source, 'listProperties' | 'streamUrls'>): Promise<Ga4PropertyWithUrls[]> {
+	const props = (await src.listProperties()).slice(0, 100);
+	const out: Ga4PropertyWithUrls[] = [];
+	let i = 0;
+	await Promise.all(Array.from({ length: 4 }, async () => {
+		while (i < props.length) {
+			const p = props[i++];
+			out.push({ ...p, urls: await src.streamUrls(p.property).catch(() => []) });
+		}
+	}));
+	return out;
+}
+
+/** The properties with a web stream on this site's host (or a parent / sub-domain of it). One means a match; several are ambiguous. */
+export const ga4Candidates = (props: Ga4PropertyWithUrls[], siteUrl: string) => props.filter((p) => p.urls.some((u) => hostsMatch(u, siteUrl)));
+
 export async function autoMatchGa4() {
 	const accounts = db().prepare("SELECT id, scopes, is_demo, email FROM accounts WHERE status = 'active'").all() as { id: number; scopes: string; is_demo: number; email: string }[];
 	let matched = 0;
@@ -73,18 +92,9 @@ export async function autoMatchGa4() {
 		}
 		const mine = sites.filter((s) => s.account_id === acc.id && !linksFor(s.id).ga4);
 		if (!mine.length) continue;
-		const src = ga4SourceFor(acc.id);
-		const props = (await src.listProperties()).slice(0, 100);
-		const withUrls: { property: string; displayName: string; urls: string[] }[] = [];
-		let i = 0;
-		await Promise.all(Array.from({ length: 4 }, async () => {
-			while (i < props.length) {
-				const p = props[i++];
-				withUrls.push({ ...p, urls: await src.streamUrls(p.property).catch(() => []) });
-			}
-		}));
+		const withUrls = await ga4PropertiesWithUrls(ga4SourceFor(acc.id));
 		for (const site of mine) {
-			const cands = withUrls.filter((p) => p.urls.some((u) => hostsMatch(u, site.site_url)));
+			const cands = ga4Candidates(withUrls, site.site_url);
 			if (cands.length === 1) {
 				setLink(site.id, 'ga4', { accountId: acc.id, externalId: cands[0].property, label: cands[0].displayName });
 				enqueueLinkSync(site.id, 'ga4');
@@ -102,6 +112,17 @@ export async function listGa4Candidates(accountId: number) {
 
 // ── Tag Manager ──────────────────────────────────────────────────────────────
 /**
+ * The container for a site among one account's web containers: the exact host beats a sub-domain match, and two equally good
+ * ones are ambiguous (pick undefined, candidates lists them).
+ */
+export function pickGtm(containers: GtmContainer[], siteUrl: string): { pick?: GtmContainer; candidates: GtmContainer[] } {
+	const cands = containers.filter((c) => containerHosts(c).some((h) => hostsMatch(h, siteUrl)));
+	const exact = cands.filter((c) => containerHosts(c).some((h) => hostKey(h) === hostKey(siteUrl)));
+	const pick = exact.length === 1 ? exact[0] : exact.length === 0 && cands.length === 1 ? cands[0] : undefined;
+	return { pick, candidates: cands };
+}
+
+/**
  * Link each unlinked site to the web container whose domain (or, failing that, name) matches it. Unlike GA4 this looks across
  * every account that has Tag Manager access, because the person who manages tags is often not the Search Console owner.
  */
@@ -116,9 +137,7 @@ export async function autoMatchGtm() {
 		if (!sites.length) break;
 		const containers = (await gtmSourceFor(acc.id).listContainers()).filter(isWebContainer);
 		for (const site of sites) {
-			const cands = containers.filter((c) => containerHosts(c).some((h) => hostsMatch(h, site.site_url)));
-			const exact = cands.filter((c) => containerHosts(c).some((h) => hostKey(h) === hostKey(site.site_url)));
-			const pick: GtmContainer | undefined = exact.length === 1 ? exact[0] : exact.length === 0 && cands.length === 1 ? cands[0] : undefined;
+			const { pick, candidates: cands } = pickGtm(containers, site.site_url);
 			if (!pick) {
 				if (cands.length > 1) ambiguous.push(site.site_url);
 				continue;

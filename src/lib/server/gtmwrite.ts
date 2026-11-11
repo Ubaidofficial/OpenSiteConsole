@@ -7,10 +7,11 @@ import { claritySnippet, parseClarityId } from '../clarityinstall';
 import { demoInstalled } from './demo-channels';
 
 /**
- * Adding Microsoft Clarity to a site through its Tag Manager container: the one place SEOConsole writes to Tag Manager.
+ * Writing to Tag Manager: adding Microsoft Clarity (this file's plan/install pair), and, for "Set up GA4 & Tag Manager" (setup.ts), creating
+ * a container and adding a Google tag. Both go through installTagViaWorkspace.
  *
  * The permission is separate and opt-in: the normal Google sign-in asks for read-only Tag Manager access, and these three
- * scopes are requested only when the owner clicks "Allow SEOConsole to edit Tag Manager" (never with READ_ONLY=1).
+ * scopes are requested only when the owner clicks "Allow SEOConsole to edit Tag Manager" or the setup grant (never with READ_ONLY=1).
  *
  * Safety: the tag goes into a NEW workspace, so nobody's unfinished work is touched, and SEOConsole publishes only when the
  * container's newest version is the live one (otherwise publishing would also push someone else's unpublished version).
@@ -73,7 +74,7 @@ export function realGtmWriter(accountId: number, http: HttpOptions = {}): GtmWri
 }
 
 /** Demo: pretends to succeed; demoInstalled remembers the tag, so the demo container shows it afterwards. */
-function demoGtmWriter(): GtmWriter {
+export function demoGtmWriter(): GtmWriter {
 	let n = 0;
 	return {
 		latestVersionId: async () => '12',
@@ -81,6 +82,47 @@ function demoGtmWriter(): GtmWriter {
 		createTag: async () => ({ tagId: '99' }),
 		createVersion: async (w) => ({ path: w.replace(/workspaces\/\d+$/, 'versions/13'), versionId: '13', compilerError: false }),
 		publish: async () => ({ versionId: '13', compilerError: false })
+	};
+}
+
+export const GA4_TAG_NAME = 'Google tag (added by SEOConsole)';
+
+/** Tag Manager accounts, and creating a web container in one. Tag Manager API v2 has no accounts.create, so an account cannot be made here. */
+export interface GtmAdmin {
+	listAccounts(): Promise<{ path: string; name: string }[]>;
+	createContainer(account: string, c: { name: string; domainName: string[] }): Promise<{ path: string; publicId: string; name: string }>;
+}
+
+export function realGtmAdmin(accountId: number, http: HttpOptions = {}): GtmAdmin {
+	const call = <T>(url: string, init?: RequestInit) => googleJson<T>(() => accessToken(accountId), url, init, http);
+	return {
+		async listAccounts() {
+			const r = await call<{ account?: { path?: string; accountId?: string; name?: string }[] }>(`${BASE}/accounts`);
+			return (r.account ?? []).slice(0, 50).map((a) => ({ path: a.path ?? `accounts/${a.accountId}`, name: a.name ?? a.accountId ?? '' }));
+		},
+		async createContainer(account, c) {
+			// containers.create: POST /accounts/{id}/containers with a Container {name, usageContext, domainName}; scope tagmanager.edit.containers
+			const r = await call<{ path?: string; containerId?: string; publicId?: string; name?: string }>(`${BASE}/${account}/containers`, { method: 'POST', body: JSON.stringify({ name: c.name, usageContext: ['web'], domainName: c.domainName }) });
+			const path = r.path ?? (r.containerId ? `${account}/containers/${r.containerId}` : '');
+			if (!path || !r.publicId) throw new Error('Tag Manager did not return the new container.');
+			return { path, publicId: r.publicId, name: r.name ?? c.name };
+		}
+	};
+}
+
+/**
+ * A Google tag (type googtag) for a GA4 measurement ID, firing on All Pages. The `tagId` parameter key matches what the
+ * container reader in gtm.ts already looks for, but Google's API reference does not document tag-type parameters, so this
+ * is NOT confirmed against a live container: check the first one in Tag Manager.
+ */
+export function ga4TagBody(measurementId: string) {
+	return {
+		name: GA4_TAG_NAME,
+		type: 'googtag',
+		parameter: [{ type: 'template', key: 'tagId', value: measurementId }],
+		firingTriggerId: [ALL_PAGES_TRIGGER],
+		tagFiringOption: 'oncePerEvent',
+		notes: 'Added from SEOConsole so Google Analytics 4 collects visits. Safe to edit or delete here.'
 	};
 }
 
@@ -161,6 +203,52 @@ export interface InstallResult {
 	versionId?: string;
 }
 
+export interface WorkspaceInstall {
+	siteId: number;
+	accountId: number;
+	isDemo: boolean;
+	container: string;
+	publicId: string;
+	tag: object;
+	/** Names the audit entries: `${audit}_prepared`, `${audit}_published`, `${audit}_failed`. */
+	audit: string;
+	workspaceName: string;
+	workspaceDescription: string;
+	versionName: string;
+	versionNotes: string;
+	/** What was added, for the audit entry ("Clarity abc123"). */
+	what: string;
+	/** Called once the tag exists (demo bookkeeping). */
+	onTag?: () => void;
+}
+
+/** A new workspace with one tag in it, then (when asked and the caller has checked it is safe) a version and publish. Shared by the Clarity and GA4 installs. */
+export async function installTagViaWorkspace(writer: GtmWriter, w: WorkspaceInstall, mode: 'publish' | 'workspace'): Promise<InstallResult> {
+	const [, accountNum, , containerNum] = w.container.split('/');
+	const ui = (ws: string) => `https://tagmanager.google.com/#/container/accounts/${accountNum}/containers/${containerNum}/workspaces/${ws}`;
+	try {
+		const ws = await writer.createWorkspace(w.container, w.workspaceName, w.workspaceDescription);
+		await writer.createTag(ws.path, w.tag);
+		w.onTag?.();
+		if (mode === 'workspace') {
+			audit(`${w.audit}_prepared`, { siteId: w.siteId, accountId: w.accountId, detail: `${w.publicId}: tag in workspace ${ws.workspaceId}, not published` });
+			return { ok: true, published: false, reviewUrl: ui(ws.workspaceId) };
+		}
+		const v = await writer.createVersion(ws.path, w.versionName, w.versionNotes);
+		if (v.compilerError || !v.path) return { ok: false, error: 'Tag Manager could not build a version from the workspace. The tag is there: open the workspace in Tag Manager to see why.', published: false, reviewUrl: ui(ws.workspaceId) };
+		const p = await writer.publish(v.path);
+		if (p.compilerError) return { ok: false, error: 'Tag Manager refused to publish the version. Open it in Tag Manager to see why.', published: false };
+		audit(`${w.audit}_published`, { siteId: w.siteId, accountId: w.accountId, detail: `${w.publicId}: version ${p.versionId || v.versionId} published with ${w.what}` });
+		return { ok: true, published: true, versionId: p.versionId || v.versionId, reviewUrl: `https://tagmanager.google.com/#/versions/accounts/${accountNum}/containers/${containerNum}` };
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		audit(`${w.audit}_failed`, { siteId: w.siteId, accountId: w.accountId, detail: msg });
+		// Standard containers allow three workspaces; this is the most likely refusal.
+		const hint = /workspace/i.test(msg) && /limit|maximum|exceed/i.test(msg) ? ' Tag Manager allows three workspaces on a standard container; delete an old one and try again.' : '';
+		return { ok: false, error: `Tag Manager said: ${msg}.${hint}`, published: false };
+	}
+}
+
 /** Make the change shown by planClarityInstall: a new workspace with the Clarity tag, then (if safe and asked) a version and publish. */
 export async function installClarityViaGtm(siteId: number, input: string, mode: 'publish' | 'workspace', o: { writer?: GtmWriter } = {}): Promise<InstallResult> {
 	const plan = await planClarityInstall(siteId, input, o);
@@ -169,28 +257,25 @@ export async function installClarityViaGtm(siteId: number, input: string, mode: 
 	const ctx = context(siteId);
 	if ('error' in ctx) return { ok: false, error: ctx.error, published: false };
 	const writer = o.writer ?? (ctx.acc.is_demo ? demoGtmWriter() : realGtmWriter(ctx.acc.id));
-	const container = plan.container!.path;
-	const [, accountNum, , containerNum] = container.split('/');
-	const ui = (ws: string) => `https://tagmanager.google.com/#/container/accounts/${accountNum}/containers/${containerNum}/workspaces/${ws}`;
-	try {
-		const ws = await writer.createWorkspace(container, `SEOConsole: Microsoft Clarity ${new Date().toISOString().slice(0, 10)}`, `Adds Microsoft Clarity (project ${plan.projectId}) on all pages. Created from SEOConsole.`);
-		await writer.createTag(ws.path, clarityTagBody(plan.projectId!));
-		if (ctx.acc.is_demo) demoInstalled.set(container, plan.projectId!);
-		if (mode === 'workspace') {
-			audit('gtm.clarity_prepared', { siteId, accountId: ctx.acc.id, detail: `${plan.container!.publicId}: tag in workspace ${ws.workspaceId}, not published` });
-			return { ok: true, published: false, reviewUrl: ui(ws.workspaceId) };
-		}
-		const v = await writer.createVersion(ws.path, `Add Microsoft Clarity (SEOConsole)`, `Microsoft Clarity project ${plan.projectId} on all pages.`);
-		if (v.compilerError || !v.path) return { ok: false, error: 'Tag Manager could not build a version from the workspace. The tag is there: open the workspace in Tag Manager to see why.', published: false, reviewUrl: ui(ws.workspaceId) };
-		const p = await writer.publish(v.path);
-		if (p.compilerError) return { ok: false, error: 'Tag Manager refused to publish the version. Open it in Tag Manager to see why.', published: false };
-		audit('gtm.clarity_published', { siteId, accountId: ctx.acc.id, detail: `${plan.container!.publicId}: version ${p.versionId || v.versionId} published with Clarity ${plan.projectId}` });
-		return { ok: true, published: true, versionId: p.versionId || v.versionId, reviewUrl: `https://tagmanager.google.com/#/versions/accounts/${accountNum}/containers/${containerNum}` };
-	} catch (e) {
-		const msg = e instanceof Error ? e.message : String(e);
-		audit('gtm.clarity_failed', { siteId, accountId: ctx.acc.id, detail: msg });
-		// Standard containers allow three workspaces; this is the most likely refusal.
-		const hint = /workspace/i.test(msg) && /limit|maximum|exceed/i.test(msg) ? ' Tag Manager allows three workspaces on a standard container; delete an old one and try again.' : '';
-		return { ok: false, error: `Tag Manager said: ${msg}.${hint}`, published: false };
-	}
+	return installTagViaWorkspace(
+		writer,
+		{
+			siteId,
+			accountId: ctx.acc.id,
+			isDemo: !!ctx.acc.is_demo,
+			container: plan.container!.path,
+			publicId: plan.container!.publicId,
+			tag: clarityTagBody(plan.projectId!),
+			audit: 'gtm.clarity',
+			workspaceName: `SEOConsole: Microsoft Clarity ${new Date().toISOString().slice(0, 10)}`,
+			workspaceDescription: `Adds Microsoft Clarity (project ${plan.projectId}) on all pages. Created from SEOConsole.`,
+			versionName: 'Add Microsoft Clarity (SEOConsole)',
+			versionNotes: `Microsoft Clarity project ${plan.projectId} on all pages.`,
+			what: `Clarity ${plan.projectId}`,
+			onTag: () => {
+				if (ctx.acc.is_demo) demoInstalled.set(plan.container!.path, plan.projectId!);
+			}
+		},
+		mode
+	);
 }
