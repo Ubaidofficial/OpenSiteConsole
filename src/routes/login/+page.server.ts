@@ -6,11 +6,18 @@ import { safeNext } from '$lib/server/oauth-core';
 import { createSession, SESSION_COOKIE } from '$lib/server/sessions';
 import { loginLimiter } from '$lib/server/attempts';
 import { checkLogin } from '$lib/server/users';
+import { GOOGLE_REFUSALS } from '$lib/server/googlelogin';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const next = safeNext(url.searchParams.get('next')) ?? '/';
 	if (locals.authed && config.hasPassword) redirect(303, next);
 	if (!config.hasPassword) redirect(303, next);
+	const g = url.searchParams.get('google');
+	return {
+		googleLogin: config.googleLogin,
+		next: url.searchParams.get('next') ? next : null,
+		googleError: g ? (GOOGLE_REFUSALS[g] ?? GOOGLE_REFUSALS.failed) : null
+	};
 };
 
 export const actions: Actions = {

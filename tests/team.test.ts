@@ -59,7 +59,7 @@ describe('every state-changing route is classified', () => {
 		return [...body.matchAll(/^\t(?:async\s+)?([A-Za-z_]\w*)\s*(?::|\()/gm)].map((m) => m[1]);
 	};
 	// Pages whose actions run for someone who is not signed in yet: they are public, and carry their own attempt limits.
-	const PUBLIC_ACTION_ROUTES = new Set(['/login', '/invite/[token]']);
+	const PUBLIC_ACTION_ROUTES = new Set(['/login', '/invite/[token]', '/reset/[token]']);
 	// Endpoints for programs, not browsers; each authenticates with its own credential (API key, client registration, PKCE).
 	const PROGRAM_ENDPOINTS = new Set(['POST /api/mcp', 'POST /api/v1/[...path]', 'POST /oauth/register', 'POST /oauth/token']);
 

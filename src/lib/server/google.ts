@@ -126,6 +126,28 @@ export function buildAuthUrl(state: string, extra: string[] = []): string {
 
 export const newState = () => randomBytes(24).toString('base64url');
 
+// ── "Sign in with Google" for SEOConsole itself ──────────────────────────────
+/** Where Google sends the browser back after a SEOConsole sign-in. Register it as a redirect URI on the OAuth client. */
+export const loginRedirectUri = () => `${config.origin}/login/google/callback`;
+
+/**
+ * The address that sends someone to Google to prove who they are. Only "openid email": no Search Console, GA4 or Tag Manager access, no
+ * offline access and nothing is stored from it. `prompt=select_account` so a shared browser asks which Google account to use.
+ */
+export function buildLoginAuthUrl(state: string): string {
+	const p = new URLSearchParams({ client_id: config.googleClientId, redirect_uri: loginRedirectUri(), response_type: 'code', scope: 'openid email', prompt: 'select_account', state });
+	return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
+}
+
+/** Trade the code for who signed in. The identity comes from Google's userinfo endpoint, called with the access token that was just issued. */
+export async function exchangeLoginCode(code: string, fetchImpl: typeof fetch = fetch): Promise<{ sub: string; email: string; emailVerified: boolean }> {
+	const t = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: loginRedirectUri() }, fetchImpl);
+	const res = await fetchImpl('https://openidconnect.googleapis.com/v1/userinfo', { headers: { authorization: `Bearer ${t.access_token}` } });
+	const info = (await res.json().catch(() => ({}))) as { sub?: string; email?: string; email_verified?: boolean | string };
+	if (!res.ok || !info.sub || !info.email) throw new GoogleApiError('Google did not say who signed in.', res.status);
+	return { sub: info.sub, email: info.email, emailVerified: info.email_verified === true || info.email_verified === 'true' };
+}
+
 interface TokenResponse {
 	access_token: string;
 	refresh_token?: string;
@@ -134,8 +156,8 @@ interface TokenResponse {
 	scope?: string;
 }
 
-async function tokenRequest(params: Record<string, string>): Promise<TokenResponse> {
-	const res = await fetch('https://oauth2.googleapis.com/token', {
+async function tokenRequest(params: Record<string, string>, fetchImpl: typeof fetch = fetch): Promise<TokenResponse> {
+	const res = await fetchImpl('https://oauth2.googleapis.com/token', {
 		method: 'POST',
 		headers: { 'content-type': 'application/x-www-form-urlencoded' },
 		body: new URLSearchParams({

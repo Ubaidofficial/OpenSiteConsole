@@ -76,7 +76,7 @@
 			{#if data.demo}<span class="chip">demo data</span>{/if}
 			{#if data.readOnly}<span class="chip">read-only</span>{/if}
 			{#if data.hasPassword && data.user}
-				<a href="/team" class="inline-flex max-w-48 items-center gap-1.5 truncate rounded-md px-2 py-1 hover:bg-accent hover:text-accent-foreground" title={data.user.email ? `Signed in as ${data.user.name} (${data.user.email}), ${data.user.roleLabel}` : `Signed in as the owner`}>
+				<a href="/profile" class="inline-flex max-w-48 items-center gap-1.5 truncate rounded-md px-2 py-1 hover:bg-accent hover:text-accent-foreground" title={data.user.email ? `Signed in as ${data.user.name} (${data.user.email}), ${data.user.roleLabel}. Open your account.` : `Signed in as the owner. Open your account.`}>
 					<span class="truncate"><span class="pii">{data.user.name}</span></span><span class="chip">{data.user.roleLabel}</span>
 				</a>
 				<form method="POST" action="/logout"><button class="rounded-md px-2 py-1 hover:bg-accent hover:text-accent-foreground">Sign out</button></form>

@@ -42,3 +42,9 @@ export class FailureLimiter {
 export const loginLimiter = new FailureLimiter(5, 15 * 60_000);
 /** Invite links: 10 unknown, used or expired links (or refused acceptances) per visitor per 15 minutes. */
 export const inviteLimiter = new FailureLimiter(10, 15 * 60_000);
+/** Password reset links: 10 unknown, used or expired links per visitor per 15 minutes. */
+export const resetLimiter = new FailureLimiter(10, 15 * 60_000);
+/** Someone signed in re-typing their current password to change their email or password: 5 wrong tries per member per 15 minutes. */
+export const profileLimiter = new FailureLimiter(5, 15 * 60_000);
+/** Google sign-ins that were turned away (not on the team, unverified, disabled): 10 per visitor per 15 minutes. */
+export const googleLoginLimiter = new FailureLimiter(10, 15 * 60_000);
