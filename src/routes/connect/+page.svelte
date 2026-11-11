@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Explainer from '$lib/components/Explainer.svelte';
+	import SiteSetup from '$lib/components/SiteSetup.svelte';
 	import { privacy } from '$lib/privacy.svelte';
 	import { enhance } from '$app/forms';
 	import { ago } from '$lib/format';
@@ -45,6 +46,9 @@
 
 {#if data.demo}<p class="card mb-4 p-3 text-sm">Demo mode: type <code>demo</code> as the key/token in any step to connect synthetic data.</p>{/if}
 {#if form?.ok && !form.section}<p class="mb-3 text-sm text-good">{form.ok}</p>{/if}
+{#if data.flash}<p class="mb-3 text-sm text-muted-foreground" role="status">{data.flash}</p>{/if}
+
+{#if data.setupSite}<SiteSetup site={data.setupSite} plan={data.setup} choices={data.choices} onSite={data.setupOnSite} readOnly={data.readOnly} form={form?.section === 'setup' ? form : null} />{/if}
 
 <!-- Matrix: status at a glance; the controls only show while editing -->
 <section class="mb-6">
@@ -55,7 +59,8 @@
 			<tbody>
 				{#each data.rows as r (r.id)}
 					<tr>
-						<td class="td whitespace-nowrap"><a class="pii hover:underline" href="/sites/{r.id}">{r.name}</a><div class="pii text-[11px] text-muted-foreground">{r.account}</div></td>
+						<td class="td whitespace-nowrap"><a class="pii hover:underline" href="/sites/{r.id}">{r.name}</a><div class="pii text-[11px] text-muted-foreground">{r.account}</div>
+							{#if r.needsSetup && !data.readOnly}<a class="mt-1 inline-block text-[11px] underline" href="/connect?setup={r.id}#setup">Set up GA4 &amp; Tag Manager</a>{/if}</td>
 						<td class="td {r.google === 'synced' ? 'text-good' : 'text-muted-foreground'}">{r.google === 'synced' ? '✓' : r.google}</td>
 						{#each ['bing', 'ga4', 'gtm', 'clarity', 'openseo'] as const as k}
 							{@const l = r.links[k]}
@@ -140,9 +145,9 @@
 
 <!-- 4 Tag Manager -->
 <details class="card mt-4 p-4 [&[open]>summary]:mb-2" open={!complete.gtm}>
-		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/tag-manager.svg" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />4 · Google Tag Manager <span class="chip ml-1">read-only, plus an optional Clarity install</span></h2><span class="ml-auto text-xs {complete.gtm ? 'text-good' : 'text-muted-foreground'}">{statusOf.gtm}</span></summary>
+		<summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 select-none [&::-webkit-details-marker]:hidden"><h2 class="font-medium"><img src="/logos/tag-manager.svg" alt="" width="18" height="18" class="mr-2 inline-block size-[18px] align-[-3px] object-contain" />4 · Google Tag Manager <span class="chip ml-1">read-only, plus optional one-click setup and Clarity install</span></h2><span class="ml-auto text-xs {complete.gtm ? 'text-good' : 'text-muted-foreground'}">{statusOf.gtm}</span></summary>
 	<p class="mb-3 text-xs text-muted-foreground">
-		Reads each site's <b>published</b> container and checks it against GA4 and Search Console (Tag Manager tab). Needs the <b>Tag Manager API</b> enabled in your Google Cloud project. SEOConsole never edits or publishes a container.
+		Reads each site's <b>published</b> container and checks it against GA4 and Search Console (Tag Manager tab). Needs the <b>Tag Manager API</b> enabled in your Google Cloud project. SEOConsole only changes a container when you ask: through a site's <b>Set up GA4 &amp; Tag Manager</b> button (links or creates the GA4 property and container and adds the Google tag) or the Clarity install, each after showing the change and with a separate permission.
 	</p>
 	<form method="POST" action="?/gtmAuto" use:enhance={submit('gtm')}><button class="btn btn-primary" disabled={busy === 'gtm'}>{busy === 'gtm' ? 'Matching…' : 'Find & link containers'}</button></form>
 	{#if msgFor('gtm')?.ok}<p class="mt-2 text-sm text-good">{msgFor('gtm')?.ok}</p>{/if}

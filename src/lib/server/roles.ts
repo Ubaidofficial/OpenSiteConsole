@@ -49,7 +49,7 @@ export function refusalText(need: Role): string {
 export function routeOf(pathname: string): string {
 	let p = pathname.replace(/\/__data\.json$/, '');
 	if (p.length > 1) p = p.replace(/\/+$/, '');
-	p = p.replace(/^\/sites\/\d+(?=\/|$)/, '/sites/[id]').replace(/^\/invite\/[^/]+$/, '/invite/[token]');
+	p = p.replace(/^\/sites\/\d+(?=\/|$)/, '/sites/[id]').replace(/^\/invite\/[^/]+$/, '/invite/[token]').replace(/^\/reset\/[^/]+$/, '/reset/[token]');
 	return p || '/';
 }
 
@@ -69,13 +69,15 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/': { syncAll: E, hideDuplicates: E, toggleHidden: E, purgeRemoved: A, hideOnboarding: A, showOnboarding: A, onboardIndexing: E, onboardBrand: A },
 	'/accounts': { refresh: E, verifyToken: A, verifyNow: A, relabel: A, remove: A, addSite: A },
 	'/agents': { create: A, permission: A, changes: A, remove: A },
-	'/connect': { resync: E, bingKey: A, bingRemove: A, ga4Auto: A, gtmAuto: A, clarity: A, manual: A, unlink: A, openseo: A, crux: A, cruxRemove: A, openseoRemove: A },
+	'/connect': { resync: E, bingKey: A, bingRemove: A, ga4Auto: A, gtmAuto: A, clarity: A, manual: A, unlink: A, openseo: A, crux: A, cruxRemove: A, openseoRemove: A, setupRun: A, setupTos: A, setupCheck: A },
 	'/chat': { delete: 'viewer' },
 	'/digest': { generate: E, send: E, monthly: E, sendMonthly: E, check: E },
 	'/updates': { import: E, add: E, remove: E },
 	'/sitemaps': { resubmitAll: E },
 	'/oauth/authorize': { allow: A, deny: A },
-	'/team': { invite: A, revoke: A, role: A, disable: A, enable: A, remove: A, sites: A },
+	'/team': { invite: A, revoke: A, role: A, disable: A, enable: A, remove: A, sites: A, resetLink: A },
+	// Everyone signed in may change their own account (each action checks the current password where it matters); the owner has no row to change.
+	'/profile': { name: 'viewer', email: 'viewer', password: 'viewer', linkGoogle: 'viewer', unlinkGoogle: 'viewer' },
 	'/sites/[id]': { addNote: E, makeTest: E, deleteNote: E },
 	'/sites/[id]/actions': { state: E },
 	'/sites/[id]/clarity': { check: E, plan: E, install: A },
@@ -126,8 +128,8 @@ export function requiredRole(method: string, url: URL): Role {
 
 /** Pages a person limited to some sites may still open: they show nothing from other sites. Everything else covers every site. */
 const SCOPED_READABLE = new Set(['/', '/team', '/updates']);
-/** Routes a person limited to some sites may also post to: the chat, whose tools only ever see that person's sites. */
-const SCOPED_USABLE = new Set(['/chat', '/chat/stream']);
+/** Routes a person limited to some sites may also post to: the chat, whose tools only ever see that person's sites, and their own account page. */
+const SCOPED_USABLE = new Set(['/chat', '/chat/stream', '/profile']);
 
 /**
  * Why a request is refused, or null. `not-found` for a site outside the person's scope (it is not even confirmed to exist),

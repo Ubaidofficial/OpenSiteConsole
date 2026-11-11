@@ -12,6 +12,8 @@ import { claritySnippet } from '../clarityinstall';
 export const DEMO_CLARITY_ID = 'gl4demo7x2';
 /** Demo containers that "installed" Clarity through SEOConsole (container path -> project ID), until the server restarts. */
 export const demoInstalled = new Map<string, string>();
+/** What the demo "Set up GA4 & Tag Manager" created, until the server restarts: properties, containers, and the GA4 tag put in a container (path -> measurement ID). */
+export const demoSetup = { ga4: [] as { accountSub: string; prop: Ga4Property; url: string }[], containers: [] as GtmContainer[], ga4Tags: new Map<string, string>() };
 
 const sites = DEMO_ACCOUNTS.flatMap((a) => a.sites);
 const siteOf = (urlOrHost: string) => sites.find((s) => hostKey(s.siteUrl) === hostKey(urlOrHost)) ?? sites[0];
@@ -70,11 +72,13 @@ export class DemoBing implements BingClient {
 	}
 }
 
-export const DEMO_GA4_PROPERTIES = (accountSub: string): { prop: Ga4Property; url: string }[] =>
-	(DEMO_ACCOUNTS.find((a) => a.sub === accountSub)?.sites ?? []).map((s, i) => ({
+export const DEMO_GA4_PROPERTIES = (accountSub: string): { prop: Ga4Property; url: string }[] => [
+	...(DEMO_ACCOUNTS.find((a) => a.sub === accountSub)?.sites ?? []).map((s, i) => ({
 		prop: { property: `properties/${accountSub === 'demo-a' ? 1000 : 2000}${i}`, displayName: `${s.brand} (GA4)`, account: 'Demo account' },
 		url: s.siteUrl.startsWith('sc-domain:') ? `https://www.${s.siteUrl.slice(10)}` : s.siteUrl
-	}));
+	})),
+	...demoSetup.ga4.filter((c) => c.accountSub === accountSub).map(({ prop, url }) => ({ prop, url }))
+];
 
 /** A GA4 measurement ID for a demo property. Real ones are "G-" plus ten letters and digits. */
 export const demoGa4MeasurementId = (property: string) => `G-DEMO${property.replace(/\D/g, '')}`;
@@ -88,6 +92,10 @@ const hostOfDemo = (siteUrl: string) => (siteUrl.startsWith('sc-domain:') ? site
  * never published, ledgerly still has a Universal Analytics tag and no GA4 tag, coffeelab has a tag with no trigger.
  */
 export function demoGtmContainers(): GtmContainer[] {
+	return [...demoBaseContainers(), ...demoSetup.containers];
+}
+
+function demoBaseContainers(): GtmContainer[] {
 	return sites
 		.filter((s) => s.brand !== 'northwind')
 		.map((s, i) => ({
@@ -104,6 +112,13 @@ export function demoGtmContainers(): GtmContainer[] {
 export function demoGtmLive(containerPath: string): GtmLive | null {
 	const c = demoGtmContainers().find((x) => x.path === containerPath);
 	if (!c) return null;
+	const setupTag = demoSetup.ga4Tags.get(containerPath);
+	// a container the demo setup created: nothing in it until the setup publishes the Google tag
+	if (demoSetup.containers.some((x) => x.path === containerPath)) {
+		return setupTag
+			? { versionId: '1', versionName: 'Add Google tag (SEOConsole)', tags: [{ id: '1', name: 'Google tag (added by SEOConsole)', type: 'googtag', paused: false, firing: ['All Pages'], blocking: [], measurementId: setupTag, eventName: null }], triggers: [{ id: '2147479553', name: 'All Pages', type: 'pageview' }], variables: [] }
+			: null;
+	}
 	const brand = sites.find((s) => hostOfDemo(s.siteUrl) === c.name)?.brand ?? '';
 	if (brand === 'trailmaps') return null;
 	const props = DEMO_ACCOUNTS.flatMap((a) => DEMO_GA4_PROPERTIES(a.sub));
@@ -126,6 +141,7 @@ export function demoGtmLive(containerPath: string): GtmLive | null {
 					// a Clarity tag someone added but never gave a trigger: the Clarity check flags it
 					...(brand === 'coffeelab' ? [tag('4', 'Heatmap script', 'html', { firing: [], clarity: true, clarityId: 'cf8demo3k1' })] : [])
 				];
+	if (setupTag) tags.push(tag('98', 'Google tag (added by SEOConsole)', 'googtag', { measurementId: setupTag }));
 	const added = demoInstalled.get(containerPath);
 	if (added) tags.push(tag('99', 'Microsoft Clarity (added by SEOConsole)', 'html', { clarity: true, clarityId: added }));
 	return {

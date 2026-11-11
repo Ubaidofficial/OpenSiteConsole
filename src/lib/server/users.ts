@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { audit, db } from './db';
+import { config } from './config';
 import { hashPassword, verifyPassword } from './password';
 import { checkAdminPassword } from './adminauth';
 import { safeEqual } from './crypto';
@@ -24,6 +25,9 @@ export class TeamError extends Error {}
 const USER_COLS = 'id, email, name, role, site_ids, created_at, last_login_at, disabled';
 const tokenHash = (t: string) => createHash('sha256').update(t).digest('hex');
 
+/** An address that signs in as the owner through Google (OWNER_GOOGLE_EMAILS): a team member cannot have it. */
+export const isOwnerEmail = (email: string) => config.ownerGoogleEmails.includes(email);
+
 export function normalizeEmail(v: unknown): string | null {
 	const e = String(v ?? '').trim().toLowerCase();
 	return e.length <= 254 && /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(e) ? e : null;
@@ -35,7 +39,7 @@ function scopeJson(role: MemberRole, siteIds: number[] | null | undefined): stri
 	return JSON.stringify([...new Set(siteIds.filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b));
 }
 export const scopeOf = (siteIds: string | null): number[] | null => (siteIds ? (JSON.parse(siteIds) as number[]) : null);
-const who = (actor: CurrentUser | null | undefined) => (actor ? (actor.email ? `${actor.name} <${actor.email}>` : actor.name) : 'system');
+export const who = (actor: CurrentUser | null | undefined) => (actor ? (actor.email ? `${actor.name} <${actor.email}>` : actor.name) : 'system');
 
 export const listUsers = () => db().prepare(`SELECT ${USER_COLS} FROM users ORDER BY disabled, created_at`).all() as UserRow[];
 export const getUser = (id: number) => db().prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id) as UserRow | undefined;
@@ -70,6 +74,7 @@ export function createInvite(o: { email: unknown; role: unknown; siteIds?: numbe
 	if (!role) throw new TeamError('Pick a role: admin, editor or viewer.');
 	const d = db();
 	if (d.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) throw new TeamError('Someone with that email is already on the team.');
+	if (isOwnerEmail(email)) throw new TeamError('That address is the owner’s (OWNER_GOOGLE_EMAILS) and cannot be invited as a team member.');
 	const token = INVITE_PREFIX + randomBytes(32).toString('base64url');
 	const expiresAt = now + INVITE_TTL;
 	const id = d.transaction(() => {
@@ -172,6 +177,7 @@ export function removeUser(id: number, actor?: CurrentUser | null) {
 	// Their chat conversations go with them: SQLite can give the next new member the same id, and with it this person's history.
 	db().prepare('DELETE FROM chat_threads WHERE owner = ?').run(`user:${id}`);
 	db().prepare('DELETE FROM chat_usage WHERE owner = ?').run(`user:${id}`);
+	db().prepare('DELETE FROM password_resets WHERE user_id = ?').run(id);
 	db().prepare('DELETE FROM users WHERE id = ?').run(id);
 	audit('user.removed', { detail: `${u.email} by ${who(actor)}` });
 }

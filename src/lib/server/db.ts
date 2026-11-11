@@ -320,6 +320,17 @@ CREATE TABLE IF NOT EXISTS users (
 	last_login_at INTEGER,
 	disabled INTEGER NOT NULL DEFAULT 0
 );
+-- Single-use password reset links, made by an owner or admin for a team member who cannot sign in (there is no email sending, so the link is copied by hand).
+CREATE TABLE IF NOT EXISTS password_resets (
+	id INTEGER PRIMARY KEY,
+	token_hash TEXT NOT NULL UNIQUE,
+	user_id INTEGER NOT NULL,
+	created_at INTEGER NOT NULL,
+	expires_at INTEGER NOT NULL,
+	created_by TEXT,
+	used_at INTEGER,
+	revoked_at INTEGER
+);
 -- Single-use invite links. Only a hash of the token is kept; the link itself is shown once to whoever made it.
 CREATE TABLE IF NOT EXISTS invites (
 	id INTEGER PRIMARY KEY,
@@ -695,6 +706,9 @@ function migrate(db: Database.Database) {
 	if (!cols('sites').includes('request_auto')) db.exec('ALTER TABLE sites ADD COLUMN request_auto INTEGER NOT NULL DEFAULT 0');
 	if (!cols('ai_runs').includes('via')) db.exec('ALTER TABLE ai_runs ADD COLUMN via TEXT');
 	if (!cols('ai_runs').includes('cost')) db.exec('ALTER TABLE ai_runs ADD COLUMN cost REAL');
+	// The Google identity (the stable "sub") a team member signs in with, once they have used or linked "Sign in with Google".
+	if (!cols('users').includes('google_sub')) db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT');
+	db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL');
 	// Which team member a session belongs to (NULL = the owner). Earlier sessions were all the owner's, so they stay valid.
 	if (!cols('sessions').includes('user_id')) db.exec('ALTER TABLE sessions ADD COLUMN user_id INTEGER');
 	db.exec('CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id)');

@@ -52,6 +52,18 @@ export const config = {
 	get demo() {
 		return env('DEMO_MODE') === '1';
 	},
+	/**
+	 * "Sign in with Google" for SEOConsole itself (separate from connecting Google accounts to read data). On when there is a login password,
+	 * a Google OAuth client, and this is not the hosted plan (its shared redirect address cannot return to /login/google/callback).
+	 * GOOGLE_LOGIN=0 switches it off.
+	 */
+	get googleLogin() {
+		return env('GOOGLE_LOGIN') !== '0' && !!env('GOOGLE_CLIENT_ID') && !!env('GOOGLE_CLIENT_SECRET') && !!(env('ADMIN_PASSWORD_HASH') || env('ADMIN_PASSWORD')) && !env('OAUTH_REDIRECT_URI');
+	},
+	/** Google addresses that sign in as the owner (OWNER_GOOGLE_EMAILS, comma separated). The owner is not a database row, so this is the only way to say who. */
+	get ownerGoogleEmails(): string[] {
+		return env('OWNER_GOOGLE_EMAILS').split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean);
+	},
 	/** READ_ONLY=1 requests the webmasters.readonly scope and disables every write action. */
 	get readOnly() {
 		return env('READ_ONLY') === '1';

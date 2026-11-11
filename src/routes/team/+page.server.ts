@@ -6,6 +6,7 @@ import { allSites } from '$lib/server/queries';
 import { displayName } from '$lib/server/clients';
 import { intParam } from '$lib/server/params';
 import { hasRole, requireRole, ROLE_LABEL } from '$lib/server/roles';
+import { createPasswordReset, pendingResetUserIds, RESET_HOURS } from '$lib/server/selfservice';
 import { createInvite, INVITE_DAYS, listPendingInvites, listUsers, MIN_MEMBER_PASSWORD_LENGTH, removeUser, revokeInvite, scopeOf, setUserDisabled, setUserRole, setUserSites, TeamError } from '$lib/server/users';
 
 const DAY = 86_400_000;
@@ -43,6 +44,8 @@ export const load: PageServerLoad = ({ locals }) => {
 		demo: config.demo,
 		hasPassword: config.hasPassword,
 		inviteDays: INVITE_DAYS,
+		resetHours: RESET_HOURS,
+		pendingResets: canManage && !config.demo ? [...pendingResetUserIds(now)] : [],
 		minPassword: MIN_MEMBER_PASSWORD_LENGTH,
 		users: team.users,
 		invites: team.invites,
@@ -72,6 +75,18 @@ export const actions: Actions = {
 		try {
 			const inv = createInvite({ email: f.get('email'), role: f.get('role'), siteIds: siteList(f).filter((id) => known.has(id)), actor: me });
 			return { inviteLink: `${config.origin}/invite/${inv.token}`, inviteEmail: inv.email, inviteRole: ROLE_LABEL[inv.role], inviteExpires: inv.expiresAt };
+		} catch (e) {
+			return fail(400, { error: msg(e) });
+		}
+	},
+	/** A one-time link for a member who cannot sign in (there is no email sending, so it is copied by hand), like an invite. */
+	resetLink: async ({ request, locals }) => {
+		const { me, refused } = guard(locals);
+		if (refused) return refused;
+		if (!config.hasPassword) return fail(400, { error: 'Set ADMIN_PASSWORD first.' });
+		try {
+			const r = createPasswordReset(intParam((await request.formData()).get('id')), me);
+			return { resetLink: `${config.origin}/reset/${r.token}`, resetFor: r.name, resetExpires: r.expiresAt };
 		} catch (e) {
 			return fail(400, { error: msg(e) });
 		}

@@ -32,8 +32,8 @@ const isDiscovery = (path: string) => path.startsWith('/.well-known/oauth-');
 const isApi = (path: string) => path === '/api/mcp' || path === '/api/v1' || path.startsWith('/api/v1/');
 /** The privacy policy, terms and comparison pages are public: Google's OAuth verification and anyone about to sign in must be able to read them. They show no data about the installation. */
 const isLegal = (path: string) => path === '/privacy' || path === '/terms' || path === '/compare' || path.startsWith('/compare/');
-/** Reachable without a session: the sign-in form and invite links (each with its own attempt limit), and the public pages above. */
-const isPublic = (path: string) => path === '/login' || path === '/login/__data.json' || /^\/invite\/[^/]+(\/__data\.json)?$/.test(path) || isLegal(path);
+/** Reachable without a session: the sign-in form, Sign in with Google, and invite and password reset links (each with its own attempt limit), and the public pages above. */
+const isPublic = (path: string) => path === '/login' || path === '/login/__data.json' || path === '/login/google' || path === '/login/google/callback' || /^\/(invite|reset)\/[^/]+(\/__data\.json)?$/.test(path) || isLegal(path);
 
 /**
  * A refusal the page can show. A form posted with `use:enhance` expects SvelteKit's action result (JSON, with the data devalue-encoded), so it

@@ -23,7 +23,9 @@ All are optional except where noted; copy `.env.example` to `.env`. On Cloudflar
 | `INDEX_MONITOR_URLS` | URLs the indexing monitor inspects per run (default 40, max 200). |
 | `ONPAGE_ALLOW_PRIVATE=1` | Let on-page checks reach private addresses (only if your site lives on your own network). |
 | `LINK_CRAWL_PAGES` | Pages the internal-link crawl fetches per site (default 60, max 500): the ones with the most impressions in the last 90 days. |
-| `READ_ONLY=1` | Read-only Google scope and write actions disabled. |
+| `OWNER_GOOGLE_EMAILS` | Google addresses (comma separated) that sign in as the **owner** with "Continue with Google". The owner is not a team member, so this is the only way to say who. Matched by the address Google has verified. A team member cannot have one of these addresses. |
+| `GOOGLE_LOGIN=0` | Hide "Continue with Google" and refuse `/login/google`. On by default when there is a login password and a Google client; always off on the hosted plan. |
+| `READ_ONLY=1` | Read-only Google scope and write actions disabled. This includes the Tag Manager and Google Analytics write permissions behind **Set up GA4 & Tag Manager** and the Clarity install: they are never requested, and the plans refuse. |
 | `MAX_ROWS_PER_DAY` | Per-day row cap in the warehouse (default 100,000). |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `PERPLEXITY_API_KEY` | AI answers: the assistants to ask (each optional; none set, nothing runs). Billed to your accounts. `ANTHROPIC_API_KEY` also switches on the *Ask* chat. |
 | `CHAT_MODEL`, `CHAT_EFFORT`, `CHAT_MESSAGES_PER_DAY` | The *Ask* chat: the Claude model (default `claude-opus-5-5`), its effort (`low` to `max`, default `medium`) and the messages each person may send a day (default 50; `0` turns chat off for everyone). |

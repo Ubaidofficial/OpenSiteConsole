@@ -43,6 +43,17 @@
 	</div>
 {/if}
 
+{#if form?.resetLink}
+	<div class="card mb-4 border-[color:var(--good)] p-4">
+		<p class="mb-1 text-sm font-medium">Password reset link for <span class="pii">{form.resetFor}</span>. Copy it now: it is shown only once.</p>
+		<div class="flex flex-wrap items-center gap-2">
+			<code class="block min-w-0 flex-1 break-all rounded bg-black/5 p-2 text-sm dark:bg-white/10">{form.resetLink}</code>
+			<button type="button" class="btn" onclick={() => copy(form!.resetLink!)}>{copied ? 'Copied' : 'Copy link'}</button>
+		</div>
+		<p class="mt-2 text-xs text-muted-foreground">SEOConsole does not send email: send this link to them yourself, by a channel you trust. It works once and expires {new Date(form.resetExpires!).toLocaleString()}. Using it signs them out everywhere else.</p>
+	</div>
+{/if}
+
 {#if data.canManage}
 	<section class="card mb-6 p-4">
 		<h2 class="mb-2 font-medium">Invite someone</h2>
@@ -82,7 +93,7 @@
 			</tr>
 			{#each data.users as u (u.id)}
 				<tr class={u.disabled ? 'opacity-60' : ''}>
-					<td class="td"><span class="pii">{u.name}</span>{#if data.me?.id === u.id}<span class="chip ml-2">you</span>{/if}{#if u.disabled}<span class="chip ml-2 text-bad">disabled</span>{/if}<div class="text-xs text-muted-foreground"><span class="pii">{u.email}</span></div></td>
+					<td class="td"><span class="pii">{u.name}</span>{#if data.me?.id === u.id}<span class="chip ml-2">you</span>{/if}{#if u.disabled}<span class="chip ml-2 text-bad">disabled</span>{/if}{#if data.pendingResets.includes(u.id)}<span class="chip ml-2 text-warn" title="A reset link was made and not used yet">reset pending</span>{/if}<div class="text-xs text-muted-foreground"><span class="pii">{u.email}</span></div></td>
 					<td class="td"><span class={chipClass(u.role)}>{LABEL[u.role]}</span></td>
 					<td class="td text-xs"><span class="pii">{u.sites ? u.sites.join(', ') : 'all sites'}</span></td>
 					<td class="td text-xs text-muted-foreground">{u.lastLoginAt ? ago(u.lastLoginAt) : 'never'}</td>
@@ -96,6 +107,9 @@
 									</select>
 									<button class="btn text-xs">Save</button>
 								</form>
+								{#if !u.disabled && data.me?.id !== u.id && !data.demo}
+									<form method="POST" action="?/resetLink" use:enhance><input type="hidden" name="id" value={u.id} /><ConfirmButton class="btn text-xs" title="Make a password reset link for {u.name}?" description="Any reset link made earlier stops working. The new one is shown once; you send it to them. Using it signs them out everywhere else." confirmLabel="Make link">Reset password</ConfirmButton></form>
+								{/if}
 								{#if u.disabled}
 									<form method="POST" action="?/enable" use:enhance><input type="hidden" name="id" value={u.id} /><button class="btn text-xs">Enable</button></form>
 								{:else}
