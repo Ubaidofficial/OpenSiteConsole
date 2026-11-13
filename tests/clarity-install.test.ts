@@ -226,6 +226,20 @@ describe('demo: the check and the install end to end', () => {
 		demoInstalled.clear();
 	});
 
+	it('no name sent to Tag Manager contains a colon, which it rejects (found on the first live run of the Google tag install)', async () => {
+		const names: string[] = [];
+		const writer: GtmWriter = {
+			latestVersionId: async () => '12',
+			createWorkspace: async (c, name) => (names.push(name), { path: `${c}/workspaces/3`, workspaceId: '3' }),
+			createTag: async (_w, tag) => (names.push((tag as { name: string }).name), { tagId: '1' }),
+			createVersion: async (w, name) => (names.push(name), { path: w.replace(/workspaces\/\d+$/, 'versions/6'), versionId: '6', compilerError: false }),
+			publish: async () => ({ versionId: '6', compilerError: false })
+		};
+		await installClarityViaGtm(siteId('pixelforge'), 'zagoogkx9a', 'publish', { writer });
+		expect(names).toHaveLength(3);
+		for (const n of names) expect(n, n).not.toMatch(/[:"<>&]/);
+		demoInstalled.clear();
+	});
 	it('install and publish in the demo: the container then has the tag, and the warning goes away after the next sync', async () => {
 		const id = siteId('pixelforge');
 		const r = await installClarityViaGtm(id, 'zagoogkx9a', 'publish');

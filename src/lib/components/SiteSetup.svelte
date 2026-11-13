@@ -58,8 +58,9 @@
 	const tone = (ok: boolean | null) => (ok === true ? 'var(--good)' : ok === false ? 'var(--bad)' : 'var(--muted-foreground)');
 	const done = (name: string) => () => {
 		busy = name;
-		return async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => {
-			await update({ reset: false });
+		return async ({ update }: { update: (o?: { reset?: boolean; invalidateAll?: boolean }) => Promise<void> }) => {
+			// reload the plan too: after a failed run (which keeps what was done) the cards must show the new state, not the old one
+			await update({ reset: false, invalidateAll: true });
 			busy = null;
 		};
 	};

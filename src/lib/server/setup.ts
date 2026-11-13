@@ -280,8 +280,10 @@ export async function planSetup(siteId: number, choices: SetupChoices = {}, o: S
 			if (gacc && hasGtmWrite(gacc)) {
 				const latest = await api.writer(gtm.accountId).latestVersionId(gtm.container);
 				const liveId = live?.versionId ?? null;
-				canPublish = !!liveId && latest === liveId;
-				if (!canPublish) publishBlocked = !liveId ? 'The container has never been published, so publishing now would put everything in it live for the first time.' : `The container has a newer version (${latest}) than the live one (${liveId}). Publishing would put that version live too, so SEOConsole only prepares the tag for you to publish.`;
+				// Safe when the newest version is the live one, or when the container has no version at all (a brand-new one): the new
+				// workspace then starts empty, so only the Google tag goes live. A container with older, unpublished versions is not safe.
+				canPublish = liveId ? latest === liveId : latest === null;
+				if (!canPublish) publishBlocked = !liveId ? `The container has never been published but already has a version (${latest}), so publishing now could put that work live too. SEOConsole only prepares the tag for you to publish.` : `The container has a newer version (${latest}) than the live one (${liveId}). Publishing would put that version live too, so SEOConsole only prepares the tag for you to publish.`;
 			}
 			tag = { ...base, state: 'add', canPublish, publishBlocked };
 		}
@@ -439,7 +441,8 @@ export async function runSetup(siteId: number, choices: SetupChoices, mode: 'pub
 				publicId,
 				tag: ga4TagBody(measurementId),
 				audit: 'setup.tag',
-				workspaceName: `SEOConsole: Google tag ${new Date().toISOString().slice(0, 10)}`,
+				// no colon: Tag Manager rejects ":" in a name ("The name contains invalid character"), seen on the first live run
+				workspaceName: `SEOConsole Google tag ${new Date().toISOString().slice(0, 10)}`,
 				workspaceDescription: `Adds the Google tag for ${measurementId} on all pages. Created from SEOConsole.`,
 				versionName: 'Add Google tag (SEOConsole)',
 				versionNotes: `Google tag for GA4 ${measurementId} on all pages.`,

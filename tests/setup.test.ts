@@ -266,6 +266,8 @@ describe('planSetup and runSetup', () => {
 		expect(f.sent.stream).toEqual({ property: 'properties/555', displayName: 'www.northwind-tools.example', uri: 'https://www.northwind-tools.example' });
 		expect(f.sent.container).toEqual({ account: 'accounts/88', name: 'www.northwind-tools.example', domainName: ['www.northwind-tools.example'] });
 		expect(f.sent.tag.tag).toMatchObject({ type: 'googtag', parameter: [{ key: 'tagId', value: 'G-NEWNEW0001' }], firingTriggerId: [ALL_PAGES_TRIGGER] });
+		// Tag Manager rejects ":" in a name ("The name contains invalid character"), found on the first live run: nothing sent may contain one
+		for (const n of [f.sent.workspace.name, f.sent.tag.tag.name]) expect(n, n).not.toMatch(/[:"<>&]/);
 		expect(linksFor(id).ga4).toMatchObject({ external_id: 'properties/555', account_id: 2 });
 		expect(linksFor(id).gtm).toMatchObject({ external_id: 'accounts/88/containers/9', label: 'GTM-NEW1234 · www.northwind-tools.example' });
 		expect(r.snippet?.head).toContain('GTM-NEW1234');
@@ -343,6 +345,28 @@ describe('planSetup and runSetup', () => {
 		expect((await runSetup(siteId('northwind'), {}, 'publish', { api: never.api })).error).toMatch(/never been published/);
 		expect((await runSetup(siteId('northwind'), {}, 'workspace', { api: never.api })).ok).toBe(true);
 		expect(never.calls).toEqual(['workspace', 'tag']);
+	});
+
+	it('a brand-new container the person made by hand (no versions at all) can be published to; one with an unpublished version cannot', async () => {
+		const id = siteId('northwind');
+		const base = {
+			props: [{ property: 'properties/42', displayName: 'N', account: 'A' }],
+			urls: { 'properties/42': ['https://www.northwind-tools.example'] },
+			streams: { 'properties/42': [{ measurementId: 'G-EXIST00001', uri: 'https://www.northwind-tools.example' }] },
+			containers: [container('accounts/5/containers/6', 'GTM-NEWHAND1', 'northwind-tools.example')],
+			live: {}
+		};
+		const fresh = fake({ ...base, latest: null });
+		expect((await planSetup(id, {}, { api: fresh.api })).tag).toMatchObject({ state: 'add', canPublish: true });
+		const r = await runSetup(id, {}, 'publish', { api: fresh.api });
+		expect(r).toMatchObject({ ok: true, published: true });
+		expect(fresh.calls).toEqual(['workspace', 'tag', 'version', 'publish']);
+		removeLink(id, 'ga4');
+		removeLink(id, 'gtm');
+		const draft = fake({ ...base, latest: '3' });
+		const plan = await planSetup(id, {}, { api: draft.api });
+		expect(plan.tag).toMatchObject({ state: 'add', canPublish: false });
+		expect(plan.tag?.publishBlocked).toMatch(/never been published but already has a version \(3\)/);
 	});
 
 	it('several properties match: the person picks one, and nothing is created meanwhile', async () => {
