@@ -192,8 +192,9 @@ export const actions: Actions = {
 	},
 	/** For someone with no Google Analytics account: get Google's Terms of Service link. */
 	setupTos: async ({ request }) => {
-		const siteId = intParam((await request.formData()).get('siteId'));
-		const r = await startGa4Account(siteId).catch((e) => ({ ok: false as const, error: msg(e), url: undefined }));
+		const f = await request.formData();
+		const siteId = intParam(f.get('siteId'));
+		const r = await startGa4Account(siteId, { regionCode: String(f.get('regionCode') ?? '') }).catch((e) => ({ ok: false as const, error: msg(e), url: undefined }));
 		return r.ok ? { section: 'setup', tosUrl: r.url } : fail(400, { section: 'setup', setupError: r.error });
 	},
 	/** Look at the site's pages now: do they load the container? */

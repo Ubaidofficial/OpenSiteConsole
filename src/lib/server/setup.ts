@@ -178,6 +178,8 @@ export const validTimeZone = (tz: string) => {
 	}
 };
 export const validCurrency = (c: string) => /^[A-Z]{3}$/.test(c);
+/** A two-letter country code (ISO 3166-1 alpha-2), as Google's account request requires. */
+export const validRegion = (r: string) => /^[A-Z]{2}$/.test(r);
 
 /** The stream for this site (by host), else the first one. */
 function pickStream(streams: Ga4WebStream[], host: string): Ga4WebStream | undefined {
@@ -470,14 +472,16 @@ export async function runSetup(siteId: number, choices: SetupChoices, mode: 'pub
  * in the browser at the returned link. The address it sends them back to must be registered in the Google Cloud OAuth client;
  * SEOConsole uses its own sign-in return address, which already is.
  */
-export async function startGa4Account(siteId: number, o: SetupOptions = {}): Promise<{ ok: boolean; error?: string; url?: string }> {
+export async function startGa4Account(siteId: number, o: SetupOptions & { regionCode?: string } = {}): Promise<{ ok: boolean; error?: string; url?: string }> {
 	const plan = await planSetup(siteId, {}, o);
 	if (!plan.ok) return { ok: false, error: plan.error };
 	// Offered when there is no account at all, and also when there are some but the person wants a new one for this site.
 	if (plan.ga4?.state !== 'tos' && plan.ga4?.state !== 'create') return { ok: false, error: 'A new Google Analytics account is only offered while this site has no GA4 property yet.' };
 	if (plan.needsGrant) return { ok: false, error: `SEOConsole may not edit Google Analytics yet for ${plan.needsGrant.join(', ')}. Allow it first.` };
+	const region = String(o.regionCode ?? '').trim().toUpperCase();
+	if (!validRegion(region)) return { ok: false, error: 'Enter your country as a two-letter code, like US, GB or ES. Google needs it to create the account.' };
 	try {
-		const ticket = await apiOf(o).ga4Admin(plan.ga4.accountId).provisionTicket(plan.site!.host, redirectUri());
+		const ticket = await apiOf(o).ga4Admin(plan.ga4.accountId).provisionTicket(plan.site!.host, redirectUri(), region);
 		audit('setup.ga4_account_started', { siteId, accountId: plan.ga4.accountId, detail: `ticket issued; waiting for the Terms of Service` });
 		return { ok: true, url: ga4TosUrl(ticket) };
 	} catch (e) {

@@ -116,8 +116,8 @@ describe('the Google requests (bodies, URLs, scope token)', () => {
 	it('GA4: accounts.provisionAccountTicket posts the account name and the redirect address, and the Terms of Service link carries the ticket', async () => {
 		const id = acct();
 		const { seen, fetchImpl } = recorder(() => ({ accountTicketId: 'T 1/2' }));
-		expect(await realGa4Admin(id, { fetchImpl }).provisionTicket('example.com', 'https://seo.example/auth/callback')).toBe('T 1/2');
-		expect(seen[0]).toMatchObject({ method: 'POST', url: 'https://analyticsadmin.googleapis.com/v1beta/accounts:provisionAccountTicket', body: { account: { displayName: 'example.com' }, redirectUri: 'https://seo.example/auth/callback' } });
+		expect(await realGa4Admin(id, { fetchImpl }).provisionTicket('example.com', 'https://seo.example/auth/callback', 'ES')).toBe('T 1/2');
+		expect(seen[0]).toMatchObject({ method: 'POST', url: 'https://analyticsadmin.googleapis.com/v1beta/accounts:provisionAccountTicket', body: { account: { displayName: 'example.com', regionCode: 'ES' }, redirectUri: 'https://seo.example/auth/callback' } });
 		expect(ga4TosUrl('T 1/2')).toBe('https://analytics.google.com/analytics/web/?provisioningSignup=false#/termsofservice/T%201%2F2');
 	});
 	it('GA4: an answer without the new ID is an error, never a silent success', async () => {
@@ -125,7 +125,7 @@ describe('the Google requests (bodies, URLs, scope token)', () => {
 		const { fetchImpl } = recorder(() => ({}));
 		const admin = realGa4Admin(id, { fetchImpl });
 		await expect(admin.createProperty('accounts/1', { displayName: 'x', timeZone: 'UTC', currencyCode: 'USD' })).rejects.toThrow(/did not return/);
-		await expect(admin.provisionTicket('x', 'https://r')).rejects.toThrow(/did not return/);
+		await expect(admin.provisionTicket('x', 'https://r', 'ES')).rejects.toThrow(/did not return/);
 		expect((await admin.createWebStream('properties/1', { displayName: 'x', uri: 'https://x' })).measurementId).toBe('');
 	});
 	it('Tag Manager: accounts.list, then containers.create with a web usage context and the domain', async () => {
@@ -197,7 +197,7 @@ describe('planSetup and runSetup', () => {
 				if (o.failStream) throw new Error('quota');
 				return { stream: `${property}/dataStreams/1`, measurementId: 'G-NEWNEW0001' };
 			},
-			provisionTicket: async (name, redirect) => (calls.push('provisionTicket'), (sent.ticket = { name, redirect }), 'TICKET-1')
+			provisionTicket: async (name, redirect, region) => (calls.push('provisionTicket'), (sent.ticket = { name, redirect, region }), 'TICKET-1')
 		};
 		const gtmAdmin: GtmAdmin = {
 			listAccounts: async () => o.gtmAccounts ?? [{ path: 'accounts/88', name: 'Acme TM' }],
@@ -385,19 +385,23 @@ describe('planSetup and runSetup', () => {
 		expect(plan.ready).toBe(false);
 		expect((await runSetup(id, { timeZone: 'UTC' }, 'workspace', { api: f.api })).error).toMatch(/Terms of Service/);
 		expect(f.calls).toEqual([]);
-		const t = await startGa4Account(id, { api: f.api });
+		const t = await startGa4Account(id, { api: f.api, regionCode: 'gb' });
 		expect(t).toEqual({ ok: true, url: 'https://analytics.google.com/analytics/web/?provisioningSignup=false#/termsofservice/TICKET-1' });
-		expect(f.sent.ticket).toMatchObject({ name: 'www.northwind-tools.example', redirect: expect.stringMatching(/\/auth\/callback$/) });
+		expect(f.sent.ticket).toMatchObject({ name: 'www.northwind-tools.example', redirect: expect.stringMatching(/\/auth\/callback$/), region: 'GB' });
 		expect(auditActions()).toContain('setup.ga4_account_started');
 	});
 	it('someone with accounts can still ask for a brand-new one for this site: same ticket, named after the site, and no property is created', async () => {
 		process.env.GOOGLE_CLIENT_ID = 'cid';
 		const f = fake({ ga4Accounts: [{ account: 'accounts/1', displayName: 'One' }, { account: 'accounts/2', displayName: 'Two' }] });
 		expect((await planSetup(siteId('northwind'), {}, { api: f.api })).ga4?.state).toBe('create');
-		const t = await startGa4Account(siteId('northwind'), { api: f.api });
+		const t = await startGa4Account(siteId('northwind'), { api: f.api, regionCode: 'ES' });
 		expect(t).toEqual({ ok: true, url: 'https://analytics.google.com/analytics/web/?provisioningSignup=false#/termsofservice/TICKET-1' });
-		expect(f.sent.ticket).toMatchObject({ name: 'www.northwind-tools.example' });
+		expect(f.sent.ticket).toMatchObject({ name: 'www.northwind-tools.example', region: 'ES' });
 		expect(f.calls).toEqual(['provisionTicket']);
+		// Google rejects the request without a valid country (seen live), so it is checked before Google is asked
+		f.calls.length = 0;
+		for (const bad of [undefined, '', 'E', 'ESP', 'E1', '€€']) expect((await startGa4Account(siteId('northwind'), { api: f.api, regionCode: bad })).error, String(bad)).toMatch(/two-letter/);
+		expect(f.calls).toEqual([]);
 	});
 	it('a new account is only offered while the site has no property: not once one is linked or matched', async () => {
 		const f = fake({
@@ -405,7 +409,7 @@ describe('planSetup and runSetup', () => {
 			urls: { 'properties/42': ['https://www.northwind-tools.example'] },
 			streams: { 'properties/42': [{ measurementId: 'G-EXIST00001', uri: 'https://www.northwind-tools.example' }] }
 		});
-		const r = await startGa4Account(siteId('northwind'), { api: f.api });
+		const r = await startGa4Account(siteId('northwind'), { api: f.api, regionCode: 'ES' });
 		expect(r.ok).toBe(false);
 		expect(r.error).toMatch(/only offered while/);
 		expect(f.calls).toEqual([]);
@@ -557,7 +561,7 @@ describe('planSetup and runSetup', () => {
 		const f = fake();
 		expect((await planSetup(siteId('northwind'), {}, { api: f.api })).error).toMatch(/READ_ONLY/);
 		expect((await runSetup(siteId('northwind'), { timeZone: 'UTC' }, 'publish', { api: f.api })).ok).toBe(false);
-		expect((await startGa4Account(siteId('northwind'), { api: f.api })).ok).toBe(false);
+		expect((await startGa4Account(siteId('northwind'), { api: f.api, regionCode: 'ES' })).ok).toBe(false);
 		expect(f.calls).toEqual([]);
 	});
 

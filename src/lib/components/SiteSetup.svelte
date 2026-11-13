@@ -33,6 +33,15 @@
 	let timeZone = $state(untrack(() => (p?.ga4?.state === 'create' ? p.ga4.timeZone : 'UTC')));
 	let currency = $state(untrack(() => (p?.ga4?.state === 'create' ? p.ga4.currencyCode : 'USD')));
 	let copied = $state<string | null>(null);
+	// Google needs a country (two-letter code) to create an account; the browser's language is a good first guess
+	let region = $state('US');
+	$effect(() => {
+		try {
+			region = new Intl.Locale(navigator.language).maximize().region || 'US';
+		} catch {
+			/* keep the default */
+		}
+	});
 	// the browser knows the visitor's time zone better than the server does
 	$effect(() => {
 		try {
@@ -154,6 +163,8 @@
 								<p class="text-muted-foreground">Want it in its own, brand-new Analytics account called “{p.ga4.displayName}”?</p>
 								<form method="POST" action="?/setupTos&setup={site.id}" use:enhance={done('tos')}>
 									<input type="hidden" name="siteId" value={site.id} />
+									<label class="mt-1 block text-muted-foreground" for="region-{site.id}">Your country (2 letters, Google needs it for a new account)</label>
+									<input id="region-{site.id}" class="input mb-1 w-24 text-xs uppercase" name="regionCode" bind:value={region} maxlength="2" minlength="2" pattern="[A-Za-z]{2}" placeholder="US" required />
 									<button class="btn mt-1 text-xs" disabled={busy === 'tos'}>{busy === 'tos' ? 'Asking Google…' : 'Create a new Analytics account'}</button>
 								</form>
 							{/if}
@@ -165,6 +176,8 @@
 						{:else if !p.needsGrant}
 							<form method="POST" action="?/setupTos&setup={site.id}" use:enhance={done('tos')}>
 								<input type="hidden" name="siteId" value={site.id} />
+								<label class="mt-1 block text-muted-foreground" for="region-{site.id}">Your country (2 letters, Google needs it for a new account)</label>
+								<input id="region-{site.id}" class="input mb-1 w-24 text-xs uppercase" name="regionCode" bind:value={region} maxlength="2" minlength="2" pattern="[A-Za-z]{2}" placeholder="US" required />
 								<button class="btn btn-primary mt-2 text-xs" disabled={busy === 'tos'}>{busy === 'tos' ? 'Asking Google…' : 'Get Google’s terms link'}</button>
 							</form>
 						{/if}
