@@ -267,7 +267,8 @@ export async function installClarityViaGtm(siteId: number, input: string, mode: 
 			publicId: plan.container!.publicId,
 			tag: clarityTagBody(plan.projectId!),
 			audit: 'gtm.clarity',
-			workspaceName: `SEOConsole: Microsoft Clarity ${new Date().toISOString().slice(0, 10)}`,
+			// no colon: Tag Manager rejects ":" in a name
+			workspaceName: `SEOConsole Microsoft Clarity ${new Date().toISOString().slice(0, 10)}`,
 			workspaceDescription: `Adds Microsoft Clarity (project ${plan.projectId}) on all pages. Created from SEOConsole.`,
 			versionName: 'Add Microsoft Clarity (SEOConsole)',
 			versionNotes: `Microsoft Clarity project ${plan.projectId} on all pages.`,
