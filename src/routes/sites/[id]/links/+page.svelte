@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Explainer from '$lib/components/Explainer.svelte';
+	import ShowMore from '$lib/components/ShowMore.svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -122,16 +123,20 @@
 	<section class="card mt-4 p-4">
 		<h2 class="font-medium">Pages nothing links to</h2>
 		<p class="mt-1 text-xs text-muted-foreground">They earn impressions, but none of the {fmtInt(data.summary.pagesCrawled)} crawled pages links to them. Link to them from a related page, or check they are meant to exist.</p>
+		<ShowMore items={data.orphans} limit={10} noun="pages">
+		{#snippet children(rows)}
 		<div class="mt-3 overflow-x-auto">
 			<table class="w-full text-sm">
 				<thead><tr><th class="th">Page</th><th class="th text-right">Impressions</th><th class="th text-right">Clicks</th><th class="th">Crawled</th></tr></thead>
 				<tbody>
-					{#each data.orphans as o (o.page)}
+					{#each rows as o (o.page)}
 						<tr><td class="td pii max-w-96 truncate" title={o.page}>{shortUrl(o.page)}</td><td class="td tnum text-right">{fmtInt(o.impressions)}</td><td class="td tnum text-right">{fmtInt(o.clicks)}</td><td class="td text-xs text-muted-foreground">{o.crawled ? 'yes' : 'no'}</td></tr>
 					{/each}
 				</tbody>
 			</table>
 		</div>
+		{/snippet}
+		</ShowMore>
 		{#if data.summary.orphans > data.orphans.length}<p class="mt-2 text-xs text-muted-foreground">The {data.orphans.length} with the most impressions of {fmtInt(data.summary.orphans)}.</p>{/if}
 	</section>
 {/if}

@@ -22,6 +22,7 @@ All are optional except where noted; copy `.env.example` to `.env`. On Cloudflar
 | `BING_CLIENT_ID`, `BING_CLIENT_SECRET` | One-click Bing sign-in; otherwise paste a Bing API key. |
 | `INDEX_MONITOR_URLS` | URLs the indexing monitor inspects per run (default 40, max 200). |
 | `ONPAGE_ALLOW_PRIVATE=1` | Let on-page checks reach private addresses (only if your site lives on your own network). |
+| `SITE_ICONS=0` | Turn off site logos. By default the dashboard and site header show each site's own favicon: your server fetches it from the site's own host (never a third-party favicon service, and never from a CDN on another host), caches it for a week (an hour when there is none) and falls back to the letter avatar. Off by default in demo mode (demo domains are fake) unless `SITE_ICONS=1`. Private addresses are refused as for on-page checks (`ONPAGE_ALLOW_PRIVATE=1` lifts that). |
 | `LINK_CRAWL_PAGES` | Pages the internal-link crawl fetches per site (default 60, max 500): the ones with the most impressions in the last 90 days. |
 | `OWNER_GOOGLE_EMAILS` | Google addresses (comma separated) that sign in as the **owner** with "Continue with Google". The owner is not a team member, so this is the only way to say who. Matched by the address Google has verified. A team member cannot have one of these addresses. |
 | `GOOGLE_LOGIN=0` | Hide "Continue with Google" and refuse `/login/google`. On by default when there is a login password and a Google client; always off on the hosted plan. |

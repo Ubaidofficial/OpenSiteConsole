@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Explainer from '$lib/components/Explainer.svelte';
+	import ShowMore from '$lib/components/ShowMore.svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -104,19 +105,27 @@
 	<section class="card mb-4 p-4">
 		<h2 class="mb-1 font-medium">Fix these first ({q.problems.length})</h2>
 		<p class="mb-2 text-xs text-muted-foreground">Asking Google about these would not help: something stops them being indexed.</p>
-		<ul class="space-y-2 text-sm">{#each q.problems as it (it.url)}<li><span class="pii break-all font-medium">{it.url}</span><div class="text-xs text-warn">{it.reason}</div></li>{/each}</ul>
+		<ShowMore items={q.problems} limit={5} noun="URLs">
+			{#snippet children(rows)}
+				<ul class="space-y-2 text-sm">{#each rows as it (it.url)}<li><span class="pii break-all font-medium">{it.url}</span><div class="text-xs text-warn">{it.reason}</div></li>{/each}</ul>
+			{/snippet}
+		</ShowMore>
 	</section>
 {/if}
 
 <section class="card p-4">
 	<h2 class="mb-2 font-medium">Asked in the last {data.cooldownDays} days</h2>
+	<ShowMore items={q.recent} limit={10} noun="URLs">
+	{#snippet children(rows)}
 	<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="th">URL</th><th class="th">Asked</th><th class="th">Result</th><th class="th">Next check</th></tr></thead><tbody>
-		{#each q.recent as r (r.url)}
+		{#each rows as r (r.url)}
 			<tr><td class="td pii max-w-96 truncate text-xs" title={r.url}>{r.url}</td><td class="td whitespace-nowrap text-xs text-muted-foreground">{r.actedAt ? ago(r.actedAt) : ''}</td>
 				<td class="td text-xs">{#if r.verdict === 'indexed'}<span class="text-good">indexed</span>{:else if r.verdict === 'still_not_indexed'}<span class="text-bad">still not indexed after {r.daysSince} days</span>{:else}<span class="text-muted-foreground">waiting</span>{/if}</td>
 				<td class="td whitespace-nowrap text-xs text-muted-foreground">{r.nextCheckAt ? (r.nextCheckAt <= Date.now() ? 'due' : until(r.nextCheckAt)) : r.verdict === 'indexed' ? 'done' : 'none left'}</td></tr>
 		{:else}<tr><td class="td text-muted-foreground" colspan="4">Nothing recorded yet.</td></tr>{/each}
 	</tbody></table></div>
+	{/snippet}
+	</ShowMore>
 	<Explainer lead="Each request is re-checked with Google at day 1, 3 and 5.">
 	<p>Each request is checked with Google again at day 1, 3 and 5 (see also the Submit tab). A URL you asked about stays off the list for {data.cooldownDays} days, so you are not asked to repeat it.</p>
 </Explainer>

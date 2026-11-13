@@ -4,6 +4,7 @@
 	import Explainer from '$lib/components/Explainer.svelte';
 	import { enhance } from '$app/forms';
 	import DataTable from '$lib/components/DataTable.svelte';
+	import ShowMore from '$lib/components/ShowMore.svelte';
 	import { ago } from '$lib/format';
 	import LineChart from '$lib/components/LineChart.svelte';
 	let { data, form } = $props();
@@ -67,19 +68,27 @@
 		<h2 class="mb-1 font-medium">Watch list</h2>
 		<p class="mb-2 text-xs text-muted-foreground">Money pages, key templates, a page you just changed: they are always checked first, even if they get few clicks.</p>
 		<form method="POST" action="?/watchAdd" use:enhance class="mb-2 flex gap-2"><textarea class="input h-9 min-w-0 flex-1 !py-1.5" name="urls" aria-label="Full URLs" placeholder="Full URLs, one per line"></textarea><button class="btn">Add</button></form>
-		<ul class="space-y-1 text-xs">{#each data.watch as u}<li class="flex items-center gap-2"><span class="pii min-w-0 flex-1 truncate">{u.replace(/^https?:\/\/(www\.)?/, '')}</span><form method="POST" action="?/watchRemove" use:enhance><input type="hidden" name="url" value={u} /><button class="text-muted-foreground hover:text-[color:var(--bad)]" aria-label="Remove">✕</button></form></li>{:else}<li class="text-muted-foreground">Nothing pinned yet.</li>{/each}</ul>
+		<ShowMore items={data.watch} limit={8} noun="URLs">
+			{#snippet children(rows)}
+				<ul class="space-y-1 text-xs">{#each rows as u (u)}<li class="flex items-center gap-2"><span class="pii min-w-0 flex-1 truncate">{u.replace(/^https?:\/\/(www\.)?/, '')}</span><form method="POST" action="?/watchRemove" use:enhance><input type="hidden" name="url" value={u} /><button class="text-muted-foreground hover:text-[color:var(--bad)]" aria-label="Remove">✕</button></form></li>{:else}<li class="text-muted-foreground">Nothing pinned yet.</li>{/each}</ul>
+			{/snippet}
+		</ShowMore>
 	</section>
 </div>
 
 <section class="mb-5">
 	<h2 class="mb-1 font-medium">What changed</h2>
 	{#if data.events.length}
+		<ShowMore items={data.events} limit={10} noun="changes">
+		{#snippet children(rows)}
 		<div class="card overflow-x-auto"><table class="w-full"><thead><tr><th class="th">When</th><th class="th">Change</th><th class="th">URL</th><th class="th">Detail</th></tr></thead><tbody>
-			{#each data.events as e}
+			{#each rows as e}
 				<tr><td class="td whitespace-nowrap text-xs text-muted-foreground">{ago(e.at)}</td><td class="td whitespace-nowrap text-xs font-medium {tone[e.severity]}">{eventText[e.kind] ?? e.kind}</td>
 					<td class="td pii max-w-[26rem] truncate text-xs"><a class="text-link hover:underline" href={e.url} target="_blank" rel="noreferrer noopener">{e.url.replace(/^https?:\/\/(www\.)?/, '')}</a></td><td class="td pii max-w-[22rem] truncate text-xs text-muted-foreground">{e.detail ?? ''}</td></tr>
 			{/each}
 		</tbody></table></div>
+		{/snippet}
+		</ShowMore>
 	{:else}
 		<div class="card p-4 text-sm text-muted-foreground">No changes recorded yet. The first check only records a starting point; changes show up from the second check on.</div>
 	{/if}

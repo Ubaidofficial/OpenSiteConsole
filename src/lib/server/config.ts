@@ -83,6 +83,14 @@ export const config = {
 	get linkCrawlPages() {
 		return Math.min(500, Math.max(1, Number(env('LINK_CRAWL_PAGES', '60')) || 60));
 	},
+	/**
+	 * Site logos on the dashboard: the server fetches each site's own favicon (same-host only, through the on-page fetcher). On by
+	 * default, off in demo mode (demo domains are fake) unless SITE_ICONS=1; SITE_ICONS=0 switches it off everywhere.
+	 */
+	get siteIcons() {
+		const v = env('SITE_ICONS');
+		return v === '0' ? false : v === '1' ? true : !this.demo;
+	},
 	get syncConcurrency() {
 		return Math.max(1, Number(env('SYNC_CONCURRENCY', '2')));
 	},
