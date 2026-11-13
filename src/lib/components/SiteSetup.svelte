@@ -147,7 +147,7 @@
 								{#if choices.gtmContainer}<input type="hidden" name="gtmContainer" value={choices.gtmContainer} />{/if}
 								{#if choices.gtmAccount}<input type="hidden" name="gtmAccount" value={choices.gtmAccount} />{/if}
 								<label class="block text-muted-foreground" for="ga4acc">You have several Google Analytics accounts. Create it in:</label>
-								<select id="ga4acc" class="input w-full text-xs" name="ga4Account" aria-label="Google Analytics account" required>
+								<select id="ga4acc" class="input w-full text-xs" name="ga4Account" onchange={(e) => e.currentTarget.form?.requestSubmit()} aria-label="Google Analytics account" required>
 									<option value="" disabled selected={!p.ga4.account}>Choose an account…</option>
 									{#each p.ga4.accounts as a}<option value={a.account} selected={a.account === p.ga4.account}>{a.displayName} ({a.account})</option>{/each}
 								</select>
@@ -211,7 +211,7 @@
 								{#if choices.ga4Property}<input type="hidden" name="ga4Property" value={choices.ga4Property} />{/if}
 								{#if choices.ga4Account}<input type="hidden" name="ga4Account" value={choices.ga4Account} />{/if}
 								<label class="block text-muted-foreground" for="gtmacc">You have several Tag Manager accounts. Create it in:</label>
-								<select id="gtmacc" class="input w-full text-xs" name="gtmAccount" aria-label="Tag Manager account" required>
+								<select id="gtmacc" class="input w-full text-xs" name="gtmAccount" onchange={(e) => e.currentTarget.form?.requestSubmit()} aria-label="Tag Manager account" required>
 									<option value="" disabled selected={!p.gtm.account}>Choose an account…</option>
 									{#each p.gtm.accounts as a}<option value={a.path} selected={a.path === p.gtm.account}>{a.name} ({a.path})</option>{/each}
 								</select>
