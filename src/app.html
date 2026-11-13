@@ -11,9 +11,16 @@
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<script nonce="%sveltekit.nonce%">
-			// Apply privacy mode before first paint so site names never flash on screen.
+			// Apply privacy mode and the chosen theme before first paint, so site names never flash on screen and a dim page never flashes white.
 			try {
 				if (localStorage.getItem('osc_privacy') === '1') document.documentElement.dataset.privacy = 'on';
+			} catch {}
+			try {
+				if (localStorage.getItem('osc_theme') === 'dim') {
+					document.documentElement.classList.add('dark');
+					document.querySelector('meta[name="color-scheme"]').setAttribute('content', 'dark');
+					document.querySelector('meta[name="theme-color"]').setAttribute('content', '#26282d');
+				}
 			} catch {}
 		</script>
 		%sveltekit.head%

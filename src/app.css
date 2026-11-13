@@ -4,8 +4,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* The app is light-only: no theme switcher, and the browser never swaps in dark form controls or scrollbars.
-   (The .dark token block below is kept but unused, in case a dark theme returns.) */
+/* Two themes, chosen with the sun/moon button in the header and remembered per browser: light (the default) and a "dim" dark that is
+   softer than black (slate, not #000), applied as class="dark" on <html>. The browser follows it (dark form controls and scrollbars). */
 :root {
 	color-scheme: light;
 	--radius: 0.75rem;
@@ -68,47 +68,63 @@
 	--c-pos: var(--chart-3);
 }
 
+/* Dim dark: a cool slate, never pure black, with off-white text. Every text pair below is at least 4.8:1 (WCAG AA wants 4.5:1);
+   tests/theme.test.ts checks this from the file so a later edit cannot quietly break it. */
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.97 0 0);
-	--card: oklch(0.19 0 0);
-	--card-foreground: oklch(0.97 0 0);
-	--popover: oklch(0.22 0 0);
-	--popover-foreground: oklch(0.97 0 0);
-	--primary: oklch(0.93 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.97 0 0);
-	--muted: oklch(0.255 0 0);
-	--muted-foreground: oklch(0.71 0 0);
-	--accent: oklch(0.285 0 0);
-	--accent-foreground: oklch(0.97 0 0);
-	--destructive: oklch(0.704 0.191 22.216);
+	color-scheme: dark;
+	--background: oklch(0.235 0.012 255);
+	--foreground: oklch(0.92 0.006 255);
+	--card: oklch(0.275 0.012 255);
+	--card-foreground: oklch(0.92 0.006 255);
+	--popover: oklch(0.3 0.012 255);
+	--popover-foreground: oklch(0.92 0.006 255);
+	--primary: oklch(0.92 0.005 255);
+	--primary-foreground: oklch(0.22 0.012 255);
+	--secondary: oklch(0.31 0.012 255);
+	--secondary-foreground: oklch(0.92 0.006 255);
+	--muted: oklch(0.3 0.012 255);
+	--muted-foreground: oklch(0.74 0.01 255);
+	--accent: oklch(0.33 0.014 255);
+	--accent-foreground: oklch(0.92 0.006 255);
+	--destructive: oklch(0.74 0.17 22);
 	--border: oklch(1 0 0 / 11%);
 	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--link: oklch(0.72 0.14 255);
-	--good: oklch(0.74 0.15 155);
-	--warn: oklch(0.79 0.13 80);
+	--ring: oklch(0.62 0.02 255);
+	--link: oklch(0.78 0.12 255);
+	--good: oklch(0.79 0.15 155);
+	--warn: oklch(0.82 0.13 80);
 	--chart-1: #3987e5;
 	--chart-2: #d95926;
 	--chart-3: #199e70;
-	--seq-1: #184f95;
-	--seq-2: #1c5cab;
-	--seq-3: #3987e5;
+	--seq-1: #2b5c99;
+	--seq-2: #3a73bd;
+	--seq-3: #4a8be0;
 	--seq-4: #86b6ef;
-	--grid: #2c2c2a;
-	--axis: #383835;
+	--grid: #3a3e47;
+	--axis: #535966;
 	--ord-1: #86b6ef;
 	--ord-2: #5598e7;
 	--ord-3: #2a78d6;
-	--ord-4: #184f95;
+	--ord-4: #2b5c99;
 	--ord-ink-1: #0b0b0b;
 	--ord-ink-2: #0b0b0b;
 	--ord-ink-3: #ffffff;
 	--ord-ink-4: #ffffff;
-	--trend-up: oklch(0.8 0.21 152);
-	--trend-down: oklch(0.71 0.2 22);
+	/* status dots and bars (Core Web Vitals and the like): the same hues, the red lifted so it keeps a margin on the dim card */
+	--st-good: #0ca30c;
+	--st-warn: #fab219;
+	--st-serious: #ec835a;
+	--st-bad: #ee5c5c;
+	--trend-up: oklch(0.8 0.18 152);
+	--trend-down: oklch(0.74 0.17 22);
+}
+
+/* Logos drawn in plain black would vanish on the dim surface: invert them there. Coloured logos are left as they are. */
+.dark img[src$='/logos/mcp.svg'],
+.dark img[src$='/logos/openai.svg'],
+.dark img[src$='/logos/cursor.svg'],
+.dark img[src$='/logos/windsurf.svg'] {
+	filter: invert(1);
 }
 
 @theme inline {

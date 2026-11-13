@@ -3,7 +3,8 @@
 </script>
 
 <div class="mx-auto mt-24 max-w-sm">
-	<img src="/brand/logo-light.svg" alt="" width="64" height="64" class="mb-4 size-16 rounded-2xl shadow-sm" />
+	<img src="/brand/logo-light.svg" alt="" width="64" height="64" class="mb-4 size-16 rounded-2xl shadow-sm dark:hidden" />
+	<img src="/brand/logo-dark.svg" alt="" width="64" height="64" class="mb-4 hidden size-16 rounded-2xl shadow-sm dark:block" />
 	<h1 class="mb-1 text-xl font-semibold">SEOConsole</h1>
 	<p class="mb-6 text-sm text-muted-foreground">Sign in with your email and password. The owner can leave the email empty and use the admin password.</p>
 	<form method="POST" class="space-y-3">
