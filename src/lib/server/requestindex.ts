@@ -9,6 +9,8 @@ import { indexState } from '../indexing';
 import { addDays, pacificToday } from './dates';
 import { postWebhook, webhook } from './digest';
 import { config } from './config';
+import { fetchPage, guardedFetch } from './onpage';
+import { pageProblem } from '../onpage';
 
 /**
  * The "Request indexing" list. Search Console's Request Indexing button is the one fast, official way to ask Google about a page, and it has
@@ -136,7 +138,25 @@ export interface BuildResult {
  * drop what is already indexed, set blocked or pointless ones aside as "problems", and keep as many as the daily allowance still has room for.
  * It replaces the previous unanswered list; what you already requested or skipped is kept.
  */
-export async function buildQueue(site: SiteRow, o: { now?: number; inspectCap?: number } = {}): Promise<BuildResult> {
+/**
+ * What the site serves for this page right now, when that is a reason not to ask Google about it (gone, erroring, noindex, an "unavailable"
+ * placeholder), else null. Google's stored answer can be days old: a site whose pages all say "temporarily unavailable" with a noindex still
+ * has pages Google reports as "unknown" or "not indexed", which is how they ended up on this list. A fetch that fails proves nothing: null.
+ */
+async function liveProblem(site: SiteRow, url: string, fetchImpl: typeof fetch): Promise<string | null> {
+	try {
+		const r = await fetchPage(url, site.site_url, fetchImpl);
+		return r.status ? pageProblem(r.status, r.html) : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * `liveFetch`: how to read the page just before listing it. Default: the site's real pages (not for a demo site, whose pages are made up);
+ * `false` skips the check.
+ */
+export async function buildQueue(site: SiteRow, o: { now?: number; inspectCap?: number; liveFetch?: typeof fetch | false } = {}): Promise<BuildResult> {
 	const now = o.now ?? Date.now();
 	const b = budget(site.id, now);
 	const res: BuildResult = { limitReached: false, nextSlotAt: b.nextSlotAt, candidates: 0, asked: 0, liveInspections: 0, listed: 0, alreadyIndexed: 0, problems: 0 };
@@ -144,6 +164,8 @@ export async function buildQueue(site: SiteRow, o: { now?: number; inspectCap?: 
 	const cands = candidates(site, now);
 	res.candidates = cands.length;
 	const cap = Math.max(0, Math.min(o.inspectCap ?? 30, 60));
+	const isDemo = !!(db().prepare('SELECT is_demo FROM accounts WHERE id = ?').get(site.account_id) as { is_demo: number } | undefined)?.is_demo;
+	const liveFetch = o.liveFetch === false ? null : (o.liveFetch ?? (isDemo ? null : guardedFetch));
 	const kept: { c: Candidate; v: Verdict }[] = [];
 	const problems: { c: Candidate; v: Verdict }[] = [];
 	for (let i = 0; i < cands.length && kept.length < b.left && res.asked < cap; ) {
@@ -158,7 +180,14 @@ export async function buildQueue(site: SiteRow, o: { now?: number; inspectCap?: 
 		res.asked += chunk.length;
 		for (const c of chunk) {
 			if (kept.length >= b.left) break;
-			const v = judge(c, storedInspection(site.id, c.url), now);
+			let v = judge(c, storedInspection(site.id, c.url), now);
+			if (v.keep && liveFetch) {
+				const lp = await liveProblem(site, c.url, liveFetch);
+				if (lp) {
+					const problem = `Your site serves it as a problem right now: ${lp} Asking Google would not help until that is fixed.`;
+					v = { ...v, keep: false, problem, reason: problem };
+				}
+			}
 			if (v.keep) kept.push({ c, v });
 			else if (v.problem) problems.push({ c, v });
 			else res.alreadyIndexed++;

@@ -4,6 +4,7 @@ import type { SiteRow } from './clients';
 import { displayName } from './clients';
 import { addDays } from './dates';
 import { brandTerms, dailySeries, fittedCurve, pageTotals, periodFor, queryPageRows, summary, topQueries } from './queries';
+import { storedClarityScan } from './clarityscan';
 import { computeCannibalization, computeCtrGaps, computeDecay, computeStriking, detectAnomalies, isBranded, normalizeUrl, pctChange } from '../analytics';
 import { keyHash, rankActions, statusOf, SNOOZE_DAYS, DONE_DAYS, type ActionItem, type ActionStatus } from '../actions';
 import { comparability, urlClassesReport } from './insights';
@@ -37,7 +38,7 @@ const pathOf = (u: string) => {
 	}
 };
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`;
-const VERSION = 'a7';
+const VERSION = 'a8';
 
 /** Every finding for one site, unranked state-free. Cheap enough to run on demand; see actionsFor for the cached, ranked form. */
 export function buildActions(site: Site, days = 28): ActionItem[] {
@@ -154,6 +155,31 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 		add({ key: `not-indexed:${keyHash(notIdx.map((x) => x.page))}`, type: 'not-indexed', title: `${notIdx.length} page${notIdx.length === 1 ? '' : 's'} with traffic ${notIdx.length === 1 ? 'is' : 'are'} not in Google's index`, why: 'Google reports them as not indexed, yet Search Console still shows them earning clicks, so they are at risk.', how: 'Read Google\'s stated reason on the Indexing tab and fix it (thin or duplicate content, canonical pointing elsewhere, server error); then request indexing.', impact, confidence: 'medium', effort: 'medium', blocking: share(impact) >= 0.02, href: `${base}/indexing`, evidence: notIdx.slice(0, 5).map((x) => `${pathOf(x.page)} (${n0(Math.max(x.clicks, x.prevClicks))} clicks)`) });
 	}
 
+	// ── 5b. pages that are down, noindex or "temporarily unavailable" right now ──
+	// The daily page check fetches the home page and the two biggest pages. Search Console shows nothing of this until Google recrawls,
+	// so a site whose pages say "temporarily unavailable" (with a noindex) can sit like that for hours unnoticed.
+	try {
+		const scan = storedClarityScan(id);
+		const bad = scan && Date.now() - scan.checkedAt < 3 * 86_400_000 ? scan.pages.filter((x) => x.problem) : [];
+		if (bad.length) {
+			add({
+				key: `unavailable:${keyHash(bad.map((x) => x.url))}`,
+				type: 'blocked',
+				title: `${bad.length} of the ${scan!.pages.length} pages checked ${bad.length === 1 ? 'is' : 'are'} down, noindex or “temporarily unavailable”`,
+				why: `The page check read these just now and found a problem a visitor or Google would hit. If it stays, Google drops pages it keeps finding noindex or failing.`,
+				how: 'Open the page and fix what serves it (a database that is reconnecting, a failed deploy, maintenance mode left on). Read the check again from the On-page tab when it is back.',
+				impact: null,
+				confidence: 'high',
+				effort: 'medium',
+				blocking: true,
+				href: `${base}/onpage`,
+				evidence: bad.slice(0, 5).map((x) => `${pathOf(x.url)} · ${x.problem}`)
+			});
+		}
+	} catch {
+		/* a missing source must not stop the queue */
+	}
+
 	// ── 6. ranking opportunities, from the site's own CTR curve ──────────────
 	const terms = brandTerms(site);
 	const qp = queryPageRows(id, p.start, p.end);
@@ -161,7 +187,7 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 	const scale = days / 28;
 	const nonBrandQp = qp.filter((r) => !isBranded(r.query, terms));
 	const checks = new Map(storedChecks(id).map((c) => [c.url, c]));
-	for (const g of computeCannibalization(qp, curve, { limit: 8, minQueryImpressions: Math.max(20, r0(scale * 40)) })) {
+	for (const g of computeCannibalization(nonBrandQp, curve, { limit: 8, minQueryImpressions: Math.max(20, r0(scale * 40)) })) {
 		add({ key: `cannibal:${g.query}`, type: 'cannibalization', title: `${g.pages.length} pages compete for “${g.query}”`, why: `They split ${n0(g.totalImpressions)} impressions between them (positions ${g.pages.map((x) => x.position.toFixed(1)).join(', ')}), and one page at the best position would earn about ${n0(g.potentialClicks)} more clicks.`, how: `Keep ${pathOf(g.winner)} as the winner. Merge or sharply differentiate the others, point internal links and the anchor text at the winner, and 301 or canonical the weakest.`, impact: g.potentialClicks, confidence: 'medium', effort: 'medium', blocking: false, href: `${base}/cannibalization`, evidence: g.pages.slice(0, 4).map((x) => `${pathOf(x.page)} (pos ${x.position.toFixed(1)}, ${n0(x.clicks)} clicks)`) });
 	}
 	for (const r of computeCtrGaps(nonBrandQp, curve, { minImpressions: Math.max(50, r0(scale * 90)), limit: 8 })) {
@@ -359,6 +385,11 @@ function cacheKey(site: Site, days: number): string {
 		one("SELECT GROUP_CONCAT(origin || ' ' || fingerprint || ' ' || state || ' ' || fail_streak, '|') f FROM robots_checks WHERE site_id = ?", site.id),
 		one('SELECT MAX(id) m FROM robots_changes WHERE site_id = ?', site.id),
 		one('SELECT fetched_at f FROM oseo_audits WHERE site_id = ?', site.id),
+		// the daily page check (a page that is down, noindex or "unavailable"), and whether it has gone stale: a new scan, or none for 3 days, changes the answer
+		(() => {
+			const r = d.prepare('SELECT checked_at c FROM clarity_scans WHERE site_id = ?').get(site.id) as { c: number } | undefined;
+			return JSON.stringify([r?.c ?? null, r ? Date.now() - r.c > 3 * 86_400_000 : null]);
+		})(),
 		one("SELECT MAX(built_at) b, COUNT(*) n, SUM(status = 'pending') p, SUM(status = 'requested') r FROM index_requests WHERE site_id = ?", site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_submissions WHERE site_id = ?', site.id),
 		one('SELECT COUNT(*) n, MAX(due_at) m FROM index_rechecks WHERE site_id = ?', site.id),

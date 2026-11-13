@@ -11,6 +11,7 @@ import { handleMcp, MCP_READ_TOOL_NAMES, MCP_TOOL_NAMES, MCP_WRITE_TOOL_NAMES, M
 import { createKey } from '../src/lib/server/indexnow';
 import { checkAuthorize, redeemCode, refreshTokens, registerClient } from '../src/lib/server/oauth';
 import { config } from '../src/lib/server/config';
+import { addDays, pacificToday } from '../src/lib/server/dates';
 import * as authorizePage from '../src/routes/oauth/authorize/+page.server';
 import * as agentsPage from '../src/routes/agents/+page.server';
 
@@ -234,7 +235,7 @@ describe('the app-changing tools', () => {
 		const e = log.entries.find((x: { id: number }) => x.id === r.data.id);
 		expect(e).toMatchObject({ date: '2026-09-01', title: 'Rewrote blog titles', note: 'shorter, query first', pages: 'https://greenleaf.example/blog/', seoTestId: null, kind: 'change' });
 		expect(e.quickLook).toMatchObject({ clicksPerDayBefore: expect.any(Number), clicksPerDayAfter: expect.any(Number) });
-		const recent = await call(writer, 'log_change', { site: '1', date: '2026-11-04', title: 'Yesterday tweak' });
+		const recent = await call(writer, 'log_change', { site: '1', date: addDays(pacificToday(), -1), title: 'Yesterday tweak' });
 		expect((await call(writer, 'get_change_log', { site: '1' })).data.entries.find((x: { id: number }) => x.id === recent.data.id).quickLook).toContain('too early');
 		expect(recent.data.next).toContain('Add a pageUrlPrefix');
 	});

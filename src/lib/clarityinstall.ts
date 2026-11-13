@@ -49,7 +49,16 @@ export function claritySnippet(projectId: string): string {
 </script>`;
 }
 
-export interface ScannedPage { url: string; ok: boolean; error?: string; clarityIds: string[]; clarityLoader: boolean; gtmIds: string[] }
+export interface ScannedPage {
+	url: string;
+	ok: boolean;
+	error?: string;
+	clarityIds: string[];
+	clarityLoader: boolean;
+	gtmIds: string[];
+	/** The page is down, noindex or an "unavailable" placeholder (see pageProblem). Absent in older scans. */
+	problem?: string;
+}
 export interface ClarityGtmTag { name: string; paused: boolean; firing: string[]; clarityId: string | null }
 
 export interface ClarityInstallInput {

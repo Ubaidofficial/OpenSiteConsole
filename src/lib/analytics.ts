@@ -117,20 +117,41 @@ export interface StrikingRow extends QRow {
 	topPage?: string;
 }
 
+/**
+ * A query that is a search-operator expression ("after:2026-10-20", "site:", "inurl:" …) rather than a topic: typed by a person or a tool
+ * checking something, not by someone who would click through. It is not an opportunity.
+ */
+export function isOperatorQuery(q: string): boolean {
+	return /(^|\s)(site|inurl|intitle|intext|allinurl|allintitle|filetype|ext|before|after|related|cache|define):\S/i.test(q);
+}
+
+/**
+ * Impressions that cannot be real visibility: at this position the generic click-through rate would put at least `min` clicks on this
+ * many impressions, yet there were none (the chance of that is below 0.01% for min = 10). Search Console counts rank checkers and other
+ * tools as impressions and nobody clicks, so these inflate impressions and any "prize" estimated from them.
+ */
+export function zeroClickImpressions(r: { clicks: number; impressions: number; position: number }, min = 10): boolean {
+	if (r.clicks > 0) return false;
+	const pos = Math.min(20, Math.max(1, Math.round(r.position)));
+	return r.impressions * DEFAULT_CTR[pos] >= min;
+}
+
 export function computeStriking(
 	rows: QRow[],
 	curve: CtrCurve,
-	o: { minImpressions?: number; minPos?: number; maxPos?: number; targetPos?: number; limit?: number } = {}
+	o: { minImpressions?: number; minPos?: number; maxPos?: number; targetPos?: number; limit?: number; minGain?: number } = {}
 ): StrikingRow[] {
-	const { minImpressions = 30, minPos = 4, maxPos = 20, targetPos = 3, limit = 200 } = o;
+	// minGain: a search that would add less than a click is not worth a to-do. Operator queries and zero-click impressions are left out (see above).
+	const { minImpressions = 30, minPos = 4, maxPos = 20, targetPos = 3, limit = 200, minGain = 1 } = o;
 	const target = ctrAtPosition(curve, targetPos);
 	return rows
-		.filter((r) => r.position >= minPos && r.position <= maxPos && r.impressions >= minImpressions)
+		.filter((r) => r.position >= minPos && r.position <= maxPos && r.impressions >= minImpressions && !isOperatorQuery(r.query) && !zeroClickImpressions(r))
 		.map((r) => ({
 			...r,
 			ctr: ctrOf(r),
 			expectedGain: Math.max(0, r.impressions * (target - ctrAtPosition(curve, r.position)))
 		}))
+		.filter((r) => r.expectedGain >= minGain)
 		.sort((a, b) => b.expectedGain - a.expectedGain)
 		.slice(0, limit);
 }
@@ -173,9 +194,10 @@ export interface CannibalGroup {
 export function computeCannibalization(
 	rows: QPRow[],
 	curve: CtrCurve,
-	o: { minQueryImpressions?: number; minPageShare?: number; minPageImpressions?: number; limit?: number } = {}
+	o: { minQueryImpressions?: number; minPageShare?: number; minPageImpressions?: number; limit?: number; maxBestPosition?: number; minPotential?: number } = {}
 ): CannibalGroup[] {
-	const { minQueryImpressions = 40, minPageShare = 0.1, minPageImpressions = 10, limit = 200 } = o;
+	// maxBestPosition: pages ranking beyond about 20 are not competing for anything yet. minPotential: less than a click at stake is not a to-do.
+	const { minQueryImpressions = 40, minPageShare = 0.1, minPageImpressions = 10, limit = 200, maxBestPosition = 20, minPotential = 1 } = o;
 	const byQuery = new Map<string, Map<string, { url: string; items: Metrics[] }>>();
 	for (const r of rows) {
 		const pages = byQuery.get(r.query) ?? new Map();
@@ -198,6 +220,9 @@ export function computeCannibalization(
 		if (real.length < 2) continue;
 		const best = Math.min(...real.map((p) => p.position));
 		const worst = Math.max(...real.map((p) => p.position));
+		if (best > maxBestPosition) continue;
+		const potentialClicks = Math.max(0, totalImpressions * ctrAtPosition(curve, best) - totalClicks);
+		if (potentialClicks < minPotential) continue;
 		const close = worst - best <= 3 && real.slice(0, 2).every((p) => p.share >= 0.25);
 		out.push({
 			query,
@@ -207,7 +232,7 @@ export function computeCannibalization(
 			winner: real[0].page,
 			positionGap: worst - best,
 			severity: close ? 'high' : 'medium',
-			potentialClicks: Math.max(0, totalImpressions * ctrAtPosition(curve, best) - totalClicks)
+			potentialClicks
 		});
 	}
 	return out.sort((a, b) => b.potentialClicks - a.potentialClicks).slice(0, limit);

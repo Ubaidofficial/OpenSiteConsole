@@ -283,6 +283,37 @@ describe('building the list', () => {
 		expect(q.problems.map((i) => i.url)).toEqual([U('/new3')]);
 		expect(q.problems[0].reason).toMatch(/robots\.txt blocks/);
 	});
+	it('reads each page it is about to list: gone, noindex and "temporarily unavailable" pages are set aside, and a failed read proves nothing', async () => {
+		sitemap();
+		for (const path of ['/new1', '/new2', '/new3', '/new4']) plan.set(U(path), NOT);
+		plan.set(U('/old'), INDEXED);
+		const page = (title: string, head = '') => new Response(`<!doctype html><html lang="en"><head><title>${title}</title>${head}</head><body><h1>${title}</h1></body></html>`, { status: 200, headers: { 'content-type': 'text/html' } });
+		const reads: string[] = [];
+		const fetchImpl = (async (input: RequestInfo | URL) => {
+			const path = new URL(String(input)).pathname;
+			reads.push(path);
+			if (path === '/new1') return page('Job page temporarily unavailable | Example', '<meta name="robots" content="noindex">'); // a 200 placeholder, as a site with a reconnecting database serves
+			if (path === '/new2') return new Response('gone', { status: 404 });
+			if (path === '/new4') throw new Error('socket hang up');
+			return page('A real page about gardens');
+		}) as typeof fetch;
+		const r = await buildQueue(site(), { liveFetch: fetchImpl });
+		const q = requestQueue(1);
+		expect(q.pending.map((i) => i.url)).toEqual([U('/new3'), U('/new4')]); // /new4 could not be read: still listed, as before
+		expect(q.problems.map((i) => i.url).sort()).toEqual([U('/new1'), U('/new2')]);
+		expect(q.problems.find((i) => i.url === U('/new1'))!.reason).toMatch(/serves it as a problem right now: It carries a noindex tag/);
+		expect(q.problems.find((i) => i.url === U('/new2'))!.reason).toMatch(/answers 404: it is gone/);
+		expect(r).toMatchObject({ listed: 2, problems: 2 });
+		expect(reads).not.toContain('/old'); // an already-indexed page is dropped before any read
+		// the placeholder alone (no noindex tag) is caught by what it says
+		sitemap();
+		plan.set(U('/new1'), NOT);
+		await buildQueue(site(), { liveFetch: (async () => page('Companies temporarily unavailable | Example')) as typeof fetch });
+		expect(requestQueue(1).problems.map((i) => i.reason).join(' ')).toMatch(/temporarily unavailable/);
+		// and the check can be switched off
+		await buildQueue(site(), { liveFetch: false });
+		expect(requestQueue(1).problems).toHaveLength(0);
+	});
 	it('stops at the allowance, and refuses to build once it is used up, saying when a slot frees', async () => {
 		process.env.REQUEST_INDEXING_PER_DAY = '2';
 		sitemap();

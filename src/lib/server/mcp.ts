@@ -318,7 +318,7 @@ const TOOLS: Tool[] = [
 				case 'ctr_gaps':
 					return computeCtrGaps(qp.filter((r) => !isBranded(r.query, terms)), curve, { minImpressions: Math.max(50, Math.round((n / 28) * 90)), limit: lim }).map((r) => ({ query: r.query, page: r.page, position: r2(r.position), ctr: r2(r.ctr * 100) + '%', expectedCtr: r2(r.expectedCtr * 100) + '%', missedClicks: Math.round(r.missedClicks) }));
 				case 'cannibalization':
-					return computeCannibalization(qp, curve, { limit: lim, minQueryImpressions: Math.max(20, Math.round((n / 28) * 40)) }).map((g) => ({ query: g.query, severity: g.severity, clicksAtStake: Math.round(g.potentialClicks), winner: g.winner, pages: g.pages.map((x) => ({ page: x.page, clicks: x.clicks, impressions: x.impressions, position: r2(x.position) })) }));
+					return computeCannibalization(qp.filter((r) => !isBranded(r.query, terms)), curve, { limit: lim, minQueryImpressions: Math.max(20, Math.round((n / 28) * 40)) }).map((g) => ({ query: g.query, severity: g.severity, clicksAtStake: Math.round(g.potentialClicks), winner: g.winner, pages: g.pages.map((x) => ({ page: x.page, clicks: x.clicks, impressions: x.impressions, position: r2(x.position) })) }));
 				case 'decay': {
 					// compare: "year_ago" = the same weekdays 364 days earlier (needs 12+ months of stored history); default = the previous period.
 					const yoy = a.compare === 'year_ago';
