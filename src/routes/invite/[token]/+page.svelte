@@ -3,7 +3,8 @@
 </script>
 
 <div class="mx-auto mt-16 max-w-sm">
-	<img src="/brand/logo-light.svg" alt="" width="64" height="64" class="mb-4 size-16 rounded-2xl shadow-sm" />
+	<img src="/brand/logo-light.svg" alt="" width="64" height="64" class="mb-4 size-16 rounded-2xl shadow-sm dark:hidden" />
+	<img src="/brand/logo-dark.svg" alt="" width="64" height="64" class="mb-4 hidden size-16 rounded-2xl shadow-sm dark:block" />
 	<h1 class="mb-1 text-xl font-semibold">Join SEOConsole</h1>
 	{#if data.valid}
 		<p class="mb-6 text-sm text-muted-foreground">You were invited as <b>{data.email}</b> with the <span class="chip">{data.role}</span> role. Choose your name and a password to finish.</p>

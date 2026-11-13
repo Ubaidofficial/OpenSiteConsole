@@ -12,6 +12,7 @@ A self-hosted dashboard for **all your Google Search Console properties across m
 - **History and analysis**: queries, pages, trends, decay, cannibalization, anomalies, Core Web Vitals.
 - **One-click GA4 & Tag Manager setup**: per site, find or create the GA4 property and Tag Manager container, link both and add the Google tag, after showing the plan and with its own opt-in permission. SEOConsole cannot put the Tag Manager code on your site, so it shows it with a copy button.
 - **Sign in with Google, and self-service accounts**: team members can sign in with Google, change their own name, email and password, and an admin can hand out one-time reset links (there is no email sending).
+- **Light and a dim dark theme**: a sun/moon button in the header switches, and the choice is remembered per browser. Light is the default.
 - **SEO and LLM tests**: before/after, split and redirect tests with a control group and a significance figure.
 - **Indexing without the busywork**: sitemap coverage and `lastmod` checks, IndexNow and Bing submission, an indexing monitor, and a daily Request Indexing list. Google has no API for that button, so you still press it yourself, one page at a time.
 - **Digest and alerts**: a weekly digest, urgent alerts and a monthly report, by webhook if you set one.

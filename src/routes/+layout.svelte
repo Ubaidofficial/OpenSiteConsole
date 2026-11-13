@@ -4,11 +4,16 @@
 	import { Toaster, toast } from 'svelte-sonner';
 	import { Bot, LayoutDashboard, Sparkles, Layers, ListChecks, Map as MapIcon, Plug, RefreshCw, UserCog, Users } from '@lucide/svelte';
 	import PrivacyToggle from '$lib/components/privacy-toggle.svelte';
+	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import { pageTitle } from '$lib/titles';
 	import { privacy } from '$lib/privacy.svelte';
+	import { theme } from '$lib/theme.svelte';
 	import { onMount } from 'svelte';
 
-	onMount(() => privacy.init());
+	onMount(() => {
+		privacy.init();
+		theme.init();
+	});
 
 	let { data, children } = $props();
 	const links = [
@@ -50,12 +55,13 @@
 
 <svelte:head><title>{pageTitle(page.url.pathname)}</title></svelte:head>
 
-<Toaster theme="light" richColors closeButton position="bottom-right" />
+<Toaster theme={theme.dim ? 'dark' : 'light'} richColors closeButton position="bottom-right" />
 
 <header class="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
 	<div class="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
 		<a href="/" class="flex items-center gap-2 font-semibold tracking-tight whitespace-nowrap">
-			<img src="/brand/mark-glyph.svg" alt="" width="24" height="24" class="size-6" />
+			<img src="/brand/mark-glyph.svg" alt="" width="24" height="24" class="size-6 dark:hidden" />
+			<img src="/brand/mark-dark.svg" alt="" width="24" height="24" class="hidden size-6 dark:block" />
 			SEOConsole
 		</a>
 		{#if data.authed}<nav class="order-last flex w-full gap-0.5 overflow-x-auto sm:order-none sm:w-auto" aria-label="Main">
@@ -81,6 +87,7 @@
 				</a>
 				<form method="POST" action="/logout"><button class="rounded-md px-2 py-1 hover:bg-accent hover:text-accent-foreground">Sign out</button></form>
 			{/if}
+			<ThemeToggle />
 			<PrivacyToggle />
 		</div>
 	</div>
