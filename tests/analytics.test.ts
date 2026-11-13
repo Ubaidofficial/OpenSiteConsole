@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-	DEFAULT_CTR, computeCannibalization, computeDecay, computeStriking, detectAnomalies, fitCtrCurve,
+	DEFAULT_CTR, computeCannibalization, computeDecay, computeStriking, isOperatorQuery, zeroClickImpressions, detectAnomalies, fitCtrCurve,
 	isBranded, normalizeUrl, parseTerms, relativeLift, computeCtrGaps
 } from '../src/lib/analytics';
 
@@ -46,13 +46,39 @@ describe('computeStriking', () => {
 	it('keeps positions 4-20 above the impression floor and ranks by expected gain', () => {
 		const rows = [
 			{ query: 'a', ...m(1, 1000, 8) },
-			{ query: 'b', ...m(0, 5000, 12) },
+			{ query: 'b', ...m(20, 5000, 12) },
 			{ query: 'c', ...m(50, 1000, 2) }, // already top 3
 			{ query: 'd', ...m(0, 10, 9) } // too few impressions
 		];
 		const r = computeStriking(rows, curve);
 		expect(r.map((x) => x.query)).toEqual(['b', 'a']);
 		expect(r[0].expectedGain).toBeGreaterThan(r[1].expectedGain);
+	});
+
+	// Found by checking a real dashboard against the live data (see the notes on isOperatorQuery and zeroClickImpressions).
+	it('leaves out search-operator queries', () => {
+		expect(isOperatorQuery('"claude.ai/referral" guest pass or "free week" or invite after:2026-10-20')).toBe(true);
+		expect(isOperatorQuery('site:example.com pricing')).toBe(true);
+		expect(isOperatorQuery('best books after 2020')).toBe(false);
+		expect(isOperatorQuery('how to use the after: operator')).toBe(false); // plain words, no operand
+		const rows = [{ query: 'after:2026-10-20 invite', ...m(2, 400, 9) }, { query: 'real topic', ...m(8, 400, 9) }];
+		expect(computeStriking(rows, curve).map((x) => x.query)).toEqual(['real topic']);
+	});
+	it('leaves out zero-click impressions that the click-through rate makes impossible, but keeps small or plausible ones', () => {
+		// 2,707 impressions at position 6.4 with no click at all: at least 100 clicks would be expected, so these are tool impressions
+		expect(zeroClickImpressions({ clicks: 0, impressions: 2707, position: 6.38 })).toBe(true);
+		expect(zeroClickImpressions({ clicks: 1, impressions: 2707, position: 6.38 })).toBe(false);
+		// 202 impressions at position 10.3 with none: possible for a niche query, so it stays (low confidence)
+		expect(zeroClickImpressions({ clicks: 0, impressions: 202, position: 10.28 })).toBe(false);
+		expect(zeroClickImpressions({ clicks: 0, impressions: 91, position: 8.44 })).toBe(false);
+		const rows = [{ query: 'tool traffic', ...m(0, 2707, 6.4) }, { query: 'niche', ...m(0, 202, 10.3) }];
+		expect(computeStriking(rows, curve).map((x) => x.query)).toEqual(['niche']);
+	});
+	it('leaves out a search that would add less than a click', () => {
+		const rows = [{ query: 'tiny', ...m(0, 25, 4.1) }, { query: 'bigger', ...m(10, 600, 9) }];
+		const r = computeStriking(rows, curve, { minImpressions: 10 });
+		expect(r.map((x) => x.query)).toEqual(['bigger']);
+		expect(computeStriking(rows, curve, { minImpressions: 10, minGain: 0 }).map((x) => x.query)).toContain('tiny');
 	});
 });
 
@@ -76,6 +102,20 @@ describe('computeCannibalization', () => {
 			{ query: 'z', page: 'https://a.com/p2', ...m(0, 12, 30) }
 		];
 		expect(computeCannibalization(rows, curve)).toHaveLength(0);
+	});
+	it('ignores pages ranking beyond position 20 (nothing to compete for yet) and groups with less than a click at stake', () => {
+		const far = [
+			{ query: 'deep', page: 'https://a.com/p1', ...m(0, 42, 90.5) },
+			{ query: 'deep', page: 'https://a.com/p2', ...m(0, 40, 81.3) }
+		];
+		expect(computeCannibalization(far, curve)).toHaveLength(0);
+		expect(computeCannibalization(far, curve, { maxBestPosition: 200, minPotential: 0 })).toHaveLength(1);
+		// already earning what position 3 would: nothing to gain by merging
+		const fine = [
+			{ query: 'fine', page: 'https://a.com/p1', ...m(10, 60, 3) },
+			{ query: 'fine', page: 'https://a.com/p2', ...m(5, 40, 3.2) }
+		];
+		expect(computeCannibalization(fine, curve)).toHaveLength(0);
 	});
 });
 

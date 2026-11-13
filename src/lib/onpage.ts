@@ -223,10 +223,37 @@ export function checkPage(parsed: Parsed, queries: { query: string; clicks: numb
 	}
 	if (!parsed.lang) add('no-lang', 'info', 'The <html> tag has no lang attribute.');
 	const cov: QueryCoverage[] = queries.map((q) => ({ query: q.query, clicks: q.clicks, title: matchQuery(title, q.query), description: matchQuery(description, q.query), h1: matchQuery(h1.join(' '), q.query) }));
-	const top = cov[0];
+	// Only a query that earns clicks says what people want from the page. A page whose "top" query has 0 clicks (an off-topic or one-off
+	// search, say "nat eliason net worth" on a book page) is not told to rewrite its title around it.
+	const top = cov[0] && cov[0].clicks > 0 ? cov[0] : undefined;
 	if (top && top.title === 'none' && top.h1 === 'none') add('top-query-missing', 'warn', `Its top query "${top.query}" appears in neither the title nor the H1.`);
 	else if (top && top.title === 'none') add('top-query-not-in-title', 'info', `Its top query "${top.query}" is not in the title.`);
 	return { parsed, queries: cov, issues };
+}
+
+/**
+ * Why a page that was just fetched is not fit to be crawled or asked about, or null when it looks fine: it is gone or erroring, it carries
+ * a noindex, or it is an "unavailable" placeholder that answers 200 (a database that is reconnecting, maintenance mode). Found on a live
+ * site whose job pages all said "temporarily unavailable" with a noindex for hours, which nothing in Search Console shows until Google recrawls.
+ */
+export function pageProblem(status: number, html: string | null): string | null {
+	if (status === 404 || status === 410) return `The page answers ${status}: it is gone.`;
+	if (status >= 500) return `The page answers ${status}: the server is failing.`;
+	if (status >= 400) return `The page answers ${status}.`;
+	if (!html) return null;
+	const parsed = parseOnPage(html);
+	if (parsed.robots && /noindex/i.test(parsed.robots)) return 'It carries a noindex tag.';
+	// What a placeholder says is short and plain, in the first part of its title ("Companies temporarily unavailable | Site") or its heading.
+	// An article about outages ("Why is my site temporarily unavailable? Fixes") is not one: it asks a question or has several words first.
+	const lead = (t: string) => t.split(/\s[|\u2013\u2014\u00b7-]\s/)[0].trim();
+	const looksDown = (t: string) => {
+		const x = lead(t);
+		if (!x || x.includes('?') || x.length > 70) return false;
+		const m = /\b(temporarily|currently)\s+(unavailable|down)\b|\bservice unavailable\b|\bunder maintenance\b|\bmaintenance mode\b|\bbe right back\b/i.exec(x);
+		return !!m && x.slice(0, m.index).trim().split(/\s+/).filter(Boolean).length <= 3;
+	};
+	if (looksDown(parsed.title ?? '') || parsed.h1.some(looksDown)) return 'The page says it is temporarily unavailable.';
+	return null;
 }
 
 /** 0-100: starts at 100, bad -25, warn -10, info -3, floor 0. A relative ranking aid, not a Google measure. */

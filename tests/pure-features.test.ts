@@ -143,7 +143,7 @@ describe('locale and country analysis', () => {
 		expect(r.find((x) => x.folder === '/en-us/')!.mismatch).toBe(false);
 	});
 	it('country cannibalization only counts pages competing inside one country', () => {
-		const row = (country: string, page: string) => ({ query: 'running shoes', page, country, ...m(30, 400, 6) });
+		const row = (country: string, page: string) => ({ query: 'running shoes', page, country, ...m(10, 400, 6) });
 		const same = countryCannibalization([row('usa', 'https://x.com/a'), row('usa', 'https://x.com/b')], curve);
 		expect(same).toHaveLength(1);
 		expect(same[0].country).toBe('usa');
@@ -306,5 +306,16 @@ describe('on-page parsing and checks', () => {
 		expect(onPageScore([])).toBe(100);
 		expect(onPageScore(noindex.issues)).toBeLessThan(80);
 		expect(onPageScore(Array(10).fill({ id: 'x', severity: 'bad', message: '' }))).toBe(0);
+	});
+	it('does not tell a page to rewrite its title around a query that earns no clicks (an off-topic or one-off search)', () => {
+		const page = '<html lang=en><head><title>Zero to One by Peter Thiel: Recommended by 54 People</title><meta name="description" content="d"></head><body><h1>Zero to One</h1></body></html>';
+		const idle = checkPage(parseOnPage(page), [{ query: 'nat eliason net worth', clicks: 0 }]);
+		expect(idle.issues.map((i) => i.id)).not.toEqual(expect.arrayContaining(['top-query-missing']));
+		expect(idle.issues.map((i) => i.id)).not.toEqual(expect.arrayContaining(['top-query-not-in-title']));
+		// the same miss, once the query does earn clicks, is still reported
+		const earning = checkPage(parseOnPage(page), [{ query: 'nat eliason net worth', clicks: 4 }]);
+		expect(earning.issues.map((i) => i.id)).toContain('top-query-missing');
+		// and it is the first query that earns clicks that counts
+		expect(idle.queries[0]).toMatchObject({ query: 'nat eliason net worth', clicks: 0 });
 	});
 });

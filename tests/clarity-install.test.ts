@@ -15,6 +15,7 @@ import { clarityInstallFor, homeUrl, runClarityScan } from '../src/lib/server/cl
 import { ALL_PAGES_TRIGGER, clarityTagBody, GTM_WRITE_SCOPES, hasGtmWrite, installClarityViaGtm, planClarityInstall, type GtmWriter } from '../src/lib/server/gtmwrite';
 import { DEMO_CLARITY_ID, demoInstalled } from '../src/lib/server/demo-channels';
 import { clarityInstall, claritySnippet, parseClarityId, scanHtml, type ClarityInstallInput } from '../src/lib/clarityinstall';
+import { pageProblem } from '../src/lib/onpage';
 
 const BING_SNIPPET = `<!-- Clarity tracking code for https://6figjobs.com/ -->
 <script>
@@ -252,6 +253,44 @@ describe('demo: the check and the install end to end', () => {
 		demoInstalled.clear();
 	});
 
+	it('pageProblem: gone, erroring, noindex and "temporarily unavailable" placeholders are problems; a normal page and a failed read are not', () => {
+		const page = (title: string, head = '') => `<!doctype html><html lang="en"><head><title>${title}</title>${head}</head><body><h1>${title}</h1></body></html>`;
+		expect(pageProblem(404, null)).toMatch(/gone/);
+		expect(pageProblem(410, null)).toMatch(/gone/);
+		expect(pageProblem(503, null)).toMatch(/failing/);
+		expect(pageProblem(403, null)).toMatch(/403/);
+		expect(pageProblem(200, page('Job page temporarily unavailable | Six Figure Jobs'))).toMatch(/temporarily unavailable/);
+		expect(pageProblem(200, page('Down for maintenance', '<meta name="robots" content="noindex,follow">'))).toMatch(/noindex/);
+		expect(pageProblem(200, page('Site under maintenance'))).toMatch(/temporarily unavailable/);
+		expect(pageProblem(200, page('Best robot vacuums, ranked'))).toBeNull();
+		// articles about outages are not placeholders
+		for (const t of ['Is the service unavailable in my area? A guide', 'Why is my site temporarily unavailable? 7 fixes', 'How to fix a Service Unavailable (503) error in WordPress']) expect(pageProblem(200, page(t)), t).toBeNull();
+		expect(pageProblem(200, page('Service unavailable | Example'))).toMatch(/temporarily unavailable/);
+		expect(pageProblem(200, page('Example', '').replace('<h1>Example</h1>', '<h1>We are under maintenance</h1>'))).toMatch(/temporarily unavailable/);
+		expect(pageProblem(200, null)).toBeNull();
+		expect(pageProblem(0, null)).toBeNull();
+	});
+	it('the daily page check records a problem page, and the action queue shows it as blocking until the next clean check', async () => {
+		const id = siteId('coffeelab');
+		const page = (title: string, head = '') => `<!doctype html><html lang="en"><head><title>${title}</title>${head}</head><body><h1>${title}</h1></body></html>`;
+		const down = (async () => new Response(page('Companies temporarily unavailable | Example', '<meta name="robots" content="noindex">'), { status: 200, headers: { 'content-type': 'text/html' } })) as typeof fetch;
+		const pages = await runClarityScan(id, { fetchImpl: down });
+		expect(pages.length).toBeGreaterThan(0);
+		expect(pages.every((p) => p.problem)).toBe(true);
+		const item = actionsFor(getSite(id)!).find((a) => a.key.startsWith('unavailable:'));
+		expect(item).toMatchObject({ type: 'blocked', blocking: true, href: `/sites/${id}/onpage` });
+		expect(item!.title).toMatch(/down, noindex or “temporarily unavailable”/);
+		expect(item!.evidence[0]).toMatch(/temporarily unavailable|noindex/);
+		// a scan older than three days is not shown: the site may be fine again
+		db().prepare('UPDATE clarity_scans SET checked_at = ? WHERE site_id = ?').run(Date.now() - 4 * 86_400_000, id);
+		expect(actionsFor(getSite(id)!).some((a) => a.key.startsWith('unavailable:'))).toBe(false);
+		// a failed read (timeout, blocked) is not a problem page; a clean read clears it
+		const broken = (async () => { throw new Error('socket hang up'); }) as typeof fetch;
+		expect((await runClarityScan(id, { fetchImpl: broken })).some((p) => p.problem)).toBe(false);
+		await runClarityScan(id, { fetchImpl: (async () => new Response(page('Espresso machines, ranked'), { status: 200, headers: { 'content-type': 'text/html' } })) as typeof fetch });
+		expect(actionsFor(getSite(id)!).some((a) => a.key.startsWith('unavailable:'))).toBe(false);
+		await runClarityScan(id); // leave the demo scan as it was
+	});
 	it('a read-only server never plans or makes a change', async () => {
 		process.env.READ_ONLY = '1';
 		try {

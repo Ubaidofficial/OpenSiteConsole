@@ -2,6 +2,7 @@ import { db, audit } from './db';
 import { getSite } from './clients';
 import { linksFor } from './links';
 import { fetchPage, guardedFetch, pagesToCheck } from './onpage';
+import { pageProblem } from '../onpage';
 import { demoPageFetch } from './demo-channels';
 import { gtmSnapshot } from './tracking';
 import { isDomainProperty } from '../property';
@@ -33,7 +34,9 @@ export async function runClarityScan(siteId: number, o: { fetchImpl?: typeof fet
 	const pages: ScannedPage[] = [];
 	for (const url of pagesToScan(siteId)) {
 		const f = await fetchPage(url, site.site_url, fetchImpl);
-		pages.push(f.html ? { url, ok: true, ...scanHtml(f.html) } : { url, ok: false, error: f.error ?? 'Could not fetch the page.', clarityIds: [], clarityLoader: false, gtmIds: [] });
+		// a failed fetch (timeout, blocked) says nothing about the page; a real answer (404, 5xx, noindex, "temporarily unavailable") does
+		const problem = f.status ? pageProblem(f.status, f.html) : null;
+		pages.push(f.html ? { url, ok: true, ...scanHtml(f.html), ...(problem ? { problem } : {}) } : { url, ok: false, error: f.error ?? 'Could not fetch the page.', clarityIds: [], clarityLoader: false, gtmIds: [], ...(problem ? { problem } : {}) });
 	}
 	db().prepare('INSERT OR REPLACE INTO clarity_scans (site_id, checked_at, payload) VALUES (?,?,?)').run(siteId, Date.now(), JSON.stringify(pages));
 	return pages;

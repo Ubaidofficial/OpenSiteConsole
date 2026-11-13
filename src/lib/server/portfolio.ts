@@ -54,7 +54,7 @@ export function portfolioCannibalization(days: number) {
 				const rows = queryPageRows(s.id, p.start, p.end);
 				const terms = brandTerms(s);
 				const curve = fittedCurve(rows, terms);
-				return computeCannibalization(rows, curve, { minQueryImpressions: Math.max(20, Math.round((days / 28) * 40)), limit: 40 })
+				return computeCannibalization(rows.filter((r) => !isBranded(r.query, terms)), curve, { minQueryImpressions: Math.max(20, Math.round((days / 28) * 40)), limit: 40 })
 					.filter((g) => g.severity === 'high')
 					.map((g) => ({ branded: isBranded(g.query, terms), query: g.query, pageCount: g.pages.length, winner: g.winner, totalClicks: g.totalClicks, totalImpressions: g.totalImpressions, potentialClicks: g.potentialClicks, positionGap: g.positionGap, ...tag(s) }));
 			})
