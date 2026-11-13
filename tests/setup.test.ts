@@ -390,8 +390,53 @@ describe('planSetup and runSetup', () => {
 		expect(f.sent.ticket).toMatchObject({ name: 'www.northwind-tools.example', redirect: expect.stringMatching(/\/auth\/callback$/) });
 		expect(auditActions()).toContain('setup.ga4_account_started');
 	});
-	it('startGa4Account refuses when an account exists', async () => {
-		expect((await startGa4Account(siteId('northwind'), { api: fake().api })).error).toMatch(/already has/);
+	it('someone with accounts can still ask for a brand-new one for this site: same ticket, named after the site, and no property is created', async () => {
+		process.env.GOOGLE_CLIENT_ID = 'cid';
+		const f = fake({ ga4Accounts: [{ account: 'accounts/1', displayName: 'One' }, { account: 'accounts/2', displayName: 'Two' }] });
+		expect((await planSetup(siteId('northwind'), {}, { api: f.api })).ga4?.state).toBe('create');
+		const t = await startGa4Account(siteId('northwind'), { api: f.api });
+		expect(t).toEqual({ ok: true, url: 'https://analytics.google.com/analytics/web/?provisioningSignup=false#/termsofservice/TICKET-1' });
+		expect(f.sent.ticket).toMatchObject({ name: 'www.northwind-tools.example' });
+		expect(f.calls).toEqual(['provisionTicket']);
+	});
+	it('a new account is only offered while the site has no property: not once one is linked or matched', async () => {
+		const f = fake({
+			props: [{ property: 'properties/42', displayName: 'N', account: 'A' }],
+			urls: { 'properties/42': ['https://www.northwind-tools.example'] },
+			streams: { 'properties/42': [{ measurementId: 'G-EXIST00001', uri: 'https://www.northwind-tools.example' }] }
+		});
+		const r = await startGa4Account(siteId('northwind'), { api: f.api });
+		expect(r.ok).toBe(false);
+		expect(r.error).toMatch(/only offered while/);
+		expect(f.calls).toEqual([]);
+	});
+	it('an account named after the site (a new one the person just made) is chosen for them, in GA4 and in Tag Manager; an explicit choice still wins', async () => {
+		const id = siteId('northwind');
+		const f = fake({
+			ga4Accounts: [{ account: 'accounts/1', displayName: 'Other' }, { account: 'accounts/2', displayName: 'northwind-tools.example' }],
+			gtmAccounts: [{ path: 'accounts/10', name: 'Other TM' }, { path: 'accounts/20', name: 'www.northwind-tools.example' }]
+		});
+		const plan = await planSetup(id, {}, { api: f.api });
+		expect(plan.ga4).toMatchObject({ state: 'create', account: 'accounts/2' });
+		expect(plan.gtm).toMatchObject({ state: 'create', account: 'accounts/20' });
+		expect(plan.ready).toBe(true);
+		expect((await planSetup(id, { ga4Account: 'accounts/1', gtmAccount: 'accounts/10' }, { api: f.api })).ga4).toMatchObject({ account: 'accounts/1' });
+		await runSetup(id, { timeZone: 'UTC', currencyCode: 'USD' }, 'workspace', { api: f.api });
+		expect(f.sent.property.account).toBe('accounts/2');
+		expect(f.sent.container.account).toBe('accounts/20');
+	});
+	it('two accounts that both match the site name are left for the person to choose', async () => {
+		const f = fake({ ga4Accounts: [{ account: 'accounts/1', displayName: 'northwind-tools.example' }, { account: 'accounts/2', displayName: 'Northwind-Tools.example' }] });
+		expect((await planSetup(siteId('northwind'), {}, { api: f.api })).ga4).toMatchObject({ state: 'create', account: null });
+	});
+	it('a Tag Manager container the person made by hand in a new account is found and linked on the next try (nothing created)', async () => {
+		const f = fake({ gtmAccounts: [{ path: 'accounts/20', name: 'northwind-tools.example' }], containers: [container('accounts/20/containers/1', 'GTM-HAND111', 'www.northwind-tools.example')], live: { 'accounts/20/containers/1': null }, latest: null });
+		const plan = await planSetup(siteId('northwind'), { timeZone: 'UTC' }, { api: f.api });
+		expect(plan.gtm).toMatchObject({ state: 'match', publicId: 'GTM-HAND111' });
+		const r = await runSetup(siteId('northwind'), { timeZone: 'UTC', currencyCode: 'USD' }, 'workspace', { api: f.api });
+		expect(r.ok).toBe(true);
+		expect(f.calls).not.toContain('createContainer');
+		expect(linksFor(siteId('northwind')).gtm?.external_id).toBe('accounts/20/containers/1');
 	});
 
 	it('no Tag Manager account: the API cannot create one, so the plan says so and nothing at all is created (not even the GA4 property)', async () => {

@@ -67,6 +67,15 @@
 	const adding = $derived(p?.tag?.state === 'add');
 </script>
 
+
+{#snippet tosBlock(tosUrl: string | undefined)}
+	{#if tosUrl}
+		<a class="btn btn-primary mt-2 text-xs" href={tosUrl} target="_blank" rel="noreferrer noopener">Accept Google’s terms</a>
+		<p class="mt-2 text-muted-foreground">Accept them in the new tab, then come back and press Continue. The new account appears in the list.</p>
+		<a class="btn mt-1 text-xs" href={back}>Continue</a>
+	{/if}
+{/snippet}
+
 <section id="setup" class="card mb-6 p-4" aria-labelledby="setup-h">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
@@ -138,12 +147,21 @@
 						{:else}
 							<p class="mt-1 text-muted-foreground">In the account “<span class="pii">{p.ga4.accounts[0].displayName}</span>”.</p>
 						{/if}
+						<div class="mt-3 border-t pt-2">
+							{#if form?.tosUrl}
+								{@render tosBlock(form.tosUrl)}
+							{:else if !p.needsGrant}
+								<p class="text-muted-foreground">Want it in its own, brand-new Analytics account called “{p.ga4.displayName}”?</p>
+								<form method="POST" action="?/setupTos&setup={site.id}" use:enhance={done('tos')}>
+									<input type="hidden" name="siteId" value={site.id} />
+									<button class="btn mt-1 text-xs" disabled={busy === 'tos'}>{busy === 'tos' ? 'Asking Google…' : 'Create a new Analytics account'}</button>
+								</form>
+							{/if}
+						</div>
 					{:else if p.ga4?.state === 'tos'}
 						<p>You have no Google Analytics account yet. Google needs you to accept its Terms of Service to create one.</p>
 						{#if form?.tosUrl}
-							<a class="btn btn-primary mt-2 text-xs" href={form.tosUrl} target="_blank" rel="noreferrer noopener">Accept Google’s terms</a>
-							<p class="mt-2 text-muted-foreground">Accept them in the new tab, then come back and press Continue.</p>
-							<a class="btn mt-1 text-xs" href={back}>Continue</a>
+							{@render tosBlock(form.tosUrl)}
 						{:else if !p.needsGrant}
 							<form method="POST" action="?/setupTos&setup={site.id}" use:enhance={done('tos')}>
 								<input type="hidden" name="siteId" value={site.id} />
@@ -189,8 +207,14 @@
 						{:else}
 							<p class="mt-1 text-muted-foreground">In the account “<span class="pii">{p.gtm.accounts[0].name}</span>”.</p>
 						{/if}
+						<details class="mt-3 border-t pt-2">
+							<summary class="cursor-pointer text-muted-foreground">Want a brand-new Tag Manager account instead?</summary>
+							<p class="mt-1 text-muted-foreground">Google’s API cannot create a Tag Manager account, so make it there: <b>Create account</b>, account name <b>{p.gtm.name}</b>, container name <b>{p.gtm.name}</b>, target platform <b>Web</b>. Then press Try again: SEOConsole finds that container, links it and adds the Google tag.</p>
+							<a class="btn btn-primary mt-2 text-xs" href="https://tagmanager.google.com/" target="_blank" rel="noreferrer noopener">Open Tag Manager</a>
+							<a class="btn mt-2 text-xs" href={back}>Try again</a>
+						</details>
 					{:else if p.gtm?.state === 'no-account'}
-						<p>You have no Tag Manager account yet. Google’s API cannot create one, so make it yourself (it takes a minute), then come back.</p>
+						<p>You have no Tag Manager account yet. Google’s API cannot create one, so make it yourself (it takes a minute): <b>Create account</b>, container name <b>{site.name}</b>, target platform <b>Web</b>. Then come back: SEOConsole finds the container and links it.</p>
 						<a class="btn btn-primary mt-2 text-xs" href="https://tagmanager.google.com/" target="_blank" rel="noreferrer noopener">Open Tag Manager</a>
 						<a class="btn mt-2 text-xs" href={back}>Try again</a>
 					{:else if p.gtm?.state === 'blocked'}

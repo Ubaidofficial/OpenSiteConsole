@@ -219,7 +219,9 @@ export async function planSetup(siteId: number, choices: SetupChoices = {}, o: S
 			const accounts = await api.ga4Admin(acc.id).listAccounts();
 			if (!accounts.length) ga4 = { state: 'tos', accountId: acc.id };
 			else {
-				const account = accounts.find((a) => a.account === choices.ga4Account)?.account ?? (accounts.length === 1 ? accounts[0].account : null);
+				// An account the person made for this very site (named after it) is the obvious home for its property.
+				const named = accounts.filter((a) => hostKey(a.displayName) === hostKey(host));
+				const account = accounts.find((a) => a.account === choices.ga4Account)?.account ?? (accounts.length === 1 ? accounts[0].account : named.length === 1 ? named[0].account : null);
 				ga4 = { state: 'create', accountId: acc.id, accounts, account, displayName: host, uri: `https://${host}`, timeZone: choices.timeZone || serverTimeZone(), currencyCode: choices.currencyCode || 'USD' };
 			}
 		}
@@ -249,7 +251,10 @@ export async function planSetup(siteId: number, choices: SetupChoices = {}, o: S
 		else {
 			const list = await api.gtmAdmin(acc.id).listAccounts();
 			if (!list.length) gtm = { state: 'no-account', accountId: acc.id };
-			else gtm = { state: 'create', accountId: acc.id, accounts: list, account: list.find((a) => a.path === choices.gtmAccount)?.path ?? (list.length === 1 ? list[0].path : null), name: host, domain: host };
+			else {
+				const named = list.filter((a) => hostKey(a.name) === hostKey(host));
+				gtm = { state: 'create', accountId: acc.id, accounts: list, account: list.find((a) => a.path === choices.gtmAccount)?.path ?? (list.length === 1 ? list[0].path : named.length === 1 ? named[0].path : null), name: host, domain: host };
+			}
 		}
 	}
 
@@ -461,14 +466,15 @@ export async function runSetup(siteId: number, choices: SetupChoices, mode: 'pub
 
 // ── no GA4 account yet ───────────────────────────────────────────────────────
 /**
- * Start creating a GA4 account for someone who has none: Google issues a ticket, and the person accepts the Terms of Service
+ * Start creating a GA4 account (for someone who has none, or who wants a separate one for this site): Google issues a ticket, and the person accepts the Terms of Service
  * in the browser at the returned link. The address it sends them back to must be registered in the Google Cloud OAuth client;
  * SEOConsole uses its own sign-in return address, which already is.
  */
 export async function startGa4Account(siteId: number, o: SetupOptions = {}): Promise<{ ok: boolean; error?: string; url?: string }> {
 	const plan = await planSetup(siteId, {}, o);
 	if (!plan.ok) return { ok: false, error: plan.error };
-	if (plan.ga4?.state !== 'tos') return { ok: false, error: 'This Google account already has a Google Analytics account.' };
+	// Offered when there is no account at all, and also when there are some but the person wants a new one for this site.
+	if (plan.ga4?.state !== 'tos' && plan.ga4?.state !== 'create') return { ok: false, error: 'A new Google Analytics account is only offered while this site has no GA4 property yet.' };
 	if (plan.needsGrant) return { ok: false, error: `SEOConsole may not edit Google Analytics yet for ${plan.needsGrant.join(', ')}. Allow it first.` };
 	try {
 		const ticket = await apiOf(o).ga4Admin(plan.ga4.accountId).provisionTicket(plan.site!.host, redirectUri());
