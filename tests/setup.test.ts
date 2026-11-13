@@ -1,4 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { compile } from 'svelte/compiler';
 import { db, openDb } from '../src/lib/server/db';
 import { ensureDemoAccounts, upsertGoogleAccount } from '../src/lib/server/accounts';
 import { autoMatchGa4, autoMatchGtm } from '../src/lib/server/connect';
@@ -139,6 +141,19 @@ describe('the Google requests (bodies, URLs, scope token)', () => {
 	});
 	it('Tag Manager: the Google tag is a googtag with the measurement ID, firing on All Pages', () => {
 		expect(ga4TagBody('G-ABC123DEF4')).toMatchObject({ type: 'googtag', parameter: [{ type: 'template', key: 'tagId', value: 'G-ABC123DEF4' }], firingTriggerId: [ALL_PAGES_TRIGGER] });
+	});
+});
+
+describe('the setup panel markup', () => {
+	it('the country field keeps its pattern: Svelte turns a literal {2} inside an attribute into an expression, which made "US" fail the browser check', () => {
+		const html = compile(readFileSync('src/lib/components/SiteSetup.svelte', 'utf8'), { generate: 'server', filename: 'SiteSetup.svelte' }).js.code;
+		const patterns = [...html.matchAll(/pattern="([^"]*)"/g)].map((m) => m[1]);
+		expect(patterns.length).toBeGreaterThan(0);
+		for (const p of patterns) {
+			expect(p).toBe('[A-Za-z]{2}');
+			expect(new RegExp(`^(?:${p})$`).test('US')).toBe(true);
+			expect(new RegExp(`^(?:${p})$`).test('USA')).toBe(false);
+		}
 	});
 });
 
