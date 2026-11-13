@@ -145,7 +145,7 @@
 		{#each cards as c (c.id)}
 			<article class="group relative rounded-2xl border bg-card p-5 shadow-xs transition-all hover:-translate-y-px hover:shadow-md {c.hidden ? 'opacity-55' : ''}">
 				<div class="flex items-start gap-3">
-					<SiteAvatar name={title(c)} class="pii" />
+					<SiteAvatar name={title(c)} siteId={c.id} class="pii" />
 					<div class="min-w-0 flex-1">
 						<div class="flex items-center gap-2">
 							<a href="/sites/{c.id}?days={data.days}" class="pii truncate text-lg leading-tight font-semibold tracking-tight after:absolute after:inset-0 after:rounded-2xl">{title(c)}</a>
@@ -192,7 +192,7 @@
 					</div>
 				{:else}
 					<AreaSpark values={c.spark} trend={trendOf(c.clicksDelta, c.spark)} class="mt-5" />
-					<div class="tnum mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
+					<div class="tnum mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm whitespace-nowrap text-muted-foreground lg:flex-nowrap lg:justify-between 2xl:justify-start 2xl:gap-x-5">
 						<span class="inline-flex items-center gap-1.5">Impr. <b class="font-medium text-foreground">{fmtInt(c.impressions)}</b><Delta value={c.impressionsDelta} why={c.comparable ? 'Too little data in the previous period' : 'Previous period still loading'} /></span>
 						<span class="inline-flex items-center gap-1.5">CTR <b class="font-medium text-foreground">{fmtPct(c.ctr)}</b><Delta value={c.ctrDelta} why="Needs 100+ impressions in both periods" /></span>
 						<span class="inline-flex items-center gap-1.5">Pos. <b class="font-medium text-foreground">{fmtPos(c.position)}</b><Delta value={c.positionDelta} mode="pos" why="Needs 20+ impressions in both periods" /></span>

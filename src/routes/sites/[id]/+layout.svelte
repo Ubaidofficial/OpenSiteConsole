@@ -9,6 +9,7 @@
 	import { SITE_PRIMARY_TABS, SITE_TABS, SITE_TAB_GROUPS } from '$lib/explain';
 	const tabOf = (t: string) => SITE_TABS.find(([p]) => p === t)!;
 	import Delta from '$lib/components/Delta.svelte';
+	import SiteAvatar from '$lib/components/SiteAvatar.svelte';
 	import { fmtInt, fmtPct, fmtPos, ago } from '$lib/format';
 
 	let { data, children } = $props();
@@ -48,6 +49,7 @@
 </script>
 
 <div class="mb-3 flex flex-wrap items-start gap-3">
+	<SiteAvatar name={data.site.label || data.site.name} siteId={data.site.id} class="pii mt-1 !size-9 !rounded-lg !text-sm" />
 	<div class="min-w-0">
 		<div class="text-xs text-muted-foreground"><a href="/" class="hover:underline">All sites</a> / <span class="pii">{data.account.label ?? data.account.email}</span></div>
 		<h1 class="pii truncate text-lg font-semibold">{data.site.label || data.site.name}</h1>

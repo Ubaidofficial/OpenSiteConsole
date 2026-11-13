@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Explainer from '$lib/components/Explainer.svelte';
+	import ShowMore from '$lib/components/ShowMore.svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { ago } from '$lib/format';
@@ -160,8 +161,10 @@
 	</div>
 	{#if stillNot}<div class="mb-2 text-sm text-warn"><p><b>{stillNot}</b> URL{stillNot === 1 ? '' : 's'} still not indexed after {data.recheckDays[data.recheckDays.length - 1]} days. The coverage text below says why.</p>
 		<details class="mt-1 text-xs text-muted-foreground"><summary class="cursor-pointer select-none">What do these mean?</summary><p class="mt-1 max-w-2xl">“Crawled – currently not indexed” usually means Google saw the page and did not think it worth keeping yet: improve the content and link to it from other pages. “Discovered – currently not indexed” means it knows the address but has not crawled it.</p></details></div>{/if}
+	<ShowMore items={data.submissions} limit={10} noun="URLs">
+	{#snippet children(rows)}
 	<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="th">URL</th><th class="th">Sent</th><th class="th">Channels</th><th class="th">Google says</th><th class="th">Next check</th></tr></thead><tbody>
-		{#each data.submissions as s (s.url)}
+		{#each rows as s (s.url)}
 			<tr>
 				<td class="td pii max-w-80 truncate text-xs" title={s.url}>{s.url}</td>
 				<td class="td whitespace-nowrap text-xs text-muted-foreground">{ago(s.submittedAt)}</td>
@@ -176,6 +179,8 @@
 			</tr>
 		{:else}<tr><td class="td text-muted-foreground" colspan="5">Nothing submitted yet.</td></tr>{/each}
 	</tbody></table></div>
+	{/snippet}
+	</ShowMore>
 	<Explainer lead="Each accepted URL is re-checked with Google at day 1, 3 and 5.">
 	<p>Each accepted URL is checked with Google again at day {data.recheckDays.join(', ')} automatically (and sits on the indexing monitor's watch list until then). "Not indexed" soon after sending is normal: Google decides on its own time, and the reason (such as "Crawled – currently not indexed") shows here once it is inspected.</p>
 </Explainer>
