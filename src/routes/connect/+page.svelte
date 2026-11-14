@@ -50,6 +50,40 @@
 
 {#if data.setupSite}<SiteSetup site={data.setupSite} plan={data.setup} choices={data.choices} onSite={data.setupOnSite} readOnly={data.readOnly} form={form?.section === 'setup' ? form : null} />{/if}
 
+<!-- Automation: the per-site switches that are off until someone turns them on, set for every site at once -->
+<section class="card mb-6 p-4">
+	<h2 class="font-medium">Automation for all sites</h2>
+	<Explainer lead="Switch each of these on for all {data.automation.total} sites at once, and choose what a site found later starts with.">
+		<p>Each one runs on a site only once it is switched on, and normally has its own switch on that site's Indexing or Request page. Nothing changes until you choose. Reading Search Console, sitemaps and robots.txt already runs on its own for every site.</p>
+	</Explainer>
+	{#if msgFor('automation')}<p class="mb-2 text-sm {msgFor('automation')?.error ? 'text-bad' : 'text-good'}" role="status">{msgFor('automation')?.error ?? msgFor('automation')?.ok}</p>{/if}
+	<ul class="divide-y">
+		{#each data.automation.switches as w (w.key)}
+			<li class="flex flex-wrap items-start gap-x-4 gap-y-2 py-3">
+				<div class="min-w-0 flex-1 basis-80">
+					<div class="text-sm font-medium">{w.label} <span class="tnum ml-1 text-xs font-normal text-muted-foreground">on for {w.on} of {data.automation.total} sites</span></div>
+					<p class="mt-0.5 text-xs text-muted-foreground">{w.what}</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">{w.cost}</p>
+				</div>
+				<div class="flex flex-wrap items-center gap-2">
+					<form method="POST" action="?/automationApply" use:enhance={submit('apply-' + w.key)}>
+						<input type="hidden" name="key" value={w.key} /><input type="hidden" name="on" value="1" />
+						<button class="btn !h-8 text-xs" disabled={!w.available || w.on === data.automation.total || busy === 'apply-' + w.key} title={w.available ? 'Switch it on for every site shown on the dashboard' : 'Needs write access to Search Console'}>Turn on for all</button>
+					</form>
+					<form method="POST" action="?/automationApply" use:enhance={submit('apply-off-' + w.key)}>
+						<input type="hidden" name="key" value={w.key} /><input type="hidden" name="on" value="0" />
+						<button class="btn !h-8 text-xs" disabled={w.on === 0 || busy === 'apply-off-' + w.key}>Turn off for all</button>
+					</form>
+					<form method="POST" action="?/automationDefault" use:enhance={submit('def-' + w.key)}>
+						<input type="hidden" name="key" value={w.key} /><input type="hidden" name="on" value={w.newSites ? '0' : '1'} />
+						<button class="chip !h-8 cursor-pointer text-xs {w.newSites ? 'chip-on' : ''}" aria-pressed={w.newSites} disabled={busy === 'def-' + w.key} title="What a site found from now on starts with. Existing sites are not changed.">New sites: {w.newSites ? 'on' : 'off'}</button>
+					</form>
+				</div>
+			</li>
+		{/each}
+	</ul>
+</section>
+
 <!-- Matrix: status at a glance; the controls only show while editing -->
 <section class="mb-6">
 	<div class="mb-2 flex items-center gap-2"><h2 class="font-medium">Connections by site</h2><button type="button" class="btn !h-7 ml-auto text-xs" onclick={() => (editing = !editing)}>{editing ? 'Done editing' : 'Edit links'}</button></div>

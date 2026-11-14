@@ -1,4 +1,5 @@
 import { audit, db } from './db';
+import { applyDefaultsToNewSite } from './automation';
 import { encrypt } from './crypto';
 import { clientForAccount, type AccountLite } from './clients';
 import { DEMO_ACCOUNTS } from './demo';
@@ -69,10 +70,16 @@ export async function syncAccountSites(accountId: number): Promise<number> {
 		 ON CONFLICT(account_id, site_url) DO UPDATE SET permission = excluded.permission`
 	);
 	const seen = new Set<string>();
+	const known = new Set((d.prepare('SELECT site_url FROM sites WHERE account_id = ?').all(accountId) as { site_url: string }[]).map((r) => r.site_url));
 	d.transaction(() => {
 		for (const s of sites) {
 			upsert.run(accountId, s.siteUrl, s.permissionLevel, Date.now());
 			seen.add(s.siteUrl);
+			// A property seen for the first time starts with the automation defaults chosen on the Connect page (all off until chosen).
+			if (!known.has(s.siteUrl)) {
+				const row = d.prepare('SELECT id FROM sites WHERE account_id = ? AND site_url = ?').get(accountId, s.siteUrl) as { id: number } | undefined;
+				if (row) applyDefaultsToNewSite(row.id);
+			}
 		}
 		// Properties the account can no longer see stay in the warehouse but stop syncing.
 		for (const row of d.prepare('SELECT id, site_url FROM sites WHERE account_id = ?').all(accountId) as { id: number; site_url: string }[]) {

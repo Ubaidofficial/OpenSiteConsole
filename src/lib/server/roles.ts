@@ -69,7 +69,7 @@ export const FORM_ACTIONS: Record<string, Record<string, Role>> = {
 	'/': { syncAll: E, hideDuplicates: E, toggleHidden: E, purgeRemoved: A, hideOnboarding: A, showOnboarding: A, onboardIndexing: E, onboardBrand: A },
 	'/accounts': { refresh: E, verifyToken: A, verifyNow: A, relabel: A, remove: A, addSite: A },
 	'/agents': { create: A, permission: A, changes: A, remove: A },
-	'/connect': { resync: E, bingKey: A, bingRemove: A, ga4Auto: A, gtmAuto: A, clarity: A, manual: A, unlink: A, openseo: A, crux: A, cruxRemove: A, openseoRemove: A, setupRun: A, setupTos: A, setupCheck: A },
+	'/connect': { automationDefault: A, automationApply: A, resync: E, bingKey: A, bingRemove: A, ga4Auto: A, gtmAuto: A, clarity: A, manual: A, unlink: A, openseo: A, crux: A, cruxRemove: A, openseoRemove: A, setupRun: A, setupTos: A, setupCheck: A },
 	'/chat': { delete: 'viewer' },
 	'/digest': { generate: E, send: E, monthly: E, sendMonthly: E, check: E },
 	'/updates': { import: E, add: E, remove: E },

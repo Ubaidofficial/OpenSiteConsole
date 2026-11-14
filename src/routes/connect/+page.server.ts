@@ -15,6 +15,7 @@ import { checkClarityNow } from '$lib/server/clarityscan';
 import { gtmOnSite, planSetup, runSetup, startGa4Account, type SetupChoices } from '$lib/server/setup';
 import { intParam } from '$lib/server/params';
 import { env } from '$lib/server/config';
+import { SWITCHES, applyToAll, available, counts, getDefaults, isSwitchKey, setDefault } from '$lib/server/automation';
 
 const KINDS: LinkKind[] = ['bing', 'ga4', 'gtm', 'clarity', 'openseo'];
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong');
@@ -46,6 +47,11 @@ export const load: PageServerLoad = async ({ url }) => {
 		choices,
 		setupOnSite: setupSite && setupContainer ? gtmOnSite(setupSite.id, setupContainer) : null,
 		readOnly: config.readOnly,
+		automation: (() => {
+			const c = counts();
+			const defaults = getDefaults();
+			return { total: c.total, switches: SWITCHES.map((w) => ({ key: w.key, label: w.label, what: w.what, cost: w.cost, available: available(w.key), on: c.on[w.key], newSites: defaults[w.key] })) };
+		})(),
 		crux: crux ? { demo: !!crux.is_demo, sites: (db().prepare('SELECT COUNT(DISTINCT site_id) n FROM crux_daily').get() as { n: number }).n } : null,
 		demo: config.demo,
 		bingOAuth: !!env('BING_CLIENT_ID') && !!env('BING_CLIENT_SECRET'),
@@ -74,6 +80,25 @@ export const load: PageServerLoad = async ({ url }) => {
 };
 
 export const actions: Actions = {
+	/** What a site found later starts with (off until chosen). */
+	automationDefault: async ({ request }) => {
+		const f = await request.formData();
+		const key = f.get('key');
+		if (!isSwitchKey(key)) return fail(400, { error: 'Unknown setting.', section: 'automation' });
+		const on = f.get('on') === '1';
+		setDefault(key, on);
+		return { ok: `${SWITCHES.find((w) => w.key === key)!.label}: sites found from now on start ${on ? 'with it on' : 'with it off'}. Existing sites are not changed.`, section: 'automation' };
+	},
+	/** Turn one switch on (or off) for every site shown on the dashboard. */
+	automationApply: async ({ request }) => {
+		const f = await request.formData();
+		const key = f.get('key');
+		if (!isSwitchKey(key)) return fail(400, { error: 'Unknown setting.', section: 'automation' });
+		const on = f.get('on') === '1';
+		if (on && !available(key)) return fail(400, { error: 'This needs write access to Search Console, and READ_ONLY is on.', section: 'automation' });
+		const n = applyToAll(key, on);
+		return { ok: `${SWITCHES.find((w) => w.key === key)!.label}: ${on ? 'switched on' : 'switched off'} for ${n} site${n === 1 ? '' : 's'}${n === 0 ? ' (already all ' + (on ? 'on' : 'off') + ')' : ''}.`, section: 'automation' };
+	},
 	bingKey: async ({ request }) => {
 		const f = await request.formData();
 		try {
