@@ -24,6 +24,7 @@ import { robotsCheckDue, runRobotsCheck } from './robotswatch';
 import { aiVisDue, runDue as runAiVis } from './aivis';
 import { auditDue, syncAudit } from './openseolink';
 import { linksFor as siteLinks } from './links';
+import { backupDue, runBackup } from './backup';
 
 type Job = { key: string; fn: () => Promise<unknown> };
 const waiting: Job[] = [];
@@ -176,6 +177,8 @@ export function schedulerTick() {
 			}
 		});
 	}
+	// The daily database copy (SQLite's own backup call, checked and pruned); a failure raises an audit entry and one webhook notice a day.
+	if (!process.env.VITEST && backupDue()) enqueue('backup', async () => void (await runBackup()));
 	// AI visibility: prompts due for another answer, one at a time, within the daily cap (they cost money on the owner's API accounts).
 	if (!process.env.VITEST && aiVisDue()) enqueue('aivis', () => runAiVis());
 	// Google's list of ranking updates changes a few times a year: a daily look is plenty, and a failure just waits for tomorrow.

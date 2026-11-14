@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 /** Minimal .env loader so config works in dev, prod and tests alike. process.env always wins. */
 let loaded = false;
@@ -90,6 +90,21 @@ export const config = {
 	get siteIcons() {
 		const v = env('SITE_ICONS');
 		return v === '0' ? false : v === '1' ? true : !this.demo;
+	},
+	/**
+	 * A daily consistent copy of the database (SQLite's own backup call), kept next to it. On unless BACKUP=0, and never in demo mode.
+	 * It sits on the same disk as the database: it guards against a bad change or a damaged file, not against losing the disk.
+	 */
+	get backupEnabled() {
+		return env('BACKUP') !== '0' && !this.demo;
+	},
+	get backupDir() {
+		const d = env('BACKUP_DIR').trim();
+		return d ? resolve(process.cwd(), d) : resolve(dirname(this.dbPath), 'backups');
+	},
+	/** How many daily copies to keep (default 3, 1 to 30). Each is a full copy of the database. */
+	get backupKeep() {
+		return Math.min(30, Math.max(1, Math.floor(Number(env('BACKUP_KEEP', '3'))) || 3));
 	},
 	get syncConcurrency() {
 		return Math.max(1, Number(env('SYNC_CONCURRENCY', '2')));

@@ -13,7 +13,7 @@
  */
 
 export const ACTION_TYPES = [
-	'tracking', 'blocked', 'robots', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update',
+	'connection', 'tracking', 'blocked', 'robots', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update',
 	'cannibalization', 'ctr-gap', 'decay', 'striking', 'onpage', 'sitemap', 'lastmod', 'submitted', 'request', 'vitals', 'test',
 	'lost-query', 'rising', 'page-edge', 'gem', 'questions', 'bing', 'device', 'engagement', 'friction', 'internal-link', 'audit'
 ] as const;
@@ -46,7 +46,7 @@ export const NAMES_TARGETS: ReadonlySet<ActionType> = new Set<ActionType>(['cann
 export const CONFIDENCE_WEIGHT: Record<Confidence, number> = { high: 1, medium: 0.6, low: 0.3 };
 
 /** Ties among unquantified items, and within the blocking group, resolve in this order. */
-const TYPE_ORDER: ActionType[] = ['tracking', 'blocked', 'robots', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update', 'test', 'cannibalization', 'ctr-gap', 'decay', 'lost-query', 'page-edge', 'striking', 'rising', 'gem', 'questions', 'bing', 'device', 'engagement', 'friction', 'internal-link', 'onpage', 'audit', 'sitemap', 'lastmod', 'submitted', 'request', 'vitals'];
+const TYPE_ORDER: ActionType[] = ['connection', 'tracking', 'blocked', 'robots', 'deindexed', 'sitewide', 'anomaly', 'dead', 'not-indexed', 'update', 'test', 'cannibalization', 'ctr-gap', 'decay', 'lost-query', 'page-edge', 'striking', 'rising', 'gem', 'questions', 'bing', 'device', 'engagement', 'friction', 'internal-link', 'onpage', 'audit', 'sitemap', 'lastmod', 'submitted', 'request', 'vitals'];
 
 export const scoreOf = (a: Pick<ActionItem, 'impact' | 'confidence'>) => (a.impact == null ? 0 : a.impact * CONFIDENCE_WEIGHT[a.confidence]);
 

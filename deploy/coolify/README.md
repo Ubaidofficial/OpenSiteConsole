@@ -42,15 +42,13 @@ Your local `data/opensiteconsole.db` holds the history that Google no longer pro
 ## Backups (you own these)
 The database is one file in the `osc-data` volume. Two layers are sensible:
 - **Server snapshots** from Netcup (whatever they offer for your plan; I have not checked).
-- **A daily consistent copy inside the volume.** Copying the live file can catch it mid-write; SQLite's own backup call does not. This one-liner was tested against a real WAL database and writes `/data/backup-YYYY-MM-DD.db`, keeping 14 days:
-  ```bash
-  node -e "require('better-sqlite3')(process.env.DB_PATH).backup('/data/backup-' + new Date().toISOString().slice(0,10) + '.db').then(() => process.exit(0), (e) => { console.error(e.message); process.exit(1); })" && find /data -name 'backup-*.db' -mtime +14 -delete
-  ```
-  Run it daily with Coolify's scheduled task feature for the service if your version has one (I did not verify the screen), or from the server's cron with `docker exec <container> sh -c '...'`. A copy in the same volume does not protect against losing the server, so also copy `/data/backup-*.db` off the machine now and then (for example with `rclone` or `scp`).
+- **A daily consistent copy inside the volume, made by the app itself.** Once a day the app writes `/data/backups/opensiteconsole-YYYY-MM-DD.db` with SQLite's own backup call (a plain file copy of a live database can catch it mid-write), opens the copy and runs SQLite's integrity check on it, and keeps the newest 3 (`BACKUP_KEEP`, up to 30; each is a full copy, so allow for that much disk). It is on by default and switched off with `BACKUP=0`; `BACKUP_DIR` moves the folder. It refuses to run when the disk would be left nearly full. If a backup fails, the audit log (Agents page) records it and, with `DIGEST_WEBHOOK_URL` set, the webhook is told once a day.
+  **What it does not do:** the copy is on the same disk as the database, so it guards against a bad change or a damaged file, not against losing the server. Copy `/data/backups/` off the machine now and then (for example with `rclone` or `scp`), or rely on the server snapshots above. The copy holds the encrypted Google tokens and opens them only with the same `APP_SECRET`, so keep that safe as well.
+  **Restoring:** stop the app, copy the chosen file over `/data/opensiteconsole.db` (delete any `opensiteconsole.db-wal` and `-shm` beside it first), fix its owner as in the data-move steps above, and start the app again.
 
 ## Updating
 Redeploy from Coolify (or turn on its auto-deploy for the branch). The volume, and so your data, stays.
 
 ## What is verified and what is not
-- **Tested here:** the compose file parses; the healthcheck command exits 0 against a running server; with `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1`, five wrong passwords from one address lock that address while another address can still sign in; the session cookie carries `Secure` when `ORIGIN` is https; the backup command produces a readable copy of a WAL database.
+- **Tested here:** the compose file parses; the healthcheck command exits 0 against a running server; with `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1`, five wrong passwords from one address lock that address while another address can still sign in; the session cookie carries `Secure` when `ORIGIN` is https; the backup call produces a readable copy of a WAL database (and the app's own backup is covered by unit tests on a real file database).
 - **Not tested:** building the image, Coolify itself (domain field, environment screen, scheduled tasks), Netcup, and Cloudflare in front of Coolify.
