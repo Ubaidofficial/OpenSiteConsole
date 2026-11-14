@@ -9,6 +9,8 @@
 	{#if data.googleConfigured}<a class="btn btn-primary ml-auto" href="/auth/connect">+ Connect Google account</a>{/if}
 </div>
 
+{#if data.googleConfigured}<p class="mb-3 text-xs text-muted-foreground">By connecting you agree to the <a class="underline" href="/terms">terms</a> and <a class="underline" href="/privacy">privacy policy</a>. Your Google data is used only to show it to you here and to do what you ask.</p>{/if}
+
 {#if data.connected}<p class="mb-3 text-sm text-good">Connected {data.connected}. Properties are importing and syncing in the background.</p>{/if}
 {#if data.error}<p class="mb-3 text-sm text-bad">Google returned: {data.error}</p>{/if}
 {#if form?.ok}<p class="mb-3 text-sm text-good">{form.ok}</p>{/if}

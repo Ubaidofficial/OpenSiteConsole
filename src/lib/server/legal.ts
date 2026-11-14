@@ -8,6 +8,6 @@ export function legalContext(): { context: LegalContext; configured: boolean } {
 	const law = env('LEGAL_GOVERNING_LAW').trim();
 	return {
 		configured: !!entity && !!contact,
-		context: { entity: entity || 'the operator of this SEOConsole installation', contact: contact || null, law: law || null, updated: env('LEGAL_UPDATED', '2026-11-07') }
+		context: { entity: entity || 'the operator of this SEOConsole installation', contact: contact || null, law: law || null, updated: env('LEGAL_UPDATED', '2026-11-14') }
 	};
 }

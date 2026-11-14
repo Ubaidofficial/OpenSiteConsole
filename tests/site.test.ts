@@ -45,12 +45,14 @@ describe('site: files and links', () => {
 });
 
 describe('site: self-contained and safe under a strict policy', () => {
-	it('loads nothing from another origin: the only absolute links are the repository and its licence', () => {
+	it('loads nothing from another origin: the only absolute links are the repository, its licence and the app\'s own legal pages', () => {
 		for (const m of html.matchAll(/<(?:script|link|img|source|iframe)\b[^>]*\b(?:src|href)="(https?:[^"]+)"/g)) {
 			if (/rel="canonical"/.test(m[0])) continue;
 			expect(m[1], m[0].slice(0, 80)).toBe('NOTHING EXTERNAL');
 		}
-		for (const m of html.matchAll(/<a\b[^>]*href="(https?:[^"]+)"/g)) expect(m[1].startsWith(REPO), m[1]).toBe(true);
+		// Links (never loads) may also go to the app's own legal pages: Google's verification needs the website to link to the privacy policy.
+		const LEGAL = ['https://app.seoconsole.app/privacy', 'https://app.seoconsole.app/terms'];
+		for (const m of html.matchAll(/<a\b[^>]*href="(https?:[^"]+)"/g)) expect(m[1].startsWith(REPO) || LEGAL.includes(m[1]), m[1]).toBe(true);
 		expect(css).not.toMatch(/url\(\s*['"]?https?:/);
 		expect(css).not.toMatch(/@import/);
 		expect(js).not.toMatch(/\bfetch\(|XMLHttpRequest|sendBeacon|WebSocket|import\(/);

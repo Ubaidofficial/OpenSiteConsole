@@ -35,6 +35,7 @@ export function privacySections(c: LegalContext): LegalSection[] {
 			title: 'Google user data and the permissions we ask for',
 			paras: [
 				GOOGLE_LIMITED_USE,
+				'The one place Google data reaches an AI service is the Ask chat described under “Who we share it with”: it is sent only to answer the question you asked, we do not use it to train AI models, and we send it for no other purpose.',
 				'In plain terms: we use the data Google gives us only to show it to you inside this service and to carry out the actions you ask for. We do not sell it, we do not use it for advertising, we do not use it to train generalised AI or machine-learning models, and no person reads it except where you ask for support and agree, where it is needed for security or to follow the law, or where it has been anonymised and aggregated.',
 				'The permissions we may request, each only when the feature that needs it is switched on:'
 			],
@@ -57,6 +58,8 @@ export function privacySections(c: LegalContext): LegalSection[] {
 				'Search engines that take part in IndexNow, and Bing’s URL submission, when you ask us to submit URLs: they receive those public URLs.',
 				'A chat or webhook address (such as Slack or Discord) if the operator sets one for the weekly digest.',
 				'An AI assistant you connect through the MCP server: it receives whatever its tools return, under that assistant’s own terms. Connect only assistants you trust, and prefer a key limited to the sites it needs.',
+				'An AI model provider, only if the operator has switched on the Ask chat: when you ask a question there, your question and the data the service looks up to answer it (for example queries, pages, clicks, positions and the to-do list for the sites you choose) are sent to Anthropic, the company behind Claude, using the operator’s own API key, to write the answer. Nothing is sent unless someone uses Ask. Anthropic handles it under its own terms and privacy policy.',
+				'AI answer providers, only if the operator has switched on AI answer tracking: the questions you write to track are sent to the AI services that answer them (OpenAI, Anthropic and Perplexity, or DataForSEO, which runs some of them for the service) to see whether your brand or site is mentioned. This is not data from Google.',
 				'The company that hosts the server and its backups, as our service provider.',
 				'Authorities, if the law requires it.'
 			]
@@ -129,12 +132,16 @@ export function termsSections(c: LegalContext): LegalSection[] {
 			]
 		},
 		{
+			title: 'AI features',
+			paras: ['The Ask chat and AI answer tracking use outside AI services. Their answers can be wrong or out of date: check them before you act, and do not rely on them as legal, financial or other professional advice. Anything the Ask chat proposes to change, such as submitting URLs, waits for your click.']
+		},
+		{
 			title: 'Third-party services',
 			paras: ['The service depends on Google, Microsoft, IndexNow engines and other third parties. They can change or stop their APIs, quotas and rules at any time, and what they return is outside our control. “Accepted” by a search engine means it received a request, not that a page will be indexed or ranked.']
 		},
 		{
 			title: 'Software licence',
-			paras: ['SEOConsole is open-source software released under the MIT licence. These terms govern the service run by us; the licence governs the code, and nothing here limits your rights under it.']
+			paras: ['SEOConsole is open-source software released under the GNU Affero General Public License v3.0 (AGPL-3.0-only). These terms govern the service run by us; the licence governs the code, and nothing here limits your rights under it.']
 		},
 		{
 			title: 'Availability and changes',

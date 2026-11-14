@@ -640,7 +640,7 @@ describe('privacy policy, terms and the menu', () => {
 		expect(GOOGLE_LIMITED_USE).toMatch(/Google API Services User Data Policy, including the Limited Use requirements/);
 		for (const needle of [/do not sell/i, /encrypted at rest/, /myaccount\.google\.com\/permissions/, /session cookie/, /Search Console/, /Analytics/, /Tag Manager/, /MCP/, /Indexing API/, /deleted/, /GDPR/]) expect(text, String(needle)).toMatch(needle);
 		const terms = termsSections(ctx).map((s) => [s.title, ...s.paras, ...(s.items ?? [])].join(' ')).join(' ');
-		for (const needle of [/Indexing API/, /quotas/, /as is/i, /MIT licence/, /Limit of liability|liable/]) expect(terms, String(needle)).toMatch(needle);
+		for (const needle of [/Indexing API/, /quotas/, /as is/i, /AGPL-3\.0-only/, /Limit of liability|liable/]) expect(terms, String(needle)).toMatch(needle);
 	});
 	it('the pages are not behind the login in the hook, and the README and .env.example say how to fill them in', () => {
 		const hook = readFileSync('src/hooks.server.ts', 'utf8');
