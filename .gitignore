@@ -2,6 +2,7 @@ node_modules
 .svelte-kit
 build
 data/*.db*
+data/backups/
 .env
 
 cloud/dist

@@ -19,6 +19,7 @@ COPY deploy/cloudflare/litestream.yml /etc/litestream.yml
 COPY deploy/cloudflare/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && mkdir -p /data && chown node:node /data
 USER node
-ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 DB_PATH=/data/opensiteconsole.db
+# BACKUP=0: Litestream already replicates the database; local daily copies would only fill this container's disk.
+ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 DB_PATH=/data/opensiteconsole.db BACKUP=0
 EXPOSE 3000
 ENTRYPOINT ["/entrypoint.sh"]
