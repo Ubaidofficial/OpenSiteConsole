@@ -1,0 +1,37 @@
+# Runs the type-check, the tests and a production build on every pull request and on every push to main, so a change is
+# checked before it is merged and a broken main is noticed straight away. It reads the repository only: no secrets, no deploys.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Type-check
+        run: pnpm check
+      - name: Tests
+        run: pnpm test
+      - name: Production build
+        run: pnpm build
