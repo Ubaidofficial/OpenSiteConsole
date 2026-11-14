@@ -38,7 +38,26 @@ const pathOf = (u: string) => {
 	}
 };
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`;
-const VERSION = 'a8';
+const VERSION = 'a9';
+
+/** No successful Search Console download for this long means something is failing: the app tries every 6 hours. */
+export const STALE_AFTER_MS = 48 * 3600_000;
+
+/**
+ * Whether the data behind a site has stopped arriving: Google access revoked (the scheduler then skips the account, so nothing
+ * runs and nothing says so), or syncs that have not succeeded for STALE_AFTER_MS. Null when all is well, and for sites that are
+ * hidden, removed or unverified, which are not expected to sync. last_sync_at only moves on a success, so repeated failures
+ * leave it standing still.
+ */
+export function connectionProblem(site: Site, now = Date.now()): { kind: 'revoked' | 'stale'; days: number | null } | null {
+	if (site.hidden || ['siteUnverifiedUser', 'none'].includes(site.permission)) return null;
+	const acc = db().prepare('SELECT status, is_demo FROM accounts WHERE id = ?').get(site.account_id) as { status: string; is_demo: number } | undefined;
+	if (!acc || acc.is_demo) return null;
+	const days = site.last_sync_at ? Math.floor((now - site.last_sync_at) / 86_400_000) : null;
+	if (acc.status === 'revoked') return { kind: 'revoked', days };
+	if (site.last_sync_at && now - site.last_sync_at > STALE_AFTER_MS) return { kind: 'stale', days };
+	return null;
+}
 
 /** Every finding for one site, unranked state-free. Cheap enough to run on demand; see actionsFor for the cached, ranked form. */
 export function buildActions(site: Site, days = 28): ActionItem[] {
@@ -55,6 +74,21 @@ export function buildActions(site: Site, days = 28): ActionItem[] {
 	const clicksOf = (u: string) => Math.max(nowPages.get(u)?.clicks ?? 0, prevPages.get(u)?.clicks ?? 0);
 	const share = (c: number) => (total > 0 ? c / total : 0);
 	const upd = updatesBetween(addDays(p.start, -7), p.end).filter((u) => u.kind === 'core' || u.kind === 'spam');
+
+	// ── 0. the data itself: if it has stopped arriving, everything below is old ──────────────────────────────
+	try {
+		const cp = connectionProblem(site);
+		if (cp) {
+			const last = site.last_sync_at ? new Date(site.last_sync_at).toISOString().slice(0, 10) : null;
+			if (cp.kind === 'revoked') {
+				add({ key: 'connection:revoked', type: 'connection', title: 'Google access was withdrawn, so this site is no longer updating', why: `Google refused the stored permission (the password was changed, access was removed in the Google account, or the permission expired).${last ? ` Nothing has been downloaded since ${last}.` : ''} Every number here is getting older, and the checks built from them with it.`, how: 'Open Accounts and reconnect the Google account. The missing days are downloaded again afterwards.', impact: null, confidence: 'high', effort: 'low', blocking: true, href: '/accounts', evidence: [] });
+			} else {
+				add({ key: 'connection:stale', type: 'connection', title: `Search Console data has not updated for ${cp.days} days`, why: `The last successful download was ${last}. The app tries every 6 hours, so something keeps failing: Google refusing the request, the property losing access, or this server not reaching Google. Every number here is getting older, and the checks built from them with it.`, how: 'Open the site page: the sync message there says what failed. Press Sync, and if it fails again reconnect the account on the Accounts page or check the property in Search Console.', impact: null, confidence: 'high', effort: 'low', blocking: true, href: base, evidence: [] });
+			}
+		}
+	} catch {
+		/* a missing source must not stop the queue */
+	}
 
 	// ── 1. measurement ────────────────────────────────────────────────────────
 	try {
@@ -376,6 +410,8 @@ function cacheKey(site: Site, days: number): string {
 	const one = (sql: string, ...a: unknown[]) => JSON.stringify(d.prepare(sql).get(...a));
 	return JSON.stringify([
 		VERSION, days, site.synced_through, site.last_sync_at, site.index_checked_on,
+		// revoked access or a stalled sync changes the answer with no sync to trigger a recompute (the days count moves once a day)
+		connectionProblem(site),
 		one('SELECT MAX(fetched_at) m, COUNT(*) n FROM url_inspections WHERE site_id = ?', site.id),
 		one('SELECT MAX(at) m, COUNT(*) n FROM index_events WHERE site_id = ?', site.id),
 		one('SELECT MAX(checked_at) m, COUNT(*) n FROM onpage_checks WHERE site_id = ?', site.id),

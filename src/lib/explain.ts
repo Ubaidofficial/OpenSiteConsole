@@ -6,7 +6,7 @@
 import { DONE_DAYS, SNOOZE_DAYS, type ActionType, type Confidence, type Effort } from './actions';
 
 export const TYPE_LABEL: Record<ActionType, string> = {
-	tracking: 'Measurement', blocked: 'Blocked', robots: 'robots.txt', deindexed: 'De-indexed', sitewide: 'Site-wide', anomaly: 'Traffic drop', dead: 'Gone',
+	connection: 'Data connection', tracking: 'Measurement', blocked: 'Blocked', robots: 'robots.txt', deindexed: 'De-indexed', sitewide: 'Site-wide', anomaly: 'Traffic drop', dead: 'Gone',
 	'not-indexed': 'Not indexed', update: 'Google update', cannibalization: 'Cannibalization', 'ctr-gap': 'CTR gap', decay: 'Decay',
 	striking: 'Striking distance', onpage: 'On-page', sitemap: 'Sitemap', lastmod: 'Sitemap dates', submitted: 'Sent, not indexed', request: 'Request indexing', vitals: 'Web vitals', test: 'Test',
 	'lost-query': 'Lost searches', rising: 'Rising searches', 'page-edge': 'Page on the edge', gem: 'Hidden gem', questions: 'Unanswered questions',
@@ -14,6 +14,7 @@ export const TYPE_LABEL: Record<ActionType, string> = {
 };
 
 export const TYPE_EXPLAIN: Record<ActionType, string> = {
+	connection: 'Google access was withdrawn, or the daily downloads keep failing, so this site\'s numbers are getting older every day and every check built from them is out of date. Nothing else in the list can be trusted until the data flows again.',
 	tracking: 'Your measurement looks broken or incomplete (for example a missing or misconfigured Google Analytics tag), so some numbers cannot be trusted until it is fixed.',
 	blocked: 'Pages that earn clicks are blocked from Google by robots.txt, a noindex tag or a header. If that is not intended, they will lose their traffic.',
 	robots: 'Your robots.txt, read once a day: it now blocks Googlebot from pages that earn clicks, it has been answering with server errors (which can stop Google crawling the whole site), or its rules changed recently and are worth a second look.',
